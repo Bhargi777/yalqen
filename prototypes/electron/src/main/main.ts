@@ -48,7 +48,7 @@ const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
 const appIcon = path.join(repoRoot, 'design/brand/png/icon-512.png');
 
 registerInternalScheme();
-app.setName('Yalqen Browser');
+app.setName('Yalqen');
 
 function createBrowser(): void {
   const window = new BaseWindow({
@@ -56,7 +56,7 @@ function createBrowser(): void {
     height: 820,
     minWidth: 640,
     minHeight: 400,
-    title: 'Yalqen Browser',
+    title: 'Yalqen',
     icon: appIcon,
     titleBarStyle: 'hiddenInset',
     // The glass view sits behind the UI, so the window itself must be see-through.
@@ -452,7 +452,7 @@ function readPageSet(): string[] {
 }
 
 app.setAboutPanelOptions({
-  applicationName: 'Yalqen Browser',
+  applicationName: 'Yalqen',
   applicationVersion: app.getVersion(),
   version: `Faz 0 prototipi · Electron ${process.versions.electron}`,
   iconPath: appIcon,
