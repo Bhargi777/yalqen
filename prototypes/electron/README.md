@@ -24,7 +24,6 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Kalıcı oturum (`persist:daily`), sekme listesinin saklanması; açılışta yalnızca aktif sekme yüklenir.
 - Yeni pencere istekleri sekme olarak açılır. İzinler varsayılan olarak reddedilir (tam ekran ve pano yazma hariç).
 - Sayfa çökerse sekme bellekten çıkarılmış duruma geçer; otomatik yeniden yüklenmez.
-
 - Arama motoru seçimi: Google (varsayılan), Yandex, DuckDuckGo, Bing, Brave Search, Ecosia veya özel adres. Adres çubuğunun ipucu metni seçime göre değişir.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
