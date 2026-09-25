@@ -388,9 +388,10 @@ export class TabManager {
   private load(tab: Tab, view: WebContentsView): void {
     const history = tab.history;
     tab.history = null;
+    const contents = view.webContents;
     if (history && history.entries.length > 0) {
       const startedAt = performance.now();
-      view.webContents.navigationHistory
+      contents.navigationHistory
         .restore({ entries: history.entries, index: history.index })
         .then(() => {
           const ms = Math.round(performance.now() - startedAt);
@@ -399,13 +400,12 @@ export class TabManager {
         .catch(() => {
           // The promise also rejects when a later navigation (e.g. going back
           // right after restore) aborts the load; fall back only if nothing was restored.
-          const contents = view.webContents;
-          if (!contents.isDestroyed() && contents.navigationHistory.length() === 0) {
+          if (tab.view === view && !contents.isDestroyed() && contents.navigationHistory.length() === 0) {
             void contents.loadURL(tab.url);
           }
         });
     } else {
-      void view.webContents.loadURL(tab.url);
+      void contents.loadURL(tab.url);
     }
   }
 

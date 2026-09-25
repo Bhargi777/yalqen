@@ -1,11 +1,13 @@
 import fs from 'node:fs/promises';
 import { ElectronBlocker, adsLists } from '@ghostery/adblocker-electron';
-import type { Session } from 'electron';
+import { ipcMain, type Session } from 'electron';
 
 // Peter Lowe's list forbids commercial use; the rest are GPL3 or CC BY-SA.
 const FILTER_LISTS = adsLists.filter((url) => !url.includes('/peter-lowe/'));
 // The parsed engine is cached on disk; lists are fetched again once it is older than this.
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const COSMETIC_FILTERS_CHANNEL = '@ghostery/adblocker/inject-cosmetic-filters';
+const MUTATION_OBSERVER_CHANNEL = '@ghostery/adblocker/is-mutation-observer-enabled';
 
 /** Blocks ads in one session. The engine is loaded the first time blocking is enabled. */
 export class AdBlocker {
@@ -38,8 +40,19 @@ export class AdBlocker {
 
   private apply(blocker: ElectronBlocker): void {
     if (this.wanted === blocker.isBlockingEnabled(this.session)) return;
-    if (this.wanted) blocker.enableBlockingInSession(this.session);
-    else blocker.disableBlockingInSession(this.session);
+    if (this.wanted) {
+      // Ghostery registers these handlers when blocking starts. Remove the
+      // placeholders left for pages that were already running when it stopped.
+      ipcMain.removeHandler(COSMETIC_FILTERS_CHANNEL);
+      ipcMain.removeHandler(MUTATION_OBSERVER_CHANNEL);
+      blocker.enableBlockingInSession(this.session);
+    } else {
+      blocker.disableBlockingInSession(this.session);
+      // Existing frames retain Ghostery's preload after it is unregistered.
+      // Their later IPC calls must still get a harmless response.
+      ipcMain.handle(COSMETIC_FILTERS_CHANNEL, () => undefined);
+      ipcMain.handle(MUTATION_OBSERVER_CHANNEL, () => false);
+    }
   }
 }
 
