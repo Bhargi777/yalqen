@@ -117,7 +117,11 @@ export interface CommandBarOpen {
 }
 
 /** Requests the command bar sends to the main process. */
-export type CommandBarAction = { type: 'submit'; input: string } | { type: 'dismiss' };
+export type CommandBarAction =
+  | { type: 'submit'; input: string }
+  | { type: 'dismiss' }
+  /** The text changed; the bar stays open. */
+  | { type: 'input'; input: string };
 
 export const CommandBarChannel = {
   open: 'yalqen-command:open',

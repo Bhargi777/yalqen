@@ -20,6 +20,7 @@ import { applyGlass, glassAvailable } from './glass.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
 import { SessionStore } from './persistence.js';
+import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
 import { SettingsWindow } from './settings-window.js';
@@ -88,6 +89,7 @@ function createBrowser(): void {
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () =>
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
+  const preconnector = new Preconnector((origin) => daily.preconnect({ url: origin }));
   const settingsWindow = new SettingsWindow({
     preload: path.join(__dirname, '../preload/settings-preload.js'),
     page: path.join(__dirname, '../renderer/settings.html'),
@@ -132,13 +134,16 @@ function createBrowser(): void {
     preload: path.join(__dirname, '../preload/command-preload.js'),
     page: path.join(__dirname, '../renderer/command.html'),
     onSubmit: (input, mode) => {
+      preconnector.cancel();
       const url = resolveInput(input, searchEngine());
       if (mode === 'new-tab') tabs.open(url);
       else tabs.navigate(url);
     },
     onDismiss: () => {
+      preconnector.cancel();
       if (!tabs.focusActive()) ui.webContents.focus();
     },
+    onInput: (input) => preconnector.typed(input, searchEngine()),
   });
 
   const tabs: TabManager = new TabManager({
@@ -265,6 +270,7 @@ function createBrowser(): void {
 
   const openCenteredAddress = () => {
     const url = tabs.activeUrl;
+    preconnector.opened(searchEngine());
     commandBar.open({
       placeholder: searchEngine().placeholder,
       mode: 'navigate',
