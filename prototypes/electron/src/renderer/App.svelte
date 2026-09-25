@@ -20,6 +20,8 @@
   const NAV_START = 8;
   const NAV_WIDTH = 62;
   const NAV_GAP = 6;
+  /** New tab and settings capsule: always in the top-right corner, same size as back and forward. */
+  const ACTIONS_SPACE = PAGE_INSET + NAV_WIDTH + NAV_GAP;
   // Versioned so the wider sidebar of earlier designs is not restored.
   const PREFS_KEY = 'yalqen:panel:2';
   const DEVICE_BEZEL = 10;
@@ -107,6 +109,7 @@
     {windowControls}
     {side}
     leadingInset={side === 'left' ? navEnd : 0}
+    trailingInset={side === 'right' ? ACTIONS_SPACE : 0}
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
@@ -116,10 +119,10 @@
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     leadingInset={side === 'left' ? Math.max(0, navEnd - panelWidth) : navEnd}
-    trailingInset={side === 'left' ? PAGE_INSET : 0}
+    trailingInset={side === 'left' ? ACTIONS_SPACE : Math.max(0, ACTIONS_SPACE - panelWidth)}
     {blank}
   />
-  <nav class="navigation" aria-label="Gezinme" style:transform="translateX({navStart}px)">
+  <nav class="corner navigation" aria-label="Gezinme" style:transform="translateX({navStart}px)">
     <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => window.yalqen.send({ type: 'go-back' })}>
       <Icon name="back" />
     </button>
@@ -127,6 +130,14 @@
       <Icon name="forward" />
     </button>
   </nav>
+  <div class="corner actions" style:right="{PAGE_INSET}px">
+    <button class="icon" title="Yeni sekme (⌘T)" onclick={() => window.yalqen.send({ type: 'new-tab' })}>
+      <Icon name="plus" />
+    </button>
+    <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => window.yalqen.send({ type: 'open-settings' })}>
+      <Icon name="settings" />
+    </button>
+  </div>
   {#if windowControls}
     <!--
       Reveals the traffic lights. They stay while the pointer is over them or the
@@ -181,10 +192,10 @@
       'page panel';
   }
 
-  .navigation {
+  /* Capsules pinned to the top corners, whichever side the panel is on. */
+  .corner {
     position: fixed;
     top: 6px;
-    left: 0;
     z-index: 1;
     display: flex;
     gap: 2px;
@@ -196,7 +207,11 @@
     -webkit-app-region: no-drag;
   }
 
-  :global([data-material='glass']) .navigation {
+  .navigation {
+    left: 0;
+  }
+
+  :global([data-material='glass']) .corner {
     box-shadow: var(--shadow), var(--rim);
   }
 

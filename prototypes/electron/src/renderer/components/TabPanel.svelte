@@ -10,6 +10,7 @@
     windowControls,
     side,
     leadingInset,
+    trailingInset,
     width = $bindable(),
     minWidth,
     maxWidth,
@@ -25,6 +26,8 @@
     side: PanelSide;
     /** Room kept free at the start of the top row for the back and forward buttons. */
     leadingInset: number;
+    /** Room kept free at the end of the top row for the new tab and settings buttons. */
+    trailingInset: number;
     width: number;
     minWidth: number;
     maxWidth: number;
@@ -129,7 +132,7 @@
     ></div>
   {/if}
 
-  <div class="top" style:padding-left="{leadingInset}px">
+  <div class="top" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
     {#if !collapsed}
       <!-- On macOS the traffic lights take the logo's place. -->
       {#if !windowControls}{@render logo()}{/if}

@@ -14,7 +14,7 @@
     activeTabId: TabId | null;
     /** Space kept free on the left for the back and forward buttons over a narrow sidebar. */
     leadingInset: number;
-    /** Space kept free on the right, matching the page card's edge. */
+    /** Space kept free on the right for the new tab and settings buttons over a narrow sidebar. */
     trailingInset: number;
     /** A new tab page is showing; it has its own search field, so the strip steps aside. */
     blank: boolean;
@@ -87,16 +87,7 @@
     {/each}
   </ol>
 
-  <span class="side end">
-    <span class="capsule">
-      <button class="icon" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-        <Icon name="plus" />
-      </button>
-      <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
-        <Icon name="settings" />
-      </button>
-    </span>
-  </span>
+  <span class="side"></span>
 </header>
 
 <style>
@@ -117,21 +108,6 @@
     min-width: max-content;
   }
 
-  .side.end {
-    justify-content: flex-end;
-  }
-
-  .capsule {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    -webkit-app-region: no-drag;
-  }
-
-  :global([data-material='glass']) .capsule,
   :global([data-material='glass']) .chip.active {
     box-shadow: var(--shadow), var(--rim);
   }
