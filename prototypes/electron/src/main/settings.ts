@@ -12,6 +12,7 @@ const DEFAULTS: Settings = {
   searchEngine: DEFAULT_SEARCH_ENGINE,
   customSearchTemplate: null,
   theme: 'light',
+  startupBehavior: 'restore',
   panelCollapsed: false,
   panelSide: 'left',
   freezeBackgroundTabs: true,
@@ -21,11 +22,12 @@ const DEFAULTS: Settings = {
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
 const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
+const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
 
 /** Keeps known, well-typed fields and takes the rest from `base`. */
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const { searchEngine, customSearchTemplate, theme, panelCollapsed, panelSide, freezeBackgroundTabs, adBlocking } =
+  const { searchEngine, customSearchTemplate, theme, startupBehavior, panelCollapsed, panelSide, freezeBackgroundTabs, adBlocking } =
     input;
   return {
     version: 1,
@@ -38,6 +40,10 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? customSearchTemplate?.trim() || null
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
+    startupBehavior:
+      typeof startupBehavior === 'string' && STARTUP_BEHAVIORS.has(startupBehavior)
+        ? (startupBehavior as Settings['startupBehavior'])
+        : base.startupBehavior,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
     panelSide:
       typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,

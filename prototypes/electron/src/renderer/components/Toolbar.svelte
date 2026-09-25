@@ -1,20 +1,24 @@
 <script lang="ts">
-  import type { TabId, TabSnapshot } from '../../shared/types';
+  import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
 
   let {
     tabs,
     activeTabId,
+    collapsed,
+    side,
     leadingInset,
     trailingInset,
     blank,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
-    /** Space kept free on the left for the back and forward buttons over a narrow sidebar. */
+    collapsed: boolean;
+    side: PanelSide;
+    /** Space kept for macOS window controls when the sidebar is narrow. */
     leadingInset: number;
-    /** Space kept free on the right for the new tab and settings buttons over a narrow sidebar. */
+    /** Gap between settings and the window edge or sidebar. */
     trailingInset: number;
     /** A new tab page is showing; it has its own search field, so the strip steps aside. */
     blank: boolean;
@@ -23,6 +27,7 @@
   let brokenIcons: Record<string, true> = $state({});
   let strip: HTMLElement | undefined = $state();
   const send = window.yalqen.send;
+  const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
   $effect(() => {
     // Keep the active tab in view when it changes.
@@ -49,14 +54,28 @@
   </span>
 {/snippet}
 
-<!--
-  Safari-like: capsules on the window background. The active tab doubles as the
-  address field: clicking it opens the centered address bar.
--->
+<!-- The active tab doubles as the address field; the existing capsules now frame the tab strip. -->
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
-  <span class="side"></span>
+  <div class="side leading">
+    {#if collapsed && side === 'left'}
+      <div class="capsule">
+        <button class="icon" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={() => send({ type: 'toggle-panel' })}>
+          <Icon name="sidebar" />
+        </button>
+      </div>
+    {/if}
+    <nav class="capsule navigation" aria-label="Gezinme">
+      <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
+        <Icon name="back" />
+      </button>
+      <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
+        <Icon name="forward" />
+      </button>
+    </nav>
+  </div>
 
-  <ol class="strip" class:hidden={blank} bind:this={strip} aria-label="Açık sekmeler">
+  <div class="tab-group">
+    <ol class="strip" class:hidden={blank} bind:this={strip} aria-label="Açık sekmeler">
     {#each tabs as tab (tab.id)}
       {@const active = tab.id === activeTabId}
       <li class="chip" class:active>
@@ -85,9 +104,28 @@
         {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
       </li>
     {/each}
-  </ol>
+    </ol>
+    <div class="capsule">
+      <button class="icon" title="Yeni sekme (⌘T)" aria-label="Yeni sekme" onclick={() => send({ type: 'new-tab' })}>
+        <Icon name="plus" />
+      </button>
+    </div>
+  </div>
 
-  <span class="side"></span>
+  <div class="side trailing">
+    <div class="capsule">
+      <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
+        <Icon name="settings" />
+      </button>
+    </div>
+    {#if collapsed && side === 'right'}
+      <div class="capsule">
+        <button class="icon" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={() => send({ type: 'toggle-panel' })}>
+          <Icon name="sidebar" />
+        </button>
+      </div>
+    {/if}
+  </div>
 </header>
 
 <style>
@@ -101,11 +139,48 @@
     -webkit-app-region: drag;
   }
 
-  /* Equal sides keep the tabs centered over the page card. */
+  /* Equal sides keep the tab group centered over the page card. */
   .side {
     display: flex;
     flex: 1 1 0;
+    align-items: center;
     min-width: max-content;
+  }
+
+  .leading {
+    justify-content: space-between;
+  }
+
+  .trailing {
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .tab-group {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .capsule {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    -webkit-app-region: no-drag;
+  }
+
+  :global([data-material='glass']) .capsule {
+    box-shadow: var(--shadow), var(--rim);
   }
 
   :global([data-material='glass']) .chip.active {

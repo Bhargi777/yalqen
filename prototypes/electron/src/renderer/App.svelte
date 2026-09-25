@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import type { BrowserState } from '../shared/types';
   import { isNewTab } from './format';
-  import Icon from './components/Icon.svelte';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
@@ -14,14 +13,8 @@
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
   const PAGE_RADIUS = 16;
-  /** Where the back and forward capsule starts beside the macOS traffic lights. */
+  /** Space kept for macOS traffic lights at the top-left edge. */
   const WINDOW_CONTROLS_END = 88;
-  /** Back and forward capsule: left edge when nothing is before it, width, gap after it. */
-  const NAV_START = 8;
-  const NAV_WIDTH = 62;
-  const NAV_GAP = 6;
-  /** New tab and settings capsule: always in the top-right corner, same size as back and forward. */
-  const ACTIONS_SPACE = PAGE_INSET + NAV_WIDTH + NAV_GAP;
   // Versioned so the wider sidebar of earlier designs is not restored.
   const PREFS_KEY = 'yalqen:panel:2';
   const DEVICE_BEZEL = 10;
@@ -57,10 +50,6 @@
   const side = $derived(browser.panelSide);
   // The new tab page is an empty board: no card, the page blends into the window.
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
-  // The back and forward buttons sit in the corner and slide aside for the traffic lights.
-  const navStart = $derived(windowControls && controlsShown ? WINDOW_CONTROLS_END : NAV_START);
-  const navEnd = $derived(navStart + NAV_WIDTH + NAV_GAP);
-
   $effect(() => {
     document.documentElement.dataset.material = browser.material;
   });
@@ -109,8 +98,8 @@
     {collapsed}
     {windowControls}
     {side}
-    leadingInset={side === 'left' ? navEnd : 0}
-    trailingInset={side === 'right' ? ACTIONS_SPACE : 0}
+    leadingInset={side === 'left' && windowControls ? WINDOW_CONTROLS_END : 0}
+    trailingInset={0}
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
@@ -119,26 +108,12 @@
   <Toolbar
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
-    leadingInset={side === 'left' ? Math.max(0, navEnd - panelWidth) : navEnd}
-    trailingInset={side === 'left' ? ACTIONS_SPACE : Math.max(0, ACTIONS_SPACE - panelWidth)}
+    {collapsed}
+    {side}
+    leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : WINDOW_CONTROLS_END : 0}
+    trailingInset={PAGE_INSET}
     {blank}
   />
-  <nav class="corner navigation" aria-label="Gezinme" style:transform="translateX({navStart}px)">
-    <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => window.yalqen.send({ type: 'go-back' })}>
-      <Icon name="back" />
-    </button>
-    <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => window.yalqen.send({ type: 'go-forward' })}>
-      <Icon name="forward" />
-    </button>
-  </nav>
-  <div class="corner actions" style:right="{PAGE_INSET}px">
-    <button class="icon" title="Yeni sekme (⌘T)" onclick={() => window.yalqen.send({ type: 'new-tab' })}>
-      <Icon name="plus" />
-    </button>
-    <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => window.yalqen.send({ type: 'open-settings' })}>
-      <Icon name="settings" />
-    </button>
-  </div>
   {#if windowControls}
     <!--
       Reveals the traffic lights. They stay while the pointer is over them or the
@@ -149,7 +124,7 @@
       class:shown={controlsShown}
       aria-hidden="true"
       onpointerenter={() =>
-        window.yalqen.send({ type: 'reveal-window-controls', width: WINDOW_CONTROLS_END + NAV_WIDTH + NAV_GAP })}
+        window.yalqen.send({ type: 'reveal-window-controls', width: WINDOW_CONTROLS_END })}
     ></div>
   {/if}
   {/if}
@@ -203,51 +178,6 @@
     box-shadow: none;
   }
 
-  /* Capsules pinned to the top corners, whichever side the panel is on. */
-  .corner {
-    position: fixed;
-    top: 6px;
-    z-index: 1;
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    transition: transform 0.2s ease;
-    -webkit-app-region: no-drag;
-  }
-
-  .navigation {
-    left: 0;
-  }
-
-  :global([data-material='glass']) .corner {
-    box-shadow: var(--shadow), var(--rim);
-  }
-
-  .icon {
-    display: grid;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text);
-    transition: background var(--transition);
-  }
-
-  .icon:hover:not(:disabled) {
-    background: var(--surface-hover);
-  }
-
-  .icon:disabled {
-    color: var(--text-muted);
-    opacity: 0.5;
-  }
-
   /* Over the buttons while the traffic lights are hidden, so reaching them reveals the lights. */
   .controls-zone {
     position: fixed;
@@ -261,12 +191,6 @@
 
   .controls-zone.shown {
     pointer-events: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .navigation {
-      transition: none;
-    }
   }
 
   .page {

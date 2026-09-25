@@ -21,6 +21,10 @@
     { value: 'light', label: 'Açık' },
     { value: 'dark', label: 'Koyu' },
   ] as const;
+  const startupOptions = [
+    { value: 'restore', label: 'Kaldığım yerden devam et' },
+    { value: 'new-tab', label: 'Yeni sekmeyle başla' },
+  ] as const;
 
   let view = $state<SettingsView | null>(null);
   let templateDraft = $state('');
@@ -95,6 +99,24 @@
         {/if}
       </div>
     {/if}
+
+    <h2>Açılış</h2>
+    <div class="row">
+      <span class="label">
+        <span>Tarayıcı açıldığında</span>
+        <span class="hint">Yeni sekmeyle başla seçilirse, tarayıcı kapandığında açık sekmeler kaydedilmez.</span>
+      </span>
+      <select
+        aria-label="Tarayıcı açıldığında"
+        value={values.startupBehavior}
+        onchange={(event) =>
+          update({ startupBehavior: event.currentTarget.value as SettingsValues['startupBehavior'] })}
+      >
+        {#each startupOptions as option (option.value)}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </select>
+    </div>
 
     <h2>Sekme paneli</h2>
     <div class="row">

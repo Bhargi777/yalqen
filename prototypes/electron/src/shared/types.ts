@@ -146,6 +146,8 @@ export interface SettingsValues {
   /** Used when `searchEngine` is `custom`; `%s` marks the query. */
   customSearchTemplate: string | null;
   theme: ThemeSource;
+  /** What to open when the browser starts again. */
+  startupBehavior: 'restore' | 'new-tab';
   panelCollapsed: boolean;
   panelSide: PanelSide;
   /** Freeze background tabs' pages when switching away from them. */

@@ -234,14 +234,11 @@
     {#if !collapsed}<span>Yeni sekme</span>{/if}
   </button>
 
-  <footer class="footer">
-    {#if collapsed}
-      <button class="icon toggle" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={onToggle}>
-        <Icon name="sidebar" />
-      </button>
-    {/if}
-    {#if !collapsed}<span class="tab-count">{tabs.length} sekme</span>{/if}
-  </footer>
+  {#if !collapsed}
+    <footer class="footer">
+      <span class="tab-count">{tabs.length} sekme</span>
+    </footer>
+  {/if}
 </aside>
 
 <style>
@@ -592,11 +589,6 @@
     gap: 4px;
     margin-top: auto;
     padding: 0 11px;
-  }
-
-  .collapsed .footer {
-    flex-direction: column;
-    padding: 0;
   }
 
   .tab-count {

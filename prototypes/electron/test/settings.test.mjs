@@ -13,6 +13,7 @@ test('unknown or mistyped fields fall back', () => {
     sanitizeSettings({
       searchEngine: 'altavista',
       theme: 'blue',
+      startupBehavior: 'close-all',
       panelCollapsed: 'yes',
       panelSide: 'top',
       freezeBackgroundTabs: 1,
@@ -23,6 +24,7 @@ test('unknown or mistyped fields fall back', () => {
       searchEngine: 'google',
       customSearchTemplate: null,
       theme: 'light',
+      startupBehavior: 'restore',
       panelCollapsed: false,
       panelSide: 'left',
       freezeBackgroundTabs: true,
@@ -40,6 +42,7 @@ test('updates keep valid fields and persist', () => {
     store.update({
       searchEngine: 'yandex',
       theme: 'dark',
+      startupBehavior: 'new-tab',
       panelCollapsed: true,
       panelSide: 'right',
       freezeBackgroundTabs: false,
@@ -51,6 +54,7 @@ test('updates keep valid fields and persist', () => {
 
     const reloaded = new SettingsStore(dir).get();
     assert.equal(reloaded.searchEngine, 'yandex');
+    assert.equal(reloaded.startupBehavior, 'new-tab');
     assert.equal(reloaded.panelCollapsed, true);
     assert.equal(reloaded.panelSide, 'right');
     assert.equal(reloaded.freezeBackgroundTabs, false);

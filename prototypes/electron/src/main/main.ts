@@ -422,14 +422,18 @@ function createBrowser(): void {
     adBlocker.destroy();
     settingsWindow.close();
     nativeTheme.off('updated', pushState);
-    store.saveNow(tabs.toSession());
+    store.saveNow(
+      settings.get().startupBehavior === 'restore'
+        ? tabs.toSession()
+        : { version: 1, activeTabId: null, tabs: [] },
+    );
     tabs.destroyAll();
     commandBar.destroy();
     if (!ui.webContents.isDestroyed()) ui.webContents.close();
   });
 
   const saved = store.load();
-  if (saved && saved.tabs.length > 0) {
+  if (settings.get().startupBehavior === 'restore' && saved && saved.tabs.length > 0) {
     tabs.restore(saved);
   } else {
     tabs.open();
