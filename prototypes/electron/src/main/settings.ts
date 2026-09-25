@@ -13,6 +13,7 @@ const DEFAULTS: Settings = {
   customSearchTemplate: null,
   theme: 'system',
   panelCollapsed: false,
+  freezeBackgroundTabs: true,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
@@ -21,7 +22,7 @@ const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource
 /** Keeps known, well-typed fields and takes the rest from `base`. */
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const { searchEngine, customSearchTemplate, theme, panelCollapsed } = input;
+  const { searchEngine, customSearchTemplate, theme, panelCollapsed, freezeBackgroundTabs } = input;
   return {
     version: 1,
     searchEngine:
@@ -34,6 +35,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
+    freezeBackgroundTabs:
+      typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
   };
 }
 

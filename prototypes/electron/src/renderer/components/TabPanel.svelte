@@ -30,6 +30,7 @@
     const states = [
       tab.id === activeTabId ? 'aktif' : null,
       tab.live ? null : 'bellekten çıkarılmış',
+      tab.frozen ? 'dondurulmuş' : null,
       tab.keepAlive ? 'canlı tutuluyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;

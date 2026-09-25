@@ -14,6 +14,8 @@ export interface TabSnapshot {
   url: string;
   faviconUrl: string | null;
   live: boolean;
+  /** Live, but its page is frozen in the background (no JS, timers or animations). */
+  frozen: boolean;
   loading: boolean;
   keepAlive: boolean;
   canGoBack: boolean;
@@ -75,6 +77,8 @@ export interface SettingsValues {
   customSearchTemplate: string | null;
   theme: ThemeSource;
   panelCollapsed: boolean;
+  /** Freeze background tabs' pages when switching away from them. */
+  freezeBackgroundTabs: boolean;
 }
 
 export interface SettingsView {

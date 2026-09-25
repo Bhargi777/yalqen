@@ -8,6 +8,10 @@
     { value: false, label: 'Geniş' },
     { value: true, label: 'Dar' },
   ] as const;
+  const freezeOptions = [
+    { value: true, label: 'Açık' },
+    { value: false, label: 'Kapalı' },
+  ] as const;
   const themeOptions = [
     { value: 'system', label: 'Sistem' },
     { value: 'light', label: 'Açık' },
@@ -104,13 +108,31 @@
     </div>
 
     <h2>Görünüm</h2>
-    <div class="row last">
+    <div class="row">
       <span class="label">Tema</span>
       <div class="segmented" role="group" aria-label="Tema">
         {#each themeOptions as option (option.value)}
           <button
             aria-pressed={values.theme === option.value}
             onclick={() => update({ theme: option.value })}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+
+    <h2>Bellek</h2>
+    <div class="row last">
+      <span class="label">
+        <span>Arka plan sekmelerini dondur</span>
+        <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve canlı tutulan sekmeler dondurulmaz.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Arka plan sekmelerini dondur">
+        {#each freezeOptions as option (option.label)}
+          <button
+            aria-pressed={values.freezeBackgroundTabs === option.value}
+            onclick={() => update({ freezeBackgroundTabs: option.value })}
           >
             {option.label}
           </button>

@@ -13,6 +13,7 @@ export interface MenuActions {
   selectTab(index: number): void;
   openPageSet(): void;
   discardBackground(): void;
+  simulateMemoryPressure(): void;
   recordSnapshot(): void;
   openSettings(): void;
 }
@@ -91,6 +92,7 @@ export function buildMenu(actions: MenuActions): Menu {
       submenu: [
         { label: 'Sayfa setini aç', click: actions.openPageSet },
         { label: 'Arka plan sekmelerini bellekten çıkar', click: actions.discardBackground },
+        { label: 'Bellek baskısı sinyali gönder', click: actions.simulateMemoryPressure },
         { label: 'Bellek ölçümü kaydet', accelerator: 'CmdOrCtrl+Shift+M', click: actions.recordSnapshot },
       ],
     },

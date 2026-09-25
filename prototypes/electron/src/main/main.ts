@@ -96,6 +96,7 @@ function createBrowser(): void {
   const tabs: TabManager = new TabManager({
     window,
     session: daily,
+    freezeBackground: () => settings.get().freezeBackgroundTabs,
     onChange: () => {
       pushState();
       store.scheduleSave(() => tabs.toSession());
@@ -123,7 +124,7 @@ function createBrowser(): void {
     const file = metricsLog.write({
       event: 'snapshot',
       label,
-      tabs: { total: tabs.count, live: tabs.liveCount },
+      tabs: { total: tabs.count, live: tabs.liveCount, frozen: tabs.frozenCount },
       totalWorkingSetKB: memory.totalKB,
       processes: memory.processes,
     });
@@ -139,8 +140,10 @@ function createBrowser(): void {
     };
   };
   const updateSettings = (patch: unknown) => {
+    const wasFreezing = settings.get().freezeBackgroundTabs;
     settings.update(patch);
     nativeTheme.themeSource = settings.get().theme;
+    if (settings.get().freezeBackgroundTabs !== wasFreezing) tabs.applyFreezeSetting();
     pushState();
     settingsWindow.send(settingsView());
   };
@@ -171,7 +174,13 @@ function createBrowser(): void {
         for (const url of readPageSet()) tabs.open(url, { activate: false });
       },
       discardBackground: () => tabs.discardBackground(),
-      recordSnapshot: () => recordSnapshot(`live-${tabs.liveCount}/total-${tabs.count}`),
+      simulateMemoryPressure: () => {
+        void tabs.simulateMemoryPressure().then((sent) => {
+          if (sent) console.log('[memory] critical pressure notification sent');
+        });
+      },
+      recordSnapshot: () =>
+        recordSnapshot(`live-${tabs.liveCount}/frozen-${tabs.frozenCount}/total-${tabs.count}`),
       openSettings: () => settingsWindow.open(),
     }),
   );
