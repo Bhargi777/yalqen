@@ -23,8 +23,6 @@ export interface MenuActions {
   devices: DeviceMenuItem[];
   selectDevice(id: DeviceId): void;
   selectTab(index: number): void;
-  openPageSet(): void;
-  discardBackground(): void;
   openSettings(): void;
 }
 
@@ -110,13 +108,6 @@ export function buildMenu(actions: MenuActions): Menu {
       ],
     },
     { label: 'Sekmeler', submenu: tabShortcuts },
-    {
-      label: 'Ölçüm',
-      submenu: [
-        { label: 'Sayfa setini aç', click: actions.openPageSet },
-        { label: 'Arka plan sekmelerini bellekten çıkar', click: actions.discardBackground },
-      ],
-    },
     { role: 'windowMenu' },
   ];
 

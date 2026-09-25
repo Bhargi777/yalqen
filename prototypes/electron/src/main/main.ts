@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, screen, session, shell } from 'electron';
 import {
@@ -43,7 +42,6 @@ const WINDOW_CONTROLS_POLL_MS = 150;
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
 const repoRoot = path.resolve(app.getAppPath(), '../..');
-const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
 const appIcon = path.join(repoRoot, 'design/brand/png/fitted/icon-512.png');
 
 registerInternalScheme();
@@ -322,10 +320,6 @@ function createBrowser(): void {
         tabs.selectDevice(id);
       },
       selectTab: (index) => tabs.selectByIndex(index),
-      openPageSet: () => {
-        for (const url of readPageSet()) tabs.open(url, { activate: false });
-      },
-      discardBackground: () => tabs.discardBackground(),
       openSettings: () => settingsWindow.open(),
     }),
   );
@@ -445,19 +439,6 @@ function createBrowser(): void {
   }
 
   void ui.webContents.loadFile(path.join(__dirname, '../renderer/index.html'));
-}
-
-function readPageSet(): string[] {
-  try {
-    return fs
-      .readFileSync(pageSetFile, 'utf8')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line !== '' && !line.startsWith('#'));
-  } catch {
-    console.warn(`[bench] page set not found: ${pageSetFile}`);
-    return [];
-  }
 }
 
 app.setAboutPanelOptions({
