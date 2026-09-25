@@ -16,7 +16,7 @@ Her iki aday (Electron, CEF + AppKit) aynı senaryoyla ölçülür. Kaynak: [Pro
 
 ## Sayfa seti
 
-Açık soru (§11): kesin set günlük kullanıma göre belirlenecek. Geçici set:
+Açık soru (§11): kesin set günlük kullanıma göre belirlenecek. Geçici set aşağıdadır; prototiplerin okuduğu kaynak [`pages.txt`](pages.txt) dosyasıdır.
 
 1. `https://example.com` — statik, çok küçük
 2. `https://en.wikipedia.org/wiki/Chromium_(web_browser)` — metin ağırlıklı

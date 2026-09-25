@@ -1,0 +1,72 @@
+:root {
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --surface-hover: #ececea;
+  --surface-active: #ffffff;
+  --border: #e2e2df;
+  --text: #1d1d1b;
+  --text-muted: #77776f;
+  --accent: #3b6df0;
+  --focus: #3b6df0;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.04);
+
+  --radius: 8px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-size: 13px;
+  --font-size-small: 11px;
+  --transition: 120ms ease-out;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1a;
+    --surface: #262624;
+    --surface-hover: #2f2f2d;
+    --surface-active: #353533;
+    --border: #353533;
+    --text: #ececea;
+    --text-muted: #9a9a92;
+    --accent: #7a9cff;
+    --focus: #7a9cff;
+    --shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: var(--font-size) / 1.35 var(--font);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition: 0ms;
+  }
+}

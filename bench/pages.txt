@@ -1,0 +1,11 @@
+# Phase 0 page set. One URL per line; see SCENARIO.md.
+https://example.com
+https://en.wikipedia.org/wiki/Chromium_(web_browser)
+https://github.com/electron/electron
+https://www.youtube.com
+https://news.ycombinator.com
+https://developer.mozilla.org/en-US/docs/Web/JavaScript
+https://www.reddit.com
+https://maps.google.com
+https://docs.google.com
+https://twitter.com
