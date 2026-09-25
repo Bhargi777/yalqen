@@ -28,8 +28,8 @@ import { resolveInput } from './url.js';
 const DAILY_PARTITION = 'persist:daily';
 const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
-// Offset of the traffic lights from the top-left corner, centered in the sidebar's top row.
-const WINDOW_CONTROLS_INSET = { x: 16, y: 16 };
+// Offset of the traffic lights from the top-left corner, level with the back and forward capsule.
+const WINDOW_CONTROLS_INSET = { x: 16, y: 21 };
 // Corner that keeps hover-revealed traffic lights visible, and how often it is checked.
 const WINDOW_CONTROLS_ZONE = { minWidth: 76, maxWidth: 240, height: 44 };
 // Lets the UI move its buttons out of the way before the controls appear.

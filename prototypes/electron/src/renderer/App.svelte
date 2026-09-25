@@ -14,8 +14,8 @@
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
   const PAGE_RADIUS = 16;
-  /** Right edge of the macOS traffic lights, measured from the window's left edge. */
-  const WINDOW_CONTROLS_END = 76;
+  /** Where the back and forward capsule starts beside the macOS traffic lights. */
+  const WINDOW_CONTROLS_END = 84;
   /** Back and forward capsule: left edge when nothing is before it, width, gap after it. */
   const NAV_START = 8;
   const NAV_WIDTH = 62;
