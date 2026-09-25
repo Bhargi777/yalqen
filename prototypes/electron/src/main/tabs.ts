@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
 import { NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type TabId, type TabSnapshot } from '../shared/types.js';
-import { applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
+import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -42,7 +42,8 @@ export interface TabManagerOptions {
   session: Session;
   /** Whether background pages are frozen; read each time a tab could be frozen. */
   freezeBackground: () => boolean;
-  onChange: () => void;
+  /** A visible change may also require the saved session to be updated. */
+  onChange: (persist: boolean) => void;
   onRestore: (timing: RestoreTiming) => void;
   /** The new tab page asked for the address bar. */
   /** A search typed on the new tab page, or empty when it asked for the address bar. */
@@ -112,10 +113,14 @@ export class TabManager {
   }
 
   setPageBounds(bounds: Rectangle): void {
+    if (
+      bounds.x === this.pageBounds.x && bounds.y === this.pageBounds.y &&
+      bounds.width === this.pageBounds.width && bounds.height === this.pageBounds.height
+    ) return;
     this.pageBounds = bounds;
     const tab = this.active();
     if (!tab?.view) return;
-    this.layoutView(tab, tab.view);
+    this.layoutView(tab, tab.view, true);
     if (tab.emulation) this.changed();
   }
 
@@ -155,7 +160,7 @@ export class TabManager {
       this.activate(tab.id);
     } else {
       this.ensureLive(tab);
-      this.changed();
+      this.changed(true);
     }
     return tab.id;
   }
@@ -178,7 +183,7 @@ export class TabManager {
     this.options.window.contentView.addChildView(view);
     // The new tab page has its own search field; a blank page leaves focus with the UI.
     if (next.url !== 'about:blank') view.webContents.focus();
-    this.changed();
+    this.changed(true);
   }
 
   /** Gives focus back to the active page. Returns false for a new tab page or a discarded tab. */
@@ -208,7 +213,7 @@ export class TabManager {
       }
       return;
     }
-    this.changed();
+    this.changed(true);
   }
 
   reopenClosed(): void {
@@ -226,7 +231,7 @@ export class TabManager {
     const [tab] = this.tabs.splice(from, 1);
     const target = Math.max(0, Math.min(toIndex, this.tabs.length));
     this.tabs.splice(target, 0, tab);
-    this.changed();
+    this.changed(true);
   }
 
   /** Releases the page but keeps the tab and its history. The active tab is never discarded. */
@@ -235,7 +240,7 @@ export class TabManager {
     if (!tab?.view || id === this.activeId) return false;
     tab.history = this.captureHistory(tab);
     this.destroyView(tab);
-    this.changed();
+    this.changed(true);
     return true;
   }
 
@@ -253,7 +258,7 @@ export class TabManager {
     tab.keepAlive = !tab.keepAlive;
     if (tab.keepAlive) this.unfreeze(tab);
     else this.maybeFreeze(tab);
-    this.changed();
+    this.changed(true);
   }
 
   navigate(url: string): void {
@@ -438,7 +443,7 @@ export class TabManager {
    * Sizes the view for the page area and applies the tab's device overrides.
    * Returns a promise only when a device is applied.
    */
-  private layoutView(tab: Tab, view: WebContentsView): Promise<void> | null {
+  private layoutView(tab: Tab, view: WebContentsView, metricsOnly = false): Promise<void> | null {
     if (!tab.emulation) {
       view.setBorderRadius(this.pageRadius);
       view.setBounds(this.pageBounds);
@@ -452,7 +457,8 @@ export class TabManager {
       width: frame.viewWidth,
       height: frame.viewHeight,
     });
-    return applyEmulation(view.webContents, tab.emulation, frame.scale).catch((error: unknown) => {
+    const apply = metricsOnly ? applyDeviceMetrics : applyEmulation;
+    return apply(view.webContents, tab.emulation, frame.scale).catch((error: unknown) => {
       console.warn('[emulation] could not apply device overrides:', error);
     });
   }
@@ -507,12 +513,15 @@ export class TabManager {
       return { action: 'deny' };
     });
     contents.on('page-title-updated', (_event, title) => {
+      if (tab.title === title) return;
       tab.title = title;
-      this.changed();
+      this.changed(true);
     });
     contents.on('page-favicon-updated', (_event, favicons) => {
-      tab.faviconUrl = favicons[0] ?? null;
-      this.changed();
+      const faviconUrl = favicons[0] ?? null;
+      if (tab.faviconUrl === faviconUrl) return;
+      tab.faviconUrl = faviconUrl;
+      this.changed(true);
     });
     contents.on('did-start-loading', () => {
       tab.loading = true;
@@ -530,7 +539,8 @@ export class TabManager {
     contents.on('devtools-closed', () => this.maybeFreeze(tab));
     const updateUrl = () => {
       tab.url = contents.getURL();
-      this.changed();
+      // Navigation history can change even when the URL stays the same.
+      this.changed(true);
     };
     contents.debugger.on('detach', () => {
       // The protocol session ended (overrides are gone with it); drop the device
@@ -548,7 +558,7 @@ export class TabManager {
       tab.history = this.captureHistory(tab);
       setImmediate(() => {
         this.destroyView(tab);
-        this.changed();
+        this.changed(true);
       });
     });
   }
@@ -649,7 +659,7 @@ export class TabManager {
     return this.tabs.findIndex((tab) => tab.id === id);
   }
 
-  private changed(): void {
-    this.options.onChange();
+  private changed(persist = false): void {
+    this.options.onChange(persist);
   }
 }

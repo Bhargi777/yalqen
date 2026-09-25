@@ -149,10 +149,10 @@ function createBrowser(): void {
     window,
     session: daily,
     freezeBackground: () => settings.get().freezeBackgroundTabs,
-    onChange: () => {
+    onChange: (persist) => {
       commandBar.keepOnTop();
       pushState();
-      store.scheduleSave(() => tabs.toSession());
+      if (persist) store.scheduleSave(() => tabs.toSession());
     },
     onRestore: (timing) => {
       metricsLog.write({ event: 'restore', ...timing });
@@ -397,6 +397,7 @@ function createBrowser(): void {
 
   window.on('close', () => {
     hideWindowControls();
+    adBlocker.destroy();
     settingsWindow.close();
     nativeTheme.off('updated', pushState);
     store.saveNow(tabs.toSession());

@@ -26,6 +26,8 @@ export interface SavedSession {
 export class SessionStore {
   private readonly file: string;
   private timer: NodeJS.Timeout | null = null;
+  private generation = 0;
+  private closed = false;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'tabs.json');
@@ -42,14 +44,36 @@ export class SessionStore {
 
   /** Coalesces frequent changes into one write. */
   scheduleSave(snapshot: () => SavedSession, delayMs = 500): void {
+    if (this.closed) return;
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
-      this.saveNow(snapshot());
+      void this.saveInBackground(snapshot());
     }, delayMs);
   }
 
+  private async saveInBackground(session: SavedSession): Promise<void> {
+    const generation = ++this.generation;
+    const temp = `${this.file}.${generation}.tmp`;
+    try {
+      await fs.promises.mkdir(path.dirname(this.file), { recursive: true });
+      await fs.promises.writeFile(temp, JSON.stringify(session));
+      // Checking and renaming on the main thread keeps a late write from
+      // replacing the final synchronous save during app shutdown.
+      if (this.closed || generation !== this.generation) {
+        await fs.promises.rm(temp, { force: true });
+        return;
+      }
+      fs.renameSync(temp, this.file);
+    } catch (error) {
+      console.warn('[session] could not save tabs:', error);
+      await fs.promises.rm(temp, { force: true }).catch(() => {});
+    }
+  }
+
   saveNow(session: SavedSession): void {
+    this.closed = true;
+    this.generation++;
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;

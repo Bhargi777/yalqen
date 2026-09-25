@@ -53,7 +53,7 @@ const PROTOCOL_VERSION = '1.3';
  * Applies the device through the DevTools protocol. `scale` shrinks the
  * rendered page when the window is smaller than the device.
  */
-export async function applyEmulation(contents: WebContents, emulation: Emulation, scale: number): Promise<void> {
+export async function applyDeviceMetrics(contents: WebContents, emulation: Emulation, scale: number): Promise<void> {
   const device = findDevice(emulation.deviceId);
   const { width, height } = deviceSize(emulation);
   const dbg = contents.debugger;
@@ -69,6 +69,12 @@ export async function applyEmulation(contents: WebContents, emulation: Emulation
       ? { type: 'landscapePrimary', angle: 90 }
       : { type: 'portraitPrimary', angle: 0 },
   });
+}
+
+export async function applyEmulation(contents: WebContents, emulation: Emulation, scale: number): Promise<void> {
+  await applyDeviceMetrics(contents, emulation, scale);
+  const device = findDevice(emulation.deviceId);
+  const dbg = contents.debugger;
   await dbg.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   await dbg.sendCommand('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
   await dbg.sendCommand('Emulation.setUserAgentOverride', {
