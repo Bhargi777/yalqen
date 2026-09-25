@@ -29,6 +29,7 @@
     device: null,
   });
   let width = $state(DEFAULT_WIDTH);
+  let toolbar: Toolbar;
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
@@ -55,7 +56,8 @@
   $effect(() => {
     window.yalqen.setLayout({
       panelWidth,
-      windowControls: true,
+      // On macOS the traffic lights stay hidden until the pointer reaches their corner.
+      windowControls: !windowControls,
       chromeHeight: CHROME_HEIGHT,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
@@ -71,7 +73,7 @@
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
     const offCommand = window.yalqen.onCommand((command) => {
-      if (command.type === 'focus-address') window.yalqen.send({ type: 'open-address' });
+      if (command.type === 'focus-address') toolbar.focusSearch();
     });
     return () => {
       offState();
@@ -93,11 +95,20 @@
     onToggle={() => window.yalqen.send({ type: 'toggle-panel' })}
   />
   <Toolbar
+    bind:this={toolbar}
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     leadingInset={windowControls ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : 0}
-    minimal={blank && browser.tabs.length === 1}
+    placeholder={browser.addressPlaceholder}
   />
+  {#if windowControls}
+    <!-- Reveals the traffic lights; the main process hides them once the pointer leaves. -->
+    <div
+      class="controls-zone"
+      aria-hidden="true"
+      onpointerenter={() => window.yalqen.send({ type: 'reveal-window-controls' })}
+    ></div>
+  {/if}
   <section
     class="page"
     class:blank
@@ -128,6 +139,17 @@
   .shell {
     display: grid;
     height: 100%;
+  }
+
+  .controls-zone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    /* Matches WINDOW_CONTROLS_ZONE in the main process. */
+    width: 76px;
+    height: 44px;
+    -webkit-app-region: no-drag;
   }
 
   .page {

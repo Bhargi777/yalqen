@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
@@ -7,26 +8,56 @@
     tabs,
     activeTabId,
     leadingInset,
-    minimal,
+    placeholder,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     /** Space kept free on the left, e.g. for traffic lights over a collapsed sidebar. */
     leadingInset: number;
-    /** Only the tools: the new tab page shows its own tab controls. */
-    minimal: boolean;
+    placeholder: string;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
   let strip: HTMLElement | undefined = $state();
+  let search: HTMLInputElement | undefined = $state();
+  let query = $state('');
 
   const send = window.yalqen.send;
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
+  /** Focuses the new tab's search field, as Safari does. */
+  export function focusSearch(): void {
+    void tick().then(() => {
+      search?.focus();
+      search?.select();
+    });
+  }
+
+  function submit(event: SubmitEvent): void {
+    event.preventDefault();
+    if (query.trim() === '') return;
+    send({ type: 'navigate', input: query });
+    query = '';
+    search?.blur();
+  }
+
+  function onSearchKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      query = '';
+      search?.blur();
+    }
+  }
+
+  $effect(() => {
+    // A half-typed search belongs to the tab it was typed in.
+    void activeTabId;
+    query = '';
+  });
+
   $effect(() => {
     // Keep the active tab in view when it changes.
     void activeTabId;
-    strip?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
 </script>
 
@@ -50,62 +81,71 @@
 
 <!--
   Safari-like: capsules on the window background. The active tab doubles as the
-  address field; clicking it opens the centered address bar.
+  address field: clicking it opens the centered address bar, and on a new tab it
+  is a search field of its own.
 -->
 <header class="toolbar" style:padding-left="{leadingInset}px">
   <span class="side">
-    {#if !minimal}
-      <nav class="capsule" aria-label="Gezinme">
-        <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
-          <Icon name="back" />
-        </button>
-        <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
-          <Icon name="forward" />
-        </button>
-      </nav>
-    {/if}
+    <nav class="capsule" aria-label="Gezinme">
+      <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
+        <Icon name="back" />
+      </button>
+      <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
+        <Icon name="forward" />
+      </button>
+    </nav>
   </span>
 
-  {#if !minimal}
-    <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
-      {#each tabs as tab (tab.id)}
-        {@const active = tab.id === activeTabId}
-        <li class="chip" class:active>
-          {#if active}
-            <button class="address" title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
-              {@render favicon(tab)}
-              <span class="label">{isNewTab(tab.url) ? 'Ara veya adres yaz' : siteLabel(tab)}</span>
-            </button>
-            <button class="icon small" title="Yenile" onclick={() => send({ type: 'reload' })}>
-              <Icon name="reload" size={14} />
-            </button>
-          {:else}
-            <button
-              class="select"
-              title={tab.title}
-              onclick={() => send({ type: 'activate-tab', id: tab.id })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab)}
-              <span class="label">{siteLabel(tab)}</span>
-            </button>
-          {/if}
-          <button class="icon small close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
-            <Icon name="close" size={12} />
+  <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
+    {#each tabs as tab (tab.id)}
+      {@const active = tab.id === activeTabId}
+      <li class="chip" class:active>
+        {#if active && isNewTab(tab.url)}
+          <form class="search" role="search" onsubmit={submit}>
+            <span class="favicon"><Icon name="search" size={14} /></span>
+            <input
+              bind:this={search}
+              bind:value={query}
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              {placeholder}
+              aria-label="Ara veya adres yaz"
+              onkeydown={onSearchKeydown}
+            />
+          </form>
+        {:else if active}
+          <button class="address" title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
+            {@render favicon(tab)}
+            <span class="label">{siteLabel(tab)}</span>
           </button>
-          {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
-        </li>
-      {/each}
-    </ol>
-  {/if}
+          <button class="icon small" title="Yenile" onclick={() => send({ type: 'reload' })}>
+            <Icon name="reload" size={14} />
+          </button>
+        {:else}
+          <button
+            class="select"
+            title={tab.title}
+            onclick={() => send({ type: 'activate-tab', id: tab.id })}
+            onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+          >
+            {@render favicon(tab)}
+            <span class="label">{siteLabel(tab)}</span>
+          </button>
+        {/if}
+        <button class="icon small close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
+          <Icon name="close" size={12} />
+        </button>
+        {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
+      </li>
+    {/each}
+  </ol>
 
   <span class="side end">
     <span class="capsule">
-      {#if !minimal}
-        <button class="icon" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-          <Icon name="plus" />
-        </button>
-      {/if}
+      <button class="icon" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+        <Icon name="plus" />
+      </button>
       <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
         <Icon name="settings" />
       </button>
@@ -250,6 +290,42 @@
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
+  }
+
+  .search {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    height: 100%;
+    padding-left: 11px;
+  }
+
+  .search input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    user-select: text;
+  }
+
+  .search input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .search input:focus {
+    outline: none;
+  }
+
+  /* Focus ring around the whole capsule, like Safari's search field. */
+  .chip.active:has(input:focus) {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 35%, transparent), var(--shadow);
   }
 
   .address {

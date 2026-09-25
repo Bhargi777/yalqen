@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, session } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, screen, session } from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -8,6 +8,7 @@ import {
   type BrowserState,
   type ChromeLayout,
   type UiAction,
+  type UiCommand,
   type SettingsView,
   type WindowMaterial,
 } from '../shared/types.js';
@@ -29,6 +30,9 @@ const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 // Offset of the traffic lights from the top-left corner, centered in the sidebar's top row.
 const WINDOW_CONTROLS_INSET = { x: 16, y: 16 };
+// Corner that keeps hover-revealed traffic lights visible, and how often it is checked.
+const WINDOW_CONTROLS_ZONE = { width: 76, height: 44 };
+const WINDOW_CONTROLS_POLL_MS = 150;
 
 // Keep prototype data apart from any other Electron app.
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
@@ -113,6 +117,11 @@ function createBrowser(): void {
       ui.webContents.send(IpcChannel.state, browserState());
     }
   };
+  const sendCommand = (command: UiCommand) => {
+    ui.webContents.focus();
+    ui.webContents.send(IpcChannel.command, command);
+  };
+
   const commandBar = new CommandBar({
     window,
     preload: path.join(__dirname, '../preload/command-preload.js'),
@@ -139,7 +148,7 @@ function createBrowser(): void {
     onRestore: (timing) => {
       metricsLog.write({ event: 'restore', ...timing });
     },
-    onNewTabSearch: () => openCenteredAddress(),
+    onNewTabSearch: () => sendCommand({ type: 'focus-address' }),
   });
 
   const applyLayout = () => {
@@ -155,13 +164,41 @@ function createBrowser(): void {
     });
     tabs.setPageRadius(layout.pageRadius);
     if (process.platform === 'darwin') {
-      window.setWindowButtonVisibility(layout.windowControls);
+      window.setWindowButtonVisibility(layout.windowControls || controlsRevealed);
       window.setWindowButtonPosition({
         x: WINDOW_CONTROLS_INSET.x,
         y: WINDOW_CONTROLS_INSET.y,
       });
     }
   };
+  // Hidden traffic lights appear while the pointer is over their corner. The
+  // UI reports entering it; leaving is polled, since the pointer over the native
+  // buttons is not seen by the page.
+  let controlsRevealed = false;
+  let controlsTimer: NodeJS.Timeout | null = null;
+  const revealWindowControls = () => {
+    if (process.platform !== 'darwin' || controlsRevealed) return;
+    controlsRevealed = true;
+    window.setWindowButtonVisibility(true);
+    controlsTimer = setInterval(() => {
+      const cursor = screen.getCursorScreenPoint();
+      const bounds = window.getContentBounds();
+      const inside =
+        cursor.x >= bounds.x &&
+        cursor.x < bounds.x + WINDOW_CONTROLS_ZONE.width &&
+        cursor.y >= bounds.y &&
+        cursor.y < bounds.y + WINDOW_CONTROLS_ZONE.height;
+      if (inside) return;
+      hideWindowControls();
+      window.setWindowButtonVisibility(layout.windowControls);
+    }, WINDOW_CONTROLS_POLL_MS);
+  };
+  const hideWindowControls = () => {
+    if (controlsTimer) clearInterval(controlsTimer);
+    controlsTimer = null;
+    controlsRevealed = false;
+  };
+
   window.on('resize', applyLayout);
   applyLayout();
 
@@ -195,9 +232,10 @@ function createBrowser(): void {
   };
   const togglePanel = () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed });
 
-  const newTabWithAddress = () => {
+  // A new tab opens with its search field focused in the tab strip.
+  const newTabWithSearch = () => {
     tabs.open();
-    commandBar.open({ placeholder: searchEngine().placeholder, mode: 'navigate' });
+    sendCommand({ type: 'focus-address' });
   };
 
   const openCenteredAddress = () => {
@@ -211,14 +249,18 @@ function createBrowser(): void {
 
   Menu.setApplicationMenu(
     buildMenu({
-      newTab: () => commandBar.open({ placeholder: searchEngine().placeholder, mode: 'new-tab' }),
+      newTab: newTabWithSearch,
       closeTab: () => {
         // The shortcut is app-wide; in the settings window it closes that window.
         if (settingsWindow.isFocused()) settingsWindow.close();
         else if (tabs.activeTabId) tabs.close(tabs.activeTabId);
       },
       reopenClosedTab: () => tabs.reopenClosed(),
-      focusAddress: openCenteredAddress,
+      focusAddress: () => {
+        const url = tabs.activeUrl;
+        if (url === NEW_TAB_URL || url === 'about:blank') sendCommand({ type: 'focus-address' });
+        else openCenteredAddress();
+      },
       reload: () => tabs.reload(),
       goBack: () => tabs.goBack(),
       goForward: () => tabs.goForward(),
@@ -276,7 +318,7 @@ function createBrowser(): void {
     switch (action.type) {
       case 'new-tab':
         if (action.url) tabs.open(action.url);
-        else newTabWithAddress();
+        else newTabWithSearch();
         break;
       case 'activate-tab':
         tabs.activate(action.id);
@@ -311,6 +353,9 @@ function createBrowser(): void {
       case 'open-address':
         openCenteredAddress();
         break;
+      case 'reveal-window-controls':
+        revealWindowControls();
+        break;
       case 'open-settings':
         settingsWindow.open();
         break;
@@ -331,6 +376,7 @@ function createBrowser(): void {
 
   window.on('close', () => {
     clearInterval(memoryTimer);
+    hideWindowControls();
     settingsWindow.close();
     nativeTheme.off('updated', pushState);
     store.saveNow(tabs.toSession());

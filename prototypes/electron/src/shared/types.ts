@@ -61,7 +61,7 @@ export interface BrowserState {
 export interface ChromeLayout {
   /** Width of the sidebar on the left, including its gap to the page card. */
   panelWidth: number;
-  /** Whether the macOS window controls are visible. */
+  /** Whether the macOS window controls are always shown; otherwise they appear while the pointer is over their corner. */
   windowControls: boolean;
   /** Height of the top bar above the page card. */
   chromeHeight: number;
@@ -87,6 +87,7 @@ export type UiAction =
   | { type: 'reload' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
+  | { type: 'reveal-window-controls' }
   | { type: 'open-settings' };
 
 export const IpcChannel = {
