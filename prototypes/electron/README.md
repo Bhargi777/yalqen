@@ -27,7 +27,7 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Arama motoru seçimi: Google (varsayılan), Yandex, DuckDuckGo, Bing, Brave Search, Ecosia veya özel adres. Adres çubuğunun ipucu metni seçime göre değişir.
 - Giriş sayfası (`yalqen://newtab/`): yeni sekmelerde açılır, çevrimdışı çalışır, adres çubuğunda boş görünür. Ortadaki "merhaba" el yazısı her uygulama açılışında ilk giriş sayfasında kendini yazar, sonrakilerde hazır görünür; "Hareketi azalt" açıksa animasyon oynamaz.
 - Ayrı ayarlar penceresi (⌘, veya panel altındaki ayar düğmesi).
-- Uygulama adı `yalqen` (`package.json` → `productName`), "yalqen Hakkında" penceresi. Paketlenmemiş çalıştırmada macOS menü çubuğundaki kalın uygulama adı yine "Electron" görünür; bu, uygulama paketlenince düzelir.
+- Uygulama adı `yalqen` (`package.json` → `productName`), "yalqen Hakkında" penceresi. macOS menü çubuğu, Dock ve uygulama değiştirici adı çalışan paketin `Info.plist` dosyasından okur; paketlenmemiş çalıştırmada bu `node_modules` içindeki `Electron.app` olduğundan `npm start` önce [`scripts/brand-electron-mac.mjs`](scripts/brand-electron-mac.mjs) ile bu paketin adını `yalqen` yapar. `npm install` Electron'u yeniden kurarsa bir sonraki `npm start` adı tekrar ayarlar. Doğrudan `electron .` ile çalıştırılırsa ad "Electron" kalabilir.
 - Uygulama ikonu [`design/brand/png/icon-512.png`](../../design/brand/png/icon-512.png): macOS'ta Dock ikonu, diğer sistemlerde pencere ikonu olarak ayarlanır.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
