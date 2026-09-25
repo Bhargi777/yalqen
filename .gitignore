@@ -1,5 +1,6 @@
 node_modules/
 dist/
+prototypes/electron/release/
 out/
 *.log
 .DS_Store

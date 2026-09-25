@@ -41,8 +41,9 @@ const WINDOW_CONTROLS_POLL_MS = 150;
 // Keep prototype data apart from any other Electron app.
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
-const repoRoot = path.resolve(app.getAppPath(), '../..');
-const appIcon = path.join(repoRoot, 'design/brand/png/fitted/icon-512.png');
+const appIcon = app.isPackaged
+  ? path.join(process.resourcesPath, 'brand/icon-512.png')
+  : path.resolve(app.getAppPath(), '../../design/brand/png/fitted/icon-512.png');
 
 registerInternalScheme();
 app.setName('Yalqen');

@@ -11,14 +11,15 @@
     "build:renderer": "vite build",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && svelte-check --tsconfig ./tsconfig.renderer.json",
     "test": "npm run build:main && node --test \"test/*.test.mjs\"",
-    "start": "npm run build && node scripts/launch-branded.mjs"
+    "start": "npm run build && node scripts/launch-branded.mjs",
+    "package:mac": "npm run build && electron-builder --mac dmg"
   },
   "devDependencies": {
-    "@ghostery/adblocker-electron": "^2.18.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^22.20.4",
     "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
@@ -26,5 +27,35 @@
   },
   "optionalDependencies": {
     "electron-liquid-glass": "^1.1.1"
+  },
+  "build": {
+    "appId": "com.yalqen.browser",
+    "productName": "Yalqen",
+    "directories": {
+      "output": "release",
+      "buildResources": "../../design/brand"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../design/brand/png/fitted/icon-512.png",
+        "to": "brand/icon-512.png"
+      }
+    ],
+    "mac": {
+      "target": "dmg",
+      "icon": "yalqen-fitted.icns",
+      "category": "public.app-category.productivity",
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    }
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.18.2"
   }
 }
