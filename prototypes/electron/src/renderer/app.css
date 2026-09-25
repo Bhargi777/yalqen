@@ -1,25 +1,25 @@
 :root {
-  --bg: #f6f6f4;
+  --bg: #f7f4f8;
   --surface: #ffffff;
-  --surface-hover: #ececea;
+  --surface-hover: #eee9f1;
   --surface-active: #ffffff;
-  --border: #e2e2df;
-  --text: #1d1d1b;
-  --text-muted: #77776f;
-  --accent: #3b6df0;
-  --focus: #3b6df0;
+  --border: #e5dfe9;
+  --text: #211c27;
+  --text-muted: #77717d;
+  --accent: #7652a7;
+  --focus: #7652a7;
   --warn: #a34a06;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.04);
+  --shadow: 0 1px 2px rgb(44 26 61 / 0.05), 0 0 0 1px rgb(44 26 61 / 0.05);
   /* Window background under the UI; transparent over the glass material. */
   --window: var(--bg);
   --page: var(--surface);
-  --page-shadow: none;
+  --page-shadow: 0 0 0 1px rgb(44 26 61 / 0.06), 0 6px 24px rgb(44 26 61 / 0.06);
   --badge: var(--bg);
   /* Grouped toolbar controls; only drawn as a platter on glass. */
   --platter: transparent;
   --rim: none;
 
-  --radius: 8px;
+  --radius: 10px;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   --font-size: 13px;
   --font-size-small: 11px;
@@ -53,19 +53,19 @@
 :root[data-material='glass'] {
   --window: transparent;
   --bg: transparent;
-  --surface: rgb(255 255 255 / 0.72);
-  --surface-hover: rgb(0 0 0 / 0.05);
-  --surface-active: rgb(255 255 255 / 0.72);
-  --border: rgb(0 0 0 / 0.08);
-  --text: #1c1c1e;
-  --text-muted: rgb(40 40 45 / 0.72);
-  --accent: #2f5fd0;
-  --focus: #2f5fd0;
-  --shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.08);
+  --surface: rgb(255 255 255 / 0.78);
+  --surface-hover: rgb(87 55 111 / 0.09);
+  --surface-active: rgb(255 255 255 / 0.82);
+  --border: rgb(70 45 83 / 0.12);
+  --text: #211c27;
+  --text-muted: rgb(54 43 62 / 0.7);
+  --accent: #7652a7;
+  --focus: #7652a7;
+  --shadow: 0 0 0 0.5px rgb(70 45 83 / 0.11), 0 2px 6px rgb(44 26 61 / 0.07);
   --page: #ffffff;
-  --page-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.08);
-  --badge: #ececf0;
-  --platter: rgb(255 255 255 / 0.42);
+  --page-shadow: 0 0 0 0.5px rgb(70 45 83 / 0.1), 0 4px 18px rgb(44 26 61 / 0.08);
+  --badge: #efe9f3;
+  --platter: rgb(255 255 255 / 0.48);
   --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.5);
   color-scheme: light;
 }
@@ -113,6 +113,14 @@ body {
 button {
   font: inherit;
   color: inherit;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgb(118 82 167 / 0.2);
 }
 
 :focus-visible {

@@ -11,7 +11,7 @@ const DEFAULTS: Settings = {
   version: 1,
   searchEngine: DEFAULT_SEARCH_ENGINE,
   customSearchTemplate: null,
-  theme: 'system',
+  theme: 'light',
   panelCollapsed: false,
   freezeBackgroundTabs: true,
 };

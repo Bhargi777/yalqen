@@ -80,6 +80,7 @@
     </nav>
 
     <form class="address" onsubmit={submit}>
+      <span class="address-icon"><Icon name="search" size={15} /></span>
       <input
         bind:this={input}
         bind:value
@@ -104,8 +105,8 @@
   .toolbar {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-bottom: 8px;
+    gap: 4px;
+    padding-bottom: 14px;
   }
 
   .toolbar.collapsed {
@@ -119,24 +120,28 @@
     justify-content: flex-end;
     align-items: center;
     gap: 2px;
-    height: 44px;
+    height: 48px;
     /* Leaves room for the macOS traffic lights on the left. */
-    padding-left: 72px;
+    padding-left: 76px;
     -webkit-app-region: drag;
   }
 
   .nav {
     display: flex;
     gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
   }
 
   .icon {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
+    width: 27px;
+    height: 27px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 7px;
     background: transparent;
     color: var(--text-muted);
     transition: background var(--transition);
@@ -163,11 +168,23 @@
     min-width: 0;
   }
 
+  .address-icon {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 12px;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
   input {
     width: 100%;
-    height: 30px;
-    padding: 0 12px;
-    border: 0;
+    height: 36px;
+    padding: 0 12px 0 36px;
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow);
@@ -187,9 +204,9 @@
 
   .loading {
     position: absolute;
-    right: 0;
+    right: 10px;
     bottom: 0;
-    left: 0;
+    left: 10px;
     height: 2px;
     border-radius: 2px;
     background: var(--accent);
@@ -198,7 +215,7 @@
 
   /* Liquid Glass: controls float as capsules with a light rim over the material. */
   :global([data-material='glass']) .nav {
-    padding: 2px;
+    padding: 3px;
     border-radius: 16px;
     background: var(--platter);
     box-shadow: var(--rim);
@@ -209,7 +226,7 @@
   }
 
   :global([data-material='glass']) input {
-    border-radius: 15px;
+    border-radius: 12px;
     box-shadow: var(--shadow), var(--rim);
   }
 

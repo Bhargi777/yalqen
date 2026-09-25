@@ -90,6 +90,13 @@
 
   {@render header()}
 
+  {#if !collapsed}
+    <div class="section-heading">
+      <span>Sekmeler</span>
+      <span class="tab-count">{tabs.length}</span>
+    </div>
+  {/if}
+
   <ol class="tabs" ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
     {#each tabs as tab, index (tab.id)}
       <li
@@ -199,11 +206,33 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 0 8px 8px;
+    padding: 0 10px 10px;
   }
 
   .panel.collapsed {
-    padding: 0 6px 8px;
+    padding: 0 7px 8px;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 9px 9px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tab-count {
+    min-width: 18px;
+    padding: 2px 5px;
+    border-radius: 6px;
+    background: var(--surface-hover);
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
   }
 
   .resize {
@@ -218,7 +247,7 @@
   .tabs {
     flex: 1;
     margin: 0;
-    padding: 0;
+    padding: 0 1px;
     overflow-y: auto;
     list-style: none;
   }
@@ -227,10 +256,10 @@
     position: relative;
     display: flex;
     align-items: center;
-    height: 32px;
-    margin-bottom: 2px;
+    height: 36px;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
     border-radius: var(--radius);
-    transition: background var(--transition);
   }
 
   .tab:hover {
@@ -239,6 +268,7 @@
 
   .tab.active {
     background: var(--surface-active);
+    border-color: var(--border);
     box-shadow: var(--shadow);
   }
 
@@ -269,10 +299,10 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
     height: 100%;
-    padding: 0 8px;
+    padding: 0 10px;
     border: 0;
     border-radius: var(--radius);
     background: transparent;
@@ -373,7 +403,7 @@
   .footer {
     display: flex;
     gap: 4px;
-    padding-top: 6px;
+    padding-top: 8px;
     border-top: 1px solid var(--border);
   }
 
@@ -396,6 +426,12 @@
 
   .new-tab .select {
     color: var(--text-muted);
+  }
+
+  .new-tab {
+    margin-top: 5px;
+    border-color: var(--border);
+    background: var(--surface);
   }
 
   .new-tab:hover .select {

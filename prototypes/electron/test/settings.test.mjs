@@ -15,7 +15,7 @@ test('unknown or mistyped fields fall back', () => {
       version: 1,
       searchEngine: 'google',
       customSearchTemplate: null,
-      theme: 'system',
+      theme: 'light',
       panelCollapsed: false,
       freezeBackgroundTabs: true,
     },

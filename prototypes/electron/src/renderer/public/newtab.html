@@ -9,15 +9,27 @@
     -->
     <style>
       :root {
-        --page: #ffffff;
+        --page: #fbf9fc;
+        --text: #211c27;
+        --muted: #77717d;
+        --border: #e8e0eb;
+        --card: rgb(255 255 255 / 0.78);
         color-scheme: light;
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --page: #262624;
+          --page: #211d27;
+          --text: #f3eef6;
+          --muted: #b3aab9;
+          --border: #3b3443;
+          --card: rgb(255 255 255 / 0.06);
           color-scheme: dark;
         }
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       html,
@@ -27,24 +39,122 @@
       }
 
       body {
-        display: grid;
-        place-items: center;
-        background: var(--page);
+        background: radial-gradient(circle at 50% 30%, #f1e9f8 0, var(--page) 48%);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
         overflow: hidden;
         user-select: none;
       }
 
-      svg {
-        width: min(560px, 68vw);
-        height: auto;
-        /* Sits slightly above the optical centre, like a title. */
-        margin-bottom: 8vh;
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: radial-gradient(circle at 50% 30%, #30253c 0, var(--page) 50%);
+        }
       }
 
-      .animate path {
+      .start {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: min(760px, 100%);
+        height: 100%;
+        margin: 0 auto;
+        padding: 34px 32px 30px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        align-self: flex-start;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+
+      .brand svg {
+        width: 20px;
+        height: 26px;
+      }
+
+      .welcome {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding-bottom: 8vh;
+        text-align: center;
+      }
+
+      .eyebrow {
+        color: #7652a7;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .eyebrow {
+          color: #c4a7e5;
+        }
+      }
+
+      .wordmark {
+        width: min(420px, 72vw);
+        height: auto;
+        margin: 18px 0 14px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 3vw, 36px);
+        font-weight: 650;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+      }
+
+      p {
+        margin: 12px 0 28px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .shortcut {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px 10px 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--card);
+        box-shadow: 0 8px 32px rgb(64 37 87 / 0.05);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      kbd {
+        padding: 4px 7px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--page);
+        color: var(--text);
+        font: inherit;
+        font-weight: 600;
+      }
+
+      footer {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .animate .wordmark path {
         stroke-dasharray: 1 1.01;
         stroke-dashoffset: 1.001;
-        animation: write 2.8s cubic-bezier(0.45, 0.05, 0.3, 1) 0.25s forwards;
+        animation: write 1.8s cubic-bezier(0.23, 1, 0.32, 1) 0.1s forwards;
       }
 
       @keyframes write {
@@ -54,24 +164,47 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .animate path {
+        .animate .wordmark path {
           animation: none;
           stroke-dashoffset: 0;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .start {
+          padding: 24px;
+        }
+
+        .welcome {
+          padding-bottom: 4vh;
+        }
+
+        .shortcut {
+          gap: 8px;
         }
       }
     </style>
   </head>
   <body>
-    <svg viewBox="0 40 500 180" role="img" aria-label="merhaba">
+    <main class="start">
+      <div class="brand">
+        <svg viewBox="274 254 482 622" aria-hidden="true">
+          <g fill="none" stroke-width="96" stroke-linecap="round">
+            <path d="M330 310 L450 470" stroke="#7652a7" />
+            <path d="M700 310 L470 770 Q445 820 385 820" stroke="currentColor" />
+          </g>
+        </svg>
+        <span>yalqen</span>
+      </div>
+      <section class="welcome">
+        <span class="eyebrow">Yeni sekme</span>
+        <svg class="wordmark" viewBox="0 40 500 180" role="img" aria-label="merhaba">
       <defs>
         <linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="20" y1="0" x2="480" y2="0">
-          <stop offset="0" stop-color="#3a93a6" />
-          <stop offset="0.2" stop-color="#e3cf45" />
-          <stop offset="0.38" stop-color="#f2a65a" />
-          <stop offset="0.56" stop-color="#e8615d" />
-          <stop offset="0.72" stop-color="#e493b4" />
-          <stop offset="0.87" stop-color="#8069bb" />
-          <stop offset="1" stop-color="#7fb2e8" />
+          <stop offset="0" stop-color="#7a60ad" />
+          <stop offset="0.35" stop-color="#ab80c2" />
+          <stop offset="0.7" stop-color="#d49bbf" />
+          <stop offset="1" stop-color="#8b6ab8" />
         </linearGradient>
       </defs>
       <!-- A single stroke of handwriting: "merhaba". -->
@@ -95,6 +228,12 @@
           C 420 148 434 140 446 145 C 434 136 418 142 415 166 C 412 192 428 204 440 190 C 446 180 448 160 448 142 L 448 188 C 448 202 462 206 480 194
         "
       />
-    </svg>
+        </svg>
+        <h1>Bugün nereye gidelim?</h1>
+        <p>Aramak veya bir adres açmak için adres çubuğuna geç.</p>
+        <div class="shortcut"><span>Adres çubuğu</span><kbd>⌘ L</kbd></div>
+      </section>
+      <footer>Yeni bir sayfa aç, keşfe devam et.</footer>
+    </main>
   </body>
 </html>

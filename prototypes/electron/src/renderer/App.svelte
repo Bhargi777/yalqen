@@ -5,12 +5,12 @@
   import Toolbar from './components/Toolbar.svelte';
 
   const COLLAPSED_WIDTH = 48;
-  const MIN_WIDTH = 180;
-  const MAX_WIDTH = 400;
-  const DEFAULT_WIDTH = 240;
-  /** Page card inset and radius on glass; on opaque windows the page fills its area. */
-  const GLASS_PAGE_INSET = 8;
-  const GLASS_PAGE_RADIUS = 10;
+  const MIN_WIDTH = 200;
+  const MAX_WIDTH = 420;
+  const DEFAULT_WIDTH = 264;
+  /** Keep the page on its own card in both opaque and glass windows. */
+  const PAGE_INSET = 8;
+  const PAGE_RADIUS = 12;
   const PREFS_KEY = 'yalqen:panel';
   const DEVICE_BEZEL = 10;
 
@@ -41,16 +41,13 @@
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
-  const glass = $derived(browser.material === 'glass');
-  const pageInset = $derived(glass ? GLASS_PAGE_INSET : 0);
-  const pageRadius = $derived(glass ? GLASS_PAGE_RADIUS : 0);
 
   $effect(() => {
     document.documentElement.dataset.material = browser.material;
   });
 
   $effect(() => {
-    window.yalqen.setLayout({ panelWidth, windowControls: !collapsed, pageInset, pageRadius });
+    window.yalqen.setLayout({ panelWidth, windowControls: !collapsed, pageInset: PAGE_INSET, pageRadius: PAGE_RADIUS });
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
@@ -91,8 +88,8 @@
   <main
     class="page"
     aria-hidden="true"
-    style:margin="{pageInset}px 0 {pageInset}px {pageInset}px"
-    style:border-radius="{pageRadius}px"
+    style:margin="{PAGE_INSET}px 0 {PAGE_INSET}px {PAGE_INSET}px"
+    style:border-radius="{PAGE_RADIUS}px"
   >
     {#if browser.device}
       {@const device = browser.device}
