@@ -7,12 +7,15 @@
     tabs,
     activeTabId,
     leadingInset,
+    trailingInset,
     blank,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     /** Space kept free on the left for the back and forward buttons over a narrow sidebar. */
     leadingInset: number;
+    /** Space kept free on the right, matching the page card's edge. */
+    trailingInset: number;
     /** A new tab page is showing; it has its own search field, so the strip steps aside. */
     blank: boolean;
   } = $props();
@@ -50,7 +53,7 @@
   Safari-like: capsules on the window background. The active tab doubles as the
   address field: clicking it opens the centered address bar.
 -->
-<header class="toolbar" style:padding-left="{leadingInset}px">
+<header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <span class="side"></span>
 
   <ol class="strip" class:hidden={blank} bind:this={strip} aria-label="Açık sekmeler">
@@ -99,12 +102,10 @@
 <style>
   .toolbar {
     display: flex;
-    grid-column: 2;
-    grid-row: 1;
+    grid-area: bar;
     align-items: center;
     gap: 8px;
     min-width: 0;
-    padding-right: 8px;
     transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
   }

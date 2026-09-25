@@ -98,6 +98,7 @@ function createBrowser(): void {
   nativeTheme.themeSource = settings.get().theme;
   let layout: ChromeLayout = {
     panelWidth: 220,
+    panelSide: 'left',
     windowControls: true,
     chromeHeight: 44,
     pageInset: 8,
@@ -118,6 +119,7 @@ function createBrowser(): void {
     totalMemoryMB,
     addressPlaceholder: searchEngine().placeholder,
     panelCollapsed: settings.get().panelCollapsed,
+    panelSide: settings.get().panelSide,
     material: material(),
   });
   const pushState = () => {
@@ -176,9 +178,9 @@ function createBrowser(): void {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
     commandBar.fitWindow();
-    // The page card sits right of the sidebar and below the top bar.
+    // The page card sits beside the sidebar and below the top bar.
     tabs.setPageBounds({
-      x: layout.panelWidth,
+      x: layout.panelSide === 'left' ? layout.panelWidth : layout.pageInset,
       y: layout.chromeHeight,
       width: Math.max(0, width - layout.panelWidth - layout.pageInset),
       height: Math.max(0, height - layout.chromeHeight - layout.pageInset),

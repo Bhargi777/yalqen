@@ -46,12 +46,16 @@ export interface DeviceFrame {
  */
 export type WindowMaterial = 'glass' | 'opaque';
 
+/** Which edge of the window the tab panel sits on. */
+export type PanelSide = 'left' | 'right';
+
 export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
   totalMemoryMB: number | null;
   addressPlaceholder: string;
   panelCollapsed: boolean;
+  panelSide: PanelSide;
   material: WindowMaterial;
   /** Set while the active tab is shown as a device. */
   device: DeviceFrame | null;
@@ -59,8 +63,9 @@ export interface BrowserState {
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
 export interface ChromeLayout {
-  /** Width of the sidebar on the left, including its gap to the page card. */
+  /** Width of the sidebar, including its gap to the page card. */
   panelWidth: number;
+  panelSide: PanelSide;
   /** Whether the macOS window controls are always shown; otherwise they appear while the pointer is over their corner. */
   windowControls: boolean;
   /** Height of the top bar above the page card. */
@@ -141,6 +146,7 @@ export interface SettingsValues {
   customSearchTemplate: string | null;
   theme: ThemeSource;
   panelCollapsed: boolean;
+  panelSide: PanelSide;
   /** Freeze background tabs' pages when switching away from them. */
   freezeBackgroundTabs: boolean;
   /** Block ads on web pages. */

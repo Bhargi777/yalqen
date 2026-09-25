@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TabId, TabSnapshot } from '../../shared/types';
+  import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
   import Icon from './Icon.svelte';
 
   let {
@@ -8,6 +8,7 @@
     totalMemoryMB,
     collapsed,
     windowControls,
+    side,
     leadingInset,
     width = $bindable(),
     minWidth,
@@ -20,6 +21,8 @@
     collapsed: boolean;
     /** macOS draws the traffic lights, so the logo is left out. */
     windowControls: boolean;
+    /** Window edge the panel sits on; the resize handle and toggle icons follow it. */
+    side: PanelSide;
     /** Room kept free at the start of the top row for the back and forward buttons. */
     leadingInset: number;
     width: number;
@@ -76,7 +79,8 @@
     const startX = event.clientX;
     const startWidth = width;
     const move = (e: PointerEvent) => {
-      width = Math.round(Math.min(maxWidth, Math.max(minWidth, startWidth + e.clientX - startX)));
+      const delta = side === 'left' ? e.clientX - startX : startX - e.clientX;
+      width = Math.round(Math.min(maxWidth, Math.max(minWidth, startWidth + delta)));
     };
     const end = () => {
       handle.removeEventListener('pointermove', move);
@@ -114,7 +118,7 @@
   </span>
 {/snippet}
 
-<aside class="panel" class:collapsed aria-label="Sekmeler">
+<aside class="panel" class:collapsed class:right={side === 'right'} aria-label="Sekmeler">
   {#if !collapsed}
     <div
       class="resize"
@@ -130,7 +134,7 @@
       <!-- On macOS the traffic lights take the logo's place. -->
       {#if !windowControls}{@render logo()}{/if}
       <span class="spacer"></span>
-      <button class="icon" title="Paneli daralt (⌘S)" aria-expanded="true" onclick={onToggle}>
+      <button class="icon toggle" title="Paneli daralt (⌘S)" aria-expanded="true" onclick={onToggle}>
         <Icon name="panel-close" />
       </button>
     {/if}
@@ -231,7 +235,7 @@
 
   <footer class="footer">
     {#if collapsed}
-      <button class="icon" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={onToggle}>
+      <button class="icon toggle" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={onToggle}>
         <Icon name="sidebar" />
       </button>
     {/if}
@@ -245,8 +249,7 @@
   .panel {
     position: relative;
     display: flex;
-    grid-column: 1;
-    grid-row: 1 / span 2;
+    grid-area: panel;
     flex-direction: column;
     min-height: 0;
     /* Same gap on both sides: the window edge on the left, the page card on the right. */
@@ -265,6 +268,16 @@
     bottom: 0;
     width: 6px;
     cursor: col-resize;
+  }
+
+  .panel.right .resize {
+    right: auto;
+    left: -2px;
+  }
+
+  /* The panel icons point at the window edge the panel sits on. */
+  .panel.right .toggle {
+    transform: scaleX(-1);
   }
 
   .top {

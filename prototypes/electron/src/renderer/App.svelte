@@ -30,6 +30,7 @@
     totalMemoryMB: null,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
+    panelSide: 'left',
     material: 'opaque',
     device: null,
   });
@@ -51,6 +52,7 @@
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
+  const side = $derived(browser.panelSide);
   // The new tab page is an empty board: no card, the page blends into the window.
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   // The back and forward buttons sit in the corner and slide aside for the traffic lights.
@@ -64,6 +66,7 @@
   $effect(() => {
     window.yalqen.setLayout({
       panelWidth,
+      panelSide: side,
       // On macOS the traffic lights stay hidden until the pointer reaches their corner.
       windowControls: !windowControls,
       chromeHeight: CHROME_HEIGHT,
@@ -90,14 +93,20 @@
   });
 </script>
 
-<div class="shell" style:grid-template-columns="{panelWidth}px minmax(0, 1fr)" style:grid-template-rows="{CHROME_HEIGHT}px minmax(0, 1fr)">
+<div
+  class="shell"
+  class:right={side === 'right'}
+  style:grid-template-columns={side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
+  style:grid-template-rows="{CHROME_HEIGHT}px minmax(0, 1fr)"
+>
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     totalMemoryMB={browser.totalMemoryMB}
     {collapsed}
     {windowControls}
-    leadingInset={navEnd}
+    {side}
+    leadingInset={side === 'left' ? navEnd : 0}
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
@@ -106,7 +115,8 @@
   <Toolbar
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
-    leadingInset={Math.max(0, navEnd - panelWidth)}
+    leadingInset={side === 'left' ? Math.max(0, navEnd - panelWidth) : navEnd}
+    trailingInset={side === 'left' ? PAGE_INSET : 0}
     {blank}
   />
   <nav class="navigation" aria-label="Gezinme" style:transform="translateX({navStart}px)">
@@ -133,7 +143,7 @@
   <section
     class="page"
     class:blank
-    style:margin="0 {PAGE_INSET}px {PAGE_INSET}px 0"
+    style:margin={side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
     style:border-radius="{PAGE_RADIUS}px"
   >
     <!-- The page view is drawn by the main process over this area. -->
@@ -159,7 +169,16 @@
 <style>
   .shell {
     display: grid;
+    grid-template-areas:
+      'panel bar'
+      'panel page';
     height: 100%;
+  }
+
+  .shell.right {
+    grid-template-areas:
+      'bar panel'
+      'page panel';
   }
 
   .navigation {
@@ -227,8 +246,7 @@
   .page {
     position: relative;
     display: flex;
-    grid-column: 2;
-    grid-row: 2;
+    grid-area: page;
     flex-direction: column;
     min-width: 0;
     min-height: 0;

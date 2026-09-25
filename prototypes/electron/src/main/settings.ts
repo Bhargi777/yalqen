@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { SettingsValues, ThemeSource } from '../shared/types.js';
+import type { PanelSide, SettingsValues, ThemeSource } from '../shared/types.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from './search.js';
 
 export interface Settings extends SettingsValues {
@@ -13,17 +13,20 @@ const DEFAULTS: Settings = {
   customSearchTemplate: null,
   theme: 'light',
   panelCollapsed: false,
+  panelSide: 'left',
   freezeBackgroundTabs: true,
   adBlocking: true,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
+const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 
 /** Keeps known, well-typed fields and takes the rest from `base`. */
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const { searchEngine, customSearchTemplate, theme, panelCollapsed, freezeBackgroundTabs, adBlocking } = input;
+  const { searchEngine, customSearchTemplate, theme, panelCollapsed, panelSide, freezeBackgroundTabs, adBlocking } =
+    input;
   return {
     version: 1,
     searchEngine:
@@ -36,6 +39,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
+    panelSide:
+      typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
     freezeBackgroundTabs:
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,

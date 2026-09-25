@@ -8,6 +8,10 @@
     { value: false, label: 'Geniş' },
     { value: true, label: 'Dar' },
   ] as const;
+  const sideOptions = [
+    { value: 'left', label: 'Sol' },
+    { value: 'right', label: 'Sağ' },
+  ] as const;
   const onOffOptions = [
     { value: true, label: 'Açık' },
     { value: false, label: 'Kapalı' },
@@ -101,6 +105,16 @@
             aria-pressed={values.panelCollapsed === option.value}
             onclick={() => update({ panelCollapsed: option.value })}
           >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Konum</span>
+      <div class="segmented" role="group" aria-label="Panel konumu">
+        {#each sideOptions as option (option.value)}
+          <button aria-pressed={values.panelSide === option.value} onclick={() => update({ panelSide: option.value })}>
             {option.label}
           </button>
         {/each}
