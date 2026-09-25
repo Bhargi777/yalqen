@@ -157,10 +157,12 @@ function createBrowser(): void {
   });
 
   // Showing the traffic lights again puts them back in their default place, so the
-  // position is set each time they appear.
+  // position is set each time they appear. In full screen macOS shows them in the
+  // title bar that slides down from the top edge, so they stay on and in place there.
   const setWindowControls = (visible: boolean) => {
-    window.setWindowButtonVisibility(visible);
-    if (visible) window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
+    const fullScreen = window.isFullScreen();
+    window.setWindowButtonVisibility(visible || fullScreen);
+    if (visible && !fullScreen) window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   };
   const applyLayout = () => {
     const { width, height } = window.getContentBounds();
@@ -185,7 +187,7 @@ function createBrowser(): void {
   let controlsTimer: NodeJS.Timeout | null = null;
   let controlsDelay: NodeJS.Timeout | null = null;
   const revealWindowControls = (zoneWidth: number) => {
-    if (process.platform !== 'darwin' || controlsRevealed) return;
+    if (process.platform !== 'darwin' || controlsRevealed || window.isFullScreen()) return;
     const width = Math.min(
       WINDOW_CONTROLS_ZONE.maxWidth,
       Math.max(WINDOW_CONTROLS_ZONE.minWidth, Number(zoneWidth) || 0),
@@ -216,6 +218,15 @@ function createBrowser(): void {
   };
 
   window.on('resize', applyLayout);
+  window.on('enter-full-screen', () => {
+    // A reveal in progress is dropped: the title bar takes over.
+    if (controlsRevealed) {
+      hideWindowControls();
+      notifyUi({ type: 'window-controls', visible: false });
+    }
+    applyLayout();
+  });
+  window.on('leave-full-screen', applyLayout);
   applyLayout();
 
   const recordSnapshot = (label: string) => {
