@@ -14,3 +14,4 @@ Taslaktaki ekranlar:
 | `Settings.dc.html` | Ayarlar |
 | `NewTab.dc.html` | Yeni sekme, adres çubuğu odakta |
 | `Dark.dc.html`, `DarkNarrow.dc.html` | Koyu tema |
+| `Glass.dc.html`, `GlassLight.dc.html`, `GlassMemory.dc.html`, `GlassNarrow.dc.html` | Cam (Liquid Glass) varyantı: koyu, açık, RAM ayrıntısı, dar panel |

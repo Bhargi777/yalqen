@@ -74,6 +74,25 @@ Hiçbir durum yalnızca renkle anlatılmaz.
 
 Dar görünümde başlık ve durum, üzerine gelindiğinde ipucu balonunda yazıyla gösterilir.
 
+## Cam malzemesi (Liquid Glass varyantı)
+
+Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam yalnızca pencere kabuğunda** (üst çubuk, sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
+
+| Öğe | Koyu | Açık |
+|---|---|---|
+| Kabuk tonu (masaüstünün üstünde) | `rgba(28 27 40 / .55)` + blur 40 px, saturate 160 % | `rgba(246 246 248 / .58)` + aynı |
+| Aktif sekme, adres çubuğu | `rgba(255 255 255 / .12)` | `rgba(255 255 255 / .72)` |
+| Üzerine gelme | `rgba(255 255 255 / .07)` | `rgba(0 0 0 / .05)` |
+| Metin / ikincil metin | `#f4f4f7` / `rgba(235 235 245 / .64)` | `#1c1c1e` / `rgba(40 40 45 / .72)` |
+| Açılır panel | `rgba(40 39 54 / .72)` + blur 30 px | `rgba(250 250 252 / .78)` + blur 30 px |
+| Sayfa kartı | `#1e1e22` (opak) | `#ffffff` (opak) |
+| Pencere köşesi | 16 px, 0.5 px açık kenar parlaması | aynı |
+
+- Uygulamada bu değerler elle çizilmez; macOS'un sistem malzemesi kullanılır. Tablodaki değerler taslaktaki CSS yaklaşımıdır.
+- Sistemde "Saydamlığı azalt" açıksa opak tokenlara dönülür.
+- Özel kırılma, parlama animasyonu veya sürekli efekt eklenmez (plan: yoğun görsel efektler kapsam dışı).
+- Açık duvar kâğıtlarında ikincil metin kontrastı Mac'te ayrıca kontrol edilmeli.
+
 ## Taslaktaki yer tutucu değerler
 
 RAM miktarları, bellek hedefi seçenekleri ve uyutma süreleri **örnektir**. Plan gereği gerçek değerler Faz 0 ölçümlerinden sonra belirlenecek.

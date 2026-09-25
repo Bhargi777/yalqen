@@ -16,9 +16,11 @@ button:focus-visible,select:focus-visible{outline:2px solid #2f5fd0;outline-offs
 input::placeholder{color:#8a8a82}
 </style>
 </helmet>
-<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; font-size: 13px; line-height: 1.35">
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: {{t.rootBg}}; border-radius: {{windowRadius}}; color: {{t.text}}; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; font-size: 13px; line-height: 1.35">
 
-  <header style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; box-sizing: border-box">
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1280px; height: 800px; background: {{t.glassTint}}; backdrop-filter: {{t.glassFilter}}; -webkit-backdrop-filter: {{t.glassFilter}}"></div>
+
+  <header style="position: relative; height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; box-sizing: border-box">
     <div aria-hidden="true" style="display: flex; gap: 8px; margin-right: 20px">
       <span style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57"></span>
       <span style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e"></span>
@@ -47,7 +49,7 @@ input::placeholder{color:#8a8a82}
     </button>
   </header>
 
-  <div style="flex-grow: 1; min-height: 0; display: flex">
+  <div style="position: relative; flex-grow: 1; min-height: 0; display: flex">
     <main aria-label="Sayfa" style="flex-grow: 1; min-width: 0; margin: 0 0 8px 8px; border-radius: 10px; background: {{t.page}}; box-shadow: {{t.shadow}}; overflow: hidden; position: relative">
       <sc-if value="{{isNewTab}}" hint-placeholder-val="{{false}}">
         <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; color: {{t.muted}}">
@@ -171,6 +173,8 @@ input::placeholder{color:#8a8a82}
     </nav>
   </div>
 
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1280px; height: 800px; border-radius: {{windowRadius}}; box-shadow: {{t.rim}}; pointer-events: none"></div>
+
   <sc-if value="{{showTooltip}}" hint-placeholder-val="{{false}}">
     <div role="tooltip" style="position: absolute; top: {{tooltip.top}}px; right: {{tooltip.right}}px; max-width: 280px; padding: 6px 10px; border-radius: 7px; background: {{t.tooltipBg}}; color: {{t.tooltipText}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column; gap: 1px">
       <span style="font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{tooltip.title}}</span>
@@ -181,7 +185,7 @@ input::placeholder{color:#8a8a82}
   </sc-if>
 
   <sc-if value="{{showMemory}}" hint-placeholder-val="{{false}}">
-    <section aria-label="Bellek ayrıntısı" style="position: absolute; top: 42px; right: 12px; width: 300px; box-sizing: border-box; padding: 16px; border-radius: 12px; background: {{t.surface}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column; gap: 14px">
+    <section aria-label="Bellek ayrıntısı" style="position: absolute; top: 42px; right: 12px; width: 300px; box-sizing: border-box; padding: 16px; border-radius: 12px; background: {{t.popBg}}; backdrop-filter: {{t.popFilter}}; -webkit-backdrop-filter: {{t.popFilter}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column; gap: 14px">
       <div style="display: flex; align-items: baseline; justify-content: space-between">
         <span style="font-size: 12px; color: {{t.muted}}">Toplam bellek</span>
         <span style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums">{{totalLabel}}</span>
@@ -219,7 +223,7 @@ input::placeholder{color:#8a8a82}
 
   <sc-if value="{{showSettings}}" hint-placeholder-val="{{false}}">
     <div style="position: absolute; left: 0; top: 0; width: 1280px; height: 800px; background: {{t.scrim}}; display: flex; align-items: center; justify-content: center">
-      <section role="dialog" aria-modal="true" aria-label="Ayarlar" style="width: 520px; box-sizing: border-box; border-radius: 14px; background: {{t.surface}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column">
+      <section role="dialog" aria-modal="true" aria-label="Ayarlar" style="width: 520px; box-sizing: border-box; border-radius: 14px; background: {{t.popBg}}; backdrop-filter: {{t.popFilter}}; -webkit-backdrop-filter: {{t.popFilter}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column">
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid {{t.border}}">
           <h2 style="margin: 0; font-size: 15px; font-weight: 600">Ayarlar</h2>
           <button onClick="{{closeOverlay}}" aria-label="Kapat" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; display: grid; place-items: center">
@@ -262,10 +266,21 @@ input::placeholder{color:#8a8a82}
           </div>
 
           <h3 style="margin: 20px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: {{t.muted}}">Görünüm</h3>
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0; border-bottom: 1px solid {{t.border}}">
             <span>Tema</span>
             <div role="group" aria-label="Tema" style="display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: {{t.faint}}">
               <sc-for list="{{themeOptions}}" as="opt" hint-placeholder-count="3">
+                <button onClick="{{opt.pick}}" aria-pressed="{{opt.selected}}" style="height: 26px; padding: 0 12px; border: 0; border-radius: 6px; background: {{opt.bg}}; box-shadow: {{opt.shadow}}; color: {{opt.color}}; font-size: 12px">{{opt.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0">
+            <span style="display: flex; flex-direction: column; gap: 2px">
+              <span>Pencere malzemesi</span>
+              <span style="font-size: 11px; color: {{t.muted}}">Sistemde “Saydamlığı azalt” açıksa her zaman opak kullanılır.</span>
+            </span>
+            <div role="group" aria-label="Pencere malzemesi" style="display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: {{t.faint}}">
+              <sc-for list="{{materialOptions}}" as="opt" hint-placeholder-count="2">
                 <button onClick="{{opt.pick}}" aria-pressed="{{opt.selected}}" style="height: 26px; padding: 0 12px; border: 0; border-radius: 6px; background: {{opt.bg}}; box-shadow: {{opt.shadow}}; color: {{opt.color}}; font-size: 12px">{{opt.label}}</button>
               </sc-for>
             </div>
@@ -276,26 +291,61 @@ input::placeholder{color:#8a8a82}
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"initialCollapsed":{"editor":"boolean","default":false,"section":"Durum"},"initialDark":{"editor":"boolean","default":false,"section":"Durum"},"initialOverlay":{"editor":"enum","options":["","memory","settings"],"default":"","section":"Durum"},"initialNewTab":{"editor":"boolean","default":false,"section":"Durum"},"previewHover":{"editor":"int","default":-1,"min":-1,"max":7,"section":"Durum"},"targetMb":{"editor":"int","default":2048,"min":512,"max":8192,"step":256,"section":"Durum"},"showResize":{"editor":"boolean","default":false,"section":"Durum"},"$preview":{"width":1280,"height":800}}'>
+<script type="text/x-dc" data-dc-script data-props='{"initialCollapsed":{"editor":"boolean","default":false,"section":"Durum"},"initialDark":{"editor":"boolean","default":false,"section":"Durum"},"initialGlass":{"editor":"boolean","default":false,"section":"Durum"},"initialOverlay":{"editor":"enum","options":["","memory","settings"],"default":"","section":"Durum"},"initialNewTab":{"editor":"boolean","default":false,"section":"Durum"},"previewHover":{"editor":"int","default":-1,"min":-1,"max":7,"section":"Durum"},"targetMb":{"editor":"int","default":2048,"min":512,"max":8192,"step":256,"section":"Durum"},"showResize":{"editor":"boolean","default":false,"section":"Durum"},"$preview":{"width":1280,"height":800}}'>
 class Component extends DCLogic {
-  theme(dark) {
-    if (dark) {
-      return {
-        bg: '#1a1a19', page: '#232322', surface: '#2a2a28', hover: '#30302e', border: '#363634',
-        text: '#ececea', muted: '#a3a39b', faint: '#2e2e2c', skeleton: '#2c2c2a',
-        accent: '#86a6ff', accentSoft: '#26304a', warn: '#f0a35c', warnSoft: '#3a2a1a',
-        tooltipBg: '#ececea', tooltipText: '#1a1a19', scrim: 'rgba(0, 0, 0, 0.45)',
-        shadow: '0 0 0 1px rgba(255, 255, 255, 0.07)',
-        pop: '0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08)'
-      };
-    }
-    return {
+  theme(dark, glass) {
+    const solidDark = {
+      bg: '#1a1a19', page: '#232322', surface: '#2a2a28', hover: '#30302e', border: '#363634',
+      text: '#ececea', muted: '#a3a39b', faint: '#2e2e2c', skeleton: '#2c2c2a',
+      accent: '#86a6ff', accentSoft: '#26304a', warn: '#f0a35c', warnSoft: '#3a2a1a',
+      tooltipBg: '#ececea', tooltipText: '#1a1a19', scrim: 'rgba(0, 0, 0, 0.45)',
+      shadow: '0 0 0 1px rgba(255, 255, 255, 0.07)',
+      pop: '0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08)'
+    };
+    const solidLight = {
       bg: '#f3f3f1', page: '#ffffff', surface: '#ffffff', hover: '#e8e8e5', border: '#e2e2de',
       text: '#1d1d1b', muted: '#66665f', faint: '#ededea', skeleton: '#f0f0ed',
       accent: '#2f5fd0', accentSoft: '#e7edfb', warn: '#a34a06', warnSoft: '#fcefe2',
       tooltipBg: '#1d1d1b', tooltipText: '#f3f3f1', scrim: 'rgba(20, 20, 18, 0.28)',
       shadow: '0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)',
       pop: '0 8px 28px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06)'
+    };
+    if (!glass) {
+      const base = dark ? solidDark : solidLight;
+      return Object.assign({}, base, {
+        rootBg: base.bg, glassTint: 'transparent', glassFilter: 'none',
+        popBg: base.surface, popFilter: 'none', rim: 'none'
+      });
+    }
+    // Glass approximates the macOS system material: the desktop shows through
+    // the window chrome, the web page itself stays opaque.
+    if (dark) {
+      return {
+        rootBg: 'radial-gradient(55% 45% at 18% 28%, #5d4ca3 0%, rgba(93, 76, 163, 0) 70%), radial-gradient(45% 40% at 85% 72%, #2b6690 0%, rgba(43, 102, 144, 0) 70%), radial-gradient(35% 35% at 62% 8%, #8a4577 0%, rgba(138, 69, 119, 0) 70%), linear-gradient(135deg, #1a192c 0%, #2a2746 50%, #151724 100%)',
+        glassTint: 'rgba(28, 27, 40, 0.55)', glassFilter: 'blur(40px) saturate(160%)',
+        bg: '#2a2940', page: '#1e1e22', surface: 'rgba(255, 255, 255, 0.12)', hover: 'rgba(255, 255, 255, 0.07)',
+        border: 'rgba(255, 255, 255, 0.10)', text: '#f4f4f7', muted: 'rgba(235, 235, 245, 0.64)',
+        faint: 'rgba(255, 255, 255, 0.08)', skeleton: '#29292e',
+        accent: '#8fb0ff', accentSoft: 'rgba(143, 176, 255, 0.16)', warn: '#f5ae6b', warnSoft: 'rgba(245, 174, 107, 0.14)',
+        tooltipBg: 'rgba(245, 245, 250, 0.92)', tooltipText: '#16161a', scrim: 'rgba(0, 0, 0, 0.35)',
+        shadow: '0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.2)',
+        pop: '0 12px 36px rgba(0, 0, 0, 0.45), inset 0 0 0 0.5px rgba(255, 255, 255, 0.18)',
+        popBg: 'rgba(40, 39, 54, 0.72)', popFilter: 'blur(30px) saturate(180%)',
+        rim: 'inset 0 0 0 0.5px rgba(255, 255, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
+      };
+    }
+    return {
+      rootBg: 'radial-gradient(55% 45% at 18% 28%, #c9bff5 0%, rgba(201, 191, 245, 0) 70%), radial-gradient(45% 40% at 85% 72%, #a9d6f2 0%, rgba(169, 214, 242, 0) 70%), radial-gradient(35% 35% at 62% 8%, #f5c2dc 0%, rgba(245, 194, 220, 0) 70%), linear-gradient(135deg, #eef0f7 0%, #e4e2f3 50%, #edf3f8 100%)',
+      glassTint: 'rgba(246, 246, 248, 0.58)', glassFilter: 'blur(40px) saturate(160%)',
+      bg: '#ececf0', page: '#ffffff', surface: 'rgba(255, 255, 255, 0.72)', hover: 'rgba(0, 0, 0, 0.05)',
+      border: 'rgba(0, 0, 0, 0.08)', text: '#1c1c1e', muted: 'rgba(40, 40, 45, 0.72)',
+      faint: 'rgba(0, 0, 0, 0.06)', skeleton: '#f0f0f2',
+      accent: '#2f5fd0', accentSoft: 'rgba(47, 95, 208, 0.12)', warn: '#9a4305', warnSoft: 'rgba(245, 160, 80, 0.18)',
+      tooltipBg: 'rgba(28, 28, 30, 0.9)', tooltipText: '#f4f4f7', scrim: 'rgba(20, 20, 30, 0.2)',
+      shadow: '0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.08)',
+      pop: '0 12px 36px rgba(0, 0, 0, 0.16), inset 0 0 0 0.5px rgba(255, 255, 255, 0.6)',
+      popBg: 'rgba(250, 250, 252, 0.78)', popFilter: 'blur(30px) saturate(180%)',
+      rim: 'inset 0 0 0 0.5px rgba(255, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
     };
   }
 
@@ -339,6 +389,12 @@ class Component extends DCLogic {
     const s = this.st();
     if (s.themeMode) return s.themeMode;
     return this.props.initialDark ? 'dark' : 'system';
+  }
+
+  getMaterial() {
+    const s = this.st();
+    if (s.material) return s.material;
+    return this.props.initialGlass ? 'glass' : 'solid';
   }
 
   getOverlay() {
@@ -427,7 +483,9 @@ class Component extends DCLogic {
     const collapsed = this.isCollapsed();
     const themeMode = this.getThemeMode();
     const dark = themeMode === 'dark';
-    const t = this.theme(dark);
+    const material = this.getMaterial();
+    const glass = material === 'glass';
+    const t = this.theme(dark, glass);
     const overlay = this.getOverlay();
     const tabs = this.getTabs();
     const activeId = this.getActiveId();
@@ -510,6 +568,7 @@ class Component extends DCLogic {
     return {
       t: t,
       yes: true,
+      windowRadius: glass ? '16px' : '0',
       tabs: viewTabs,
       wide: !collapsed,
       narrow: collapsed,
@@ -591,6 +650,13 @@ class Component extends DCLogic {
       ].map((opt) => {
         const selected = opt.key === themeMode;
         return Object.assign({ label: opt.label, selected: selected, pick: () => this.setState({ themeMode: opt.key }) }, segment(selected));
+      }),
+      materialOptions: [
+        { key: 'solid', label: 'Opak' },
+        { key: 'glass', label: 'Cam' }
+      ].map((opt) => {
+        const selected = opt.key === material;
+        return Object.assign({ label: opt.label, selected: selected, pick: () => this.setState({ material: opt.key }) }, segment(selected));
       })
     };
   }
