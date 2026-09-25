@@ -49,6 +49,8 @@
 
 <!-- The active tab doubles as the address field; the existing capsules now frame the tab strip. -->
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
+  <div class="side leading" aria-hidden="true"></div>
+
   <div class="tab-group">
     <nav class="capsule navigation" aria-label="Gezinme">
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
