@@ -29,7 +29,6 @@
   let browser: BrowserState = $state({
     tabs: [],
     activeTabId: null,
-    totalMemoryMB: null,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     panelSide: 'left',
@@ -104,7 +103,6 @@
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
-    totalMemoryMB={browser.totalMemoryMB}
     {collapsed}
     {windowControls}
     {side}

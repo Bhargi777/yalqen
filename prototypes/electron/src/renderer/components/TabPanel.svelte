@@ -5,7 +5,6 @@
   let {
     tabs,
     activeTabId,
-    totalMemoryMB,
     collapsed,
     windowControls,
     side,
@@ -18,7 +17,6 @@
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
-    totalMemoryMB: number | null;
     collapsed: boolean;
     /** macOS draws the traffic lights, so the logo is left out. */
     windowControls: boolean;
@@ -242,9 +240,7 @@
         <Icon name="sidebar" />
       </button>
     {/if}
-    <span class="memory" title="Uygulamanın toplam bellek kullanımı (working set)">
-      {#if totalMemoryMB === null}—{:else}{totalMemoryMB}{/if}{#if !collapsed}&nbsp;MB · {tabs.length} sekme{/if}
-    </span>
+    {#if !collapsed}<span class="tab-count">{tabs.length} sekme</span>{/if}
   </footer>
 </aside>
 
@@ -603,10 +599,9 @@
     padding: 0;
   }
 
-  .memory {
+  .tab-count {
     color: var(--text-muted);
     font-size: var(--font-size-small);
-    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 </style>

@@ -52,7 +52,6 @@ export type PanelSide = 'left' | 'right';
 export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
-  totalMemoryMB: number | null;
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;

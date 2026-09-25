@@ -28,7 +28,6 @@ import { TabManager } from './tabs.js';
 import { resolveInput } from './url.js';
 
 const DAILY_PARTITION = 'persist:daily';
-const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 // Offset of the traffic lights from the top-left corner. Their 14pt buttons then
 // share the 22px center line of the back and forward capsule.
@@ -48,7 +47,7 @@ const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
 const appIcon = path.join(repoRoot, 'design/brand/png/icon-512.png');
 
 registerInternalScheme();
-app.setName('yalqen');
+app.setName('Yalqen Browser');
 
 function createBrowser(): void {
   const window = new BaseWindow({
@@ -56,7 +55,7 @@ function createBrowser(): void {
     height: 820,
     minWidth: 640,
     minHeight: 400,
-    title: 'yalqen',
+    title: 'Yalqen Browser',
     icon: appIcon,
     titleBarStyle: 'hiddenInset',
     // The glass view sits behind the UI, so the window itself must be see-through.
@@ -104,7 +103,6 @@ function createBrowser(): void {
     pageInset: 8,
     pageRadius: 16,
   };
-  let totalMemoryMB: number | null = null;
   // Device used by the phone view shortcut; the last one picked from the menu.
   // Radio items keep their own checked state, so the menu is not rebuilt.
   let deviceId = DEFAULT_DEVICE_ID;
@@ -116,7 +114,6 @@ function createBrowser(): void {
 
   const browserState = (): BrowserState => ({
     ...tabs.state(),
-    totalMemoryMB,
     addressPlaceholder: searchEngine().placeholder,
     panelCollapsed: settings.get().panelCollapsed,
     panelSide: settings.get().panelSide,
@@ -398,13 +395,7 @@ function createBrowser(): void {
     pushState();
   });
 
-  const memoryTimer = setInterval(() => {
-    totalMemoryMB = Math.round(readProcessMemory().totalKB / 1024);
-    pushState();
-  }, MEMORY_POLL_MS);
-
   window.on('close', () => {
-    clearInterval(memoryTimer);
     hideWindowControls();
     settingsWindow.close();
     nativeTheme.off('updated', pushState);
@@ -438,7 +429,7 @@ function readPageSet(): string[] {
 }
 
 app.setAboutPanelOptions({
-  applicationName: 'yalqen',
+  applicationName: 'Yalqen Browser',
   applicationVersion: app.getVersion(),
   version: `Faz 0 prototipi · Electron ${process.versions.electron}`,
   iconPath: appIcon,
