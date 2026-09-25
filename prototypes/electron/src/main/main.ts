@@ -109,16 +109,15 @@ function createBrowser(): void {
   let deviceId = DEFAULT_DEVICE_ID;
   // Optimistic until the glass view is added, so the UI does not start opaque.
   let glassApplied = glassAvailable;
-  let windowFullScreen = false;
   let htmlFullScreenTabId: string | null = null;
-  const isFullScreen = () => windowFullScreen || (htmlFullScreenTabId !== null && htmlFullScreenTabId === tabs.activeTabId);
+  const isPageFullScreen = () => htmlFullScreenTabId !== null && htmlFullScreenTabId === tabs.activeTabId;
 
   const material = (): WindowMaterial =>
     glassApplied && !nativeTheme.prefersReducedTransparency ? 'glass' : 'opaque';
 
   const browserState = (): BrowserState => ({
     ...tabs.state(),
-    fullScreen: isFullScreen(),
+    pageFullScreen: isPageFullScreen(),
     addressPlaceholder: searchEngine().placeholder,
     panelCollapsed: settings.get().panelCollapsed,
     panelSide: settings.get().panelSide,
@@ -157,7 +156,7 @@ function createBrowser(): void {
     onChange: (persist) => {
       if (htmlFullScreenTabId && htmlFullScreenTabId !== tabs.activeTabId) {
         htmlFullScreenTabId = null;
-        syncFullScreen();
+        syncPageFullScreen();
       }
       commandBar.keepOnTop();
       pushState();
@@ -178,7 +177,7 @@ function createBrowser(): void {
         if (htmlFullScreenTabId !== tabId) return;
         htmlFullScreenTabId = null;
       }
-      syncFullScreen();
+      syncPageFullScreen();
     },
   });
 
@@ -194,7 +193,7 @@ function createBrowser(): void {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
     commandBar.fitWindow();
-    const { radius, ...bounds } = pageFrame(width, height, layout, isFullScreen());
+    const { radius, ...bounds } = pageFrame(width, height, layout, isPageFullScreen());
     tabs.setPageBounds(bounds);
     tabs.setPageRadius(radius);
     if (process.platform === 'darwin') {
@@ -238,8 +237,8 @@ function createBrowser(): void {
     controlsRevealed = false;
   };
 
-  const syncFullScreen = () => {
-    if (isFullScreen()) {
+  const syncPageFullScreen = () => {
+    if (isPageFullScreen()) {
       commandBar.close();
       hideWindowControls();
     }
@@ -254,13 +253,9 @@ function createBrowser(): void {
       hideWindowControls();
       notifyUi({ type: 'window-controls', visible: false });
     }
-    windowFullScreen = true;
-    syncFullScreen();
+    applyLayout();
   });
-  window.on('leave-full-screen', () => {
-    windowFullScreen = false;
-    syncFullScreen();
-  });
+  window.on('leave-full-screen', applyLayout);
   applyLayout();
 
   const recordSnapshot = (label: string) => {

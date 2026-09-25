@@ -52,8 +52,8 @@ export type PanelSide = 'left' | 'right';
 export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
-  /** The page occupies the whole window while full screen is active. */
-  fullScreen: boolean;
+  /** The active site's HTML full screen player occupies the whole window. */
+  pageFullScreen: boolean;
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;

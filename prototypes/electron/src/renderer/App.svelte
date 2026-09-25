@@ -29,7 +29,7 @@
   let browser: BrowserState = $state({
     tabs: [],
     activeTabId: null,
-    fullScreen: false,
+    pageFullScreen: false,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     panelSide: 'left',
@@ -98,11 +98,11 @@
 <div
   class="shell"
   class:right={side === 'right'}
-  class:fullscreen={browser.fullScreen}
-  style:grid-template-columns={browser.fullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
-  style:grid-template-rows={browser.fullScreen ? 'minmax(0, 1fr)' : `${CHROME_HEIGHT}px minmax(0, 1fr)`}
+  class:fullscreen={browser.pageFullScreen}
+  style:grid-template-columns={browser.pageFullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
+  style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${CHROME_HEIGHT}px minmax(0, 1fr)`}
 >
-  {#if !browser.fullScreen}
+  {#if !browser.pageFullScreen}
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
@@ -156,8 +156,8 @@
   <section
     class="page"
     class:blank
-    style:margin={browser.fullScreen ? '0' : side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
-    style:border-radius={browser.fullScreen ? '0' : `${PAGE_RADIUS}px`}
+    style:margin={browser.pageFullScreen ? '0' : side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
+    style:border-radius={browser.pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
     <!-- The page view is drawn by the main process over this area. -->
     <div class="viewport" aria-hidden="true">

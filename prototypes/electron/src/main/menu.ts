@@ -1,4 +1,4 @@
-import { Menu, app, type MenuItemConstructorOptions } from 'electron';
+import { Menu, type MenuItemConstructorOptions } from 'electron';
 import type { DeviceId } from '../shared/types.js';
 
 export interface DeviceMenuItem {
@@ -48,7 +48,7 @@ export function buildMenu(actions: MenuActions): Menu {
     ...(isMac
       ? [
           {
-            label: app.name,
+            label: 'Yalqen',
             submenu: [
               { role: 'about' },
               { type: 'separator' },

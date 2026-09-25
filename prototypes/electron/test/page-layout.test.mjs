@@ -11,7 +11,7 @@ const layout = {
   pageRadius: 16,
 };
 
-test('full screen gives the page the entire window without rounded corners', () => {
+test('a page full screen player gets the entire window without rounded corners', () => {
   assert.deepEqual(pageFrame(1280, 820, layout, true), {
     x: 0,
     y: 0,
@@ -21,7 +21,14 @@ test('full screen gives the page the entire window without rounded corners', () 
   });
 });
 
-test('leaving full screen restores the browser chrome spacing on either side', () => {
+test('normal browsing keeps browser chrome spacing even at full screen window dimensions', () => {
+  assert.deepEqual(pageFrame(2560, 1440, layout, false), {
+    x: 220,
+    y: 44,
+    width: 2332,
+    height: 1388,
+    radius: 16,
+  });
   assert.deepEqual(pageFrame(1280, 820, layout, false), {
     x: 220,
     y: 44,

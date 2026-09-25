@@ -8,9 +8,9 @@ export interface PageFrame {
   radius: number;
 }
 
-/** Full screen removes every browser inset so a site's video can fill the display. */
-export function pageFrame(width: number, height: number, layout: ChromeLayout, fullScreen: boolean): PageFrame {
-  if (fullScreen) return { x: 0, y: 0, width, height, radius: 0 };
+/** A site's HTML full screen player removes browser insets and fills the display. */
+export function pageFrame(width: number, height: number, layout: ChromeLayout, pageFullScreen: boolean): PageFrame {
+  if (pageFullScreen) return { x: 0, y: 0, width, height, radius: 0 };
   return {
     x: layout.panelSide === 'left' ? layout.panelWidth : layout.pageInset,
     y: layout.chromeHeight,
