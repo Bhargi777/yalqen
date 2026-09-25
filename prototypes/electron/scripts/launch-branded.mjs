@@ -38,14 +38,14 @@ function brandedMacApp() {
     CFBundleName: productName,
     CFBundleDisplayName: productName,
     CFBundleIdentifier: 'com.yalqen.browser.prototype',
-    CFBundleIconFile: 'yalqen.icns',
+    CFBundleIconFile: 'yalqen-fitted.icns',
   })) {
     execFileSync('plutil', ['-replace', key, '-string', value, plist]);
   }
 
   fs.copyFileSync(
-    path.join(repo, 'design', 'brand', 'yalqen.icns'),
-    path.join(destination, 'Contents', 'Resources', 'yalqen.icns'),
+    path.join(repo, 'design', 'brand', 'yalqen-fitted.icns'),
+    path.join(destination, 'Contents', 'Resources', 'yalqen-fitted.icns'),
   );
 
   execFileSync('codesign', ['--force', '--deep', '--sign', '-', destination]);

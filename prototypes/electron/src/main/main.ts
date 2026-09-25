@@ -45,7 +45,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-proto
 const repoRoot = path.resolve(app.getAppPath(), '../..');
 const metricsLog = new MetricsLog(process.env.YALQEN_METRICS_DIR ?? path.join(repoRoot, 'bench/results'));
 const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
-const appIcon = path.join(repoRoot, 'design/brand/png/icon-512.png');
+const appIcon = path.join(repoRoot, 'design/brand/png/fitted/icon-512.png');
 
 registerInternalScheme();
 app.setName('Yalqen');
