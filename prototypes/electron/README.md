@@ -30,6 +30,16 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Ayrı ayarlar penceresi (⌘, veya panel altındaki ayar düğmesi).
 - Uygulama adı `yalqen` (`package.json` → `productName`), "yalqen Hakkında" penceresi. macOS menü çubuğu, Dock ve uygulama değiştirici adı çalışan paketin `Info.plist` dosyasından okur; paketlenmemiş çalıştırmada bu `node_modules` içindeki `Electron.app` olduğundan `npm start` önce [`scripts/brand-electron-mac.mjs`](scripts/brand-electron-mac.mjs) ile bu paketin adını `yalqen` yapar. `npm install` Electron'u yeniden kurarsa bir sonraki `npm start` adı tekrar ayarlar. Doğrudan `electron .` ile çalıştırılırsa ad "Electron" kalabilir.
 - Uygulama ikonu [`design/brand/png/icon-512.png`](../../design/brand/png/icon-512.png): macOS'ta Dock ikonu, diğer sistemlerde pencere ikonu olarak ayarlanır.
+- Cam (Liquid Glass) pencere: [tasarım kuralları](../../design/TOKENS.md#cam-malzemesi-liquid-glass). Ayrıntı aşağıda.
+
+## Cam görünüm
+
+macOS'ta pencere saydam açılır ve arayüzün arkasına sistem cam malzemesi yerleştirilir: macOS 26+ üzerinde `NSGlassEffectView`, daha eski sürümlerde `NSVisualEffectView`. Bunu isteğe bağlı, yalnızca macOS'a kurulan [`electron-liquid-glass`](https://github.com/Meridius-Labs/electron-liquid-glass) paketi yapar (MIT, hazır derlenmiş ikili; yalnızca açık API kullanılıyor, `unstable_*` çağrıları yok). Arayüz cam üstünde yarı saydam tokenlarla çizilir; web sayfası pencere kenarlarından 8 px içeride, 10 px köşeli opak kartta kalır.
+
+Opak görünüme dönülen durumlar:
+
+- macOS dışı sistemler veya eklenti yüklenemediğinde (pencere saydam açılmaz).
+- Sistemde "Saydamlığı azalt" açıksa (`nativeTheme.prefersReducedTransparency`); uygulama açıkken değişirse arayüz opak zemine geçer.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
 
@@ -79,6 +89,6 @@ Linux (Xvfb) üzerinde, yerel test sayfalarıyla otomatik bir duman testi geçti
 
 Dondurma da aynı yolla denendi: dondurulan sekmede zamanlayıcı ve `requestAnimationFrame` durdu, seçilince devam etti (`freeze`/`resume` olayları geldi); canlı tut, ses çalan sekme, ayarı kapatıp açma, bellekten çıkarıp geri açma, bellek baskısı sinyali ve ölçüm kaydı çalıştı. Gerçek sitelerde ve bellek etkisi ölçülmedi.
 
-**macOS'ta henüz çalıştırılmadı.** Pencere başlık çubuğu (`hiddenInset`), trafik ışıklarının panele taşınması (`setWindowButtonPosition`) ve kısayollar Mac'te kontrol edilmelidir. Linux'ta alınan bellek sayıları karar için kullanılmaz.
+**macOS'ta henüz çalıştırılmadı.** Pencere başlık çubuğu (`hiddenInset`), trafik ışıklarının panele taşınması (`setWindowButtonPosition`) ve kısayollar Mac'te kontrol edilmelidir. Cam görünüm de yalnızca Linux'ta, arayüzün tarayıcıda taklit edilmiş bir masaüstü üzerinde ekran görüntüsüyle kontrol edildi; Mac'te bakılacaklar: cam görünümün gelmesi, saydam pencerenin gölgesi ve yeniden boyutlandırılması, sayfa kartının köşeleri, "Saydamlığı azalt" değişince opak zemine geçiş, açık duvar kâğıtlarında ikincil metin kontrastı. Linux'ta alınan bellek sayıları karar için kullanılmaz.
 
 Veri dizini: `~/Library/Application Support/yalqen-electron-prototype` (macOS).

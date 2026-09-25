@@ -9,8 +9,10 @@ import {
   type UiAction,
   type SettingsView,
   type UiCommand,
+  type WindowMaterial,
 } from '../shared/types.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
+import { applyGlass, glassAvailable } from './glass.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
 import { SessionStore } from './persistence.js';
@@ -45,6 +47,8 @@ function createBrowser(): void {
     title: 'yalqen',
     icon: appIcon,
     titleBarStyle: 'hiddenInset',
+    // The glass view sits behind the UI, so the window itself must be see-through.
+    transparent: glassAvailable,
   });
 
   const ui = new WebContentsView({
@@ -55,6 +59,7 @@ function createBrowser(): void {
       nodeIntegration: false,
     },
   });
+  if (glassAvailable) ui.setBackgroundColor('#00000000');
   ui.webContents.on('will-navigate', (event) => event.preventDefault());
   ui.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.contentView.addChildView(ui);
@@ -76,14 +81,20 @@ function createBrowser(): void {
     icon: appIcon,
   });
   nativeTheme.themeSource = settings.get().theme;
-  let layout: ChromeLayout = { panelWidth: 240, windowControls: true };
+  let layout: ChromeLayout = { panelWidth: 240, windowControls: true, pageInset: 0, pageRadius: 0 };
   let totalMemoryMB: number | null = null;
+  // Optimistic until the glass view is added, so the UI does not start opaque.
+  let glassApplied = glassAvailable;
+
+  const material = (): WindowMaterial =>
+    glassApplied && !nativeTheme.prefersReducedTransparency ? 'glass' : 'opaque';
 
   const browserState = (): BrowserState => ({
     ...tabs.state(),
     totalMemoryMB,
     addressPlaceholder: searchEngine().placeholder,
     panelCollapsed: settings.get().panelCollapsed,
+    material: material(),
   });
   const pushState = () => {
     if (!ui.webContents.isDestroyed()) {
@@ -111,7 +122,13 @@ function createBrowser(): void {
   const applyLayout = () => {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
-    tabs.setPageBounds({ x: 0, y: 0, width: Math.max(0, width - layout.panelWidth), height });
+    tabs.setPageBounds({
+      x: layout.pageInset,
+      y: layout.pageInset,
+      width: Math.max(0, width - layout.panelWidth - layout.pageInset),
+      height: Math.max(0, height - 2 * layout.pageInset),
+    });
+    tabs.setPageRadius(layout.pageRadius);
     if (process.platform === 'darwin') {
       // The traffic lights live in the top row of the tab panel.
       window.setWindowButtonVisibility(layout.windowControls);
@@ -253,6 +270,13 @@ function createBrowser(): void {
     }
   }
 
+  // "Reduce transparency" can change while the app runs; the UI then paints opaque.
+  nativeTheme.on('updated', pushState);
+  ui.webContents.once('did-finish-load', () => {
+    glassApplied = applyGlass(window);
+    pushState();
+  });
+
   const memoryTimer = setInterval(() => {
     totalMemoryMB = Math.round(readProcessMemory().totalKB / 1024);
     pushState();
@@ -261,6 +285,7 @@ function createBrowser(): void {
   window.on('close', () => {
     clearInterval(memoryTimer);
     settingsWindow.close();
+    nativeTheme.off('updated', pushState);
     store.saveNow(tabs.toSession());
     tabs.destroyAll();
     if (!ui.webContents.isDestroyed()) ui.webContents.close();

@@ -42,6 +42,7 @@ export class TabManager {
   private readonly closed: SavedTab[] = [];
   private activeId: TabId | null = null;
   private pageBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
+  private pageRadius = 0;
 
   constructor(private readonly options: TabManagerOptions) {}
 
@@ -71,6 +72,12 @@ export class TabManager {
   setPageBounds(bounds: Rectangle): void {
     this.pageBounds = bounds;
     this.active()?.view?.setBounds(bounds);
+  }
+
+  setPageRadius(radius: number): void {
+    if (radius === this.pageRadius) return;
+    this.pageRadius = radius;
+    for (const tab of this.tabs) tab.view?.setBorderRadius(radius);
   }
 
   open(url = NEW_TAB_URL, { activate = true } = {}): TabId {
@@ -281,6 +288,7 @@ export class TabManager {
     tab.view = view;
     // Background tabs get real bounds too, so they lay out like visible pages.
     view.setBounds(this.pageBounds);
+    view.setBorderRadius(this.pageRadius);
     this.attachListeners(tab, view);
 
     const history = tab.history;

@@ -22,12 +22,20 @@ export interface TabSnapshot {
   canGoForward: boolean;
 }
 
+/**
+ * `glass`: the window is transparent over the system glass material and only the
+ * page card is opaque. `opaque`: no glass view (other platforms, addon missing)
+ * or the system "Reduce transparency" setting is on.
+ */
+export type WindowMaterial = 'glass' | 'opaque';
+
 export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
   totalMemoryMB: number | null;
   addressPlaceholder: string;
   panelCollapsed: boolean;
+  material: WindowMaterial;
 }
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
@@ -35,6 +43,10 @@ export interface ChromeLayout {
   panelWidth: number;
   /** Whether the macOS window controls fit at the top of the tab panel. */
   windowControls: boolean;
+  /** Gap between the page card and the left, top and bottom window edges. */
+  pageInset: number;
+  /** Corner radius of the page card. */
+  pageRadius: number;
 }
 
 export type UiCommand = { type: 'focus-address' };

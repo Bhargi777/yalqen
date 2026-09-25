@@ -56,25 +56,27 @@
     </button>
   {:else}
     <nav class="controls">
-      <button
-        class="icon"
-        title="Geri"
-        disabled={!tab?.canGoBack}
-        onclick={() => window.yalqen.send({ type: 'go-back' })}
-      >
-        <Icon name="back" />
-      </button>
-      <button
-        class="icon"
-        title="İleri"
-        disabled={!tab?.canGoForward}
-        onclick={() => window.yalqen.send({ type: 'go-forward' })}
-      >
-        <Icon name="forward" />
-      </button>
-      <button class="icon" title="Yenile" onclick={() => window.yalqen.send({ type: 'reload' })}>
-        <Icon name="reload" />
-      </button>
+      <span class="nav">
+        <button
+          class="icon"
+          title="Geri"
+          disabled={!tab?.canGoBack}
+          onclick={() => window.yalqen.send({ type: 'go-back' })}
+        >
+          <Icon name="back" />
+        </button>
+        <button
+          class="icon"
+          title="İleri"
+          disabled={!tab?.canGoForward}
+          onclick={() => window.yalqen.send({ type: 'go-forward' })}
+        >
+          <Icon name="forward" />
+        </button>
+        <button class="icon" title="Yenile" onclick={() => window.yalqen.send({ type: 'reload' })}>
+          <Icon name="reload" />
+        </button>
+      </span>
     </nav>
 
     <form class="address" onsubmit={submit}>
@@ -121,6 +123,11 @@
     /* Leaves room for the macOS traffic lights on the left. */
     padding-left: 72px;
     -webkit-app-region: drag;
+  }
+
+  .nav {
+    display: flex;
+    gap: 2px;
   }
 
   .icon {
@@ -187,5 +194,27 @@
     border-radius: 2px;
     background: var(--accent);
     opacity: 0.6;
+  }
+
+  /* Liquid Glass: controls float as capsules with a light rim over the material. */
+  :global([data-material='glass']) .nav {
+    padding: 2px;
+    border-radius: 16px;
+    background: var(--platter);
+    box-shadow: var(--rim);
+  }
+
+  :global([data-material='glass']) .nav .icon {
+    border-radius: 50%;
+  }
+
+  :global([data-material='glass']) input {
+    border-radius: 15px;
+    box-shadow: var(--shadow), var(--rim);
+  }
+
+  :global([data-material='glass']) .loading {
+    right: 12px;
+    left: 12px;
   }
 </style>

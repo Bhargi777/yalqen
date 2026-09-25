@@ -8,6 +8,9 @@
   const MIN_WIDTH = 180;
   const MAX_WIDTH = 400;
   const DEFAULT_WIDTH = 240;
+  /** Page card inset and radius on glass; on opaque windows the page fills its area. */
+  const GLASS_PAGE_INSET = 8;
+  const GLASS_PAGE_RADIUS = 10;
   const PREFS_KEY = 'yalqen:panel';
 
   let browser: BrowserState = $state({
@@ -16,6 +19,7 @@
     totalMemoryMB: null,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
+    material: 'opaque',
   });
   let width = $state(DEFAULT_WIDTH);
   let toolbar: Toolbar;
@@ -35,9 +39,16 @@
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
+  const glass = $derived(browser.material === 'glass');
+  const pageInset = $derived(glass ? GLASS_PAGE_INSET : 0);
+  const pageRadius = $derived(glass ? GLASS_PAGE_RADIUS : 0);
 
   $effect(() => {
-    window.yalqen.setLayout({ panelWidth, windowControls: !collapsed });
+    document.documentElement.dataset.material = browser.material;
+  });
+
+  $effect(() => {
+    window.yalqen.setLayout({ panelWidth, windowControls: !collapsed, pageInset, pageRadius });
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
@@ -75,7 +86,12 @@
 
 <div class="shell" style:grid-template-columns="1fr {panelWidth}px">
   <!-- The page view is drawn by the main process over this area. -->
-  <main class="page" aria-hidden="true"></main>
+  <main
+    class="page"
+    aria-hidden="true"
+    style:margin="{pageInset}px 0 {pageInset}px {pageInset}px"
+    style:border-radius="{pageRadius}px"
+  ></main>
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
@@ -105,6 +121,7 @@
   }
 
   .page {
-    background: var(--surface);
+    background: var(--page);
+    box-shadow: var(--page-shadow);
   }
 </style>

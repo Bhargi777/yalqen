@@ -81,9 +81,9 @@ Hiçbir durum yalnızca renkle anlatılmaz.
 
 Dar görünümde başlık ve durum, üzerine gelindiğinde ipucu balonunda yazıyla gösterilir.
 
-## Cam malzemesi (Liquid Glass varyantı)
+## Cam malzemesi (Liquid Glass)
 
-Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam yalnızca pencere kabuğunda** (sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
+Varsayılan görünüm camdır. Ayarlardaki "Pencere malzemesi: Cam / Opak" seçimiyle opağa geçilebilir; yukarıdaki renk tabloları opak görünümün değerleridir. Kural: **cam yalnızca pencere kabuğunda** (sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
 
 | Öğe | Koyu | Açık |
 |---|---|---|
@@ -94,6 +94,14 @@ Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam y
 | Açılır panel | `rgba(40 39 54 / .72)` + blur 30 px | `rgba(250 250 252 / .78)` + blur 30 px |
 | Sayfa kartı | `#1e1e22` (opak) | `#ffffff` (opak) |
 | Pencere köşesi | 16 px, 0.5 px açık kenar parlaması | aynı |
+| Kenar parlaması (`rim`) | `inset 0 0 0 .5px rgba(255 255 255 / .22), inset 0 1px 0 rgba(255 255 255 / .12)` | `inset 0 0 0 .5px rgba(255 255 255 / .6), inset 0 1px 0 rgba(255 255 255 / .5)` |
+| Kontrol grubu zemini (`platter`) | `rgba(255 255 255 / .08)` | `rgba(255 255 255 / .42)` |
+
+Cam kabukta kontroller malzemenin üstünde yüzer:
+
+- Geri/ileri/yenile tek kapsülde toplanır (`platter` + `rim`, 2 px iç boşluk, 16 px köşe); düğmeler yuvarlak.
+- Adres çubuğu kapsül biçimindedir (15 px köşe); gölgesine `rim` eklenir. Aktif sekme satırı da `rim` alır.
+- Sayfa kartı pencerenin sol, üst ve alt kenarından 8 px içeride, 10 px köşeli durur. Opak görünümde kart kenarlara dayanır ve köşesizdir.
 
 - Uygulamada bu değerler elle çizilmez; macOS'un sistem malzemesi kullanılır. Tablodaki değerler taslaktaki CSS yaklaşımıdır.
 - Sistemde "Saydamlığı azalt" açıksa opak tokenlara dönülür.

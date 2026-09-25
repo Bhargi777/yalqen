@@ -242,6 +242,10 @@
     box-shadow: var(--shadow);
   }
 
+  :global([data-material='glass']) .tab.active {
+    box-shadow: var(--shadow), var(--rim);
+  }
+
   .tab.drop-before::before,
   .tab.drop-after::after {
     content: '';
@@ -313,7 +317,7 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--bg);
+    background: var(--badge);
     color: var(--text);
   }
 
