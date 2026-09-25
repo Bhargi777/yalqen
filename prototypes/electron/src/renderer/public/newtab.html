@@ -73,32 +73,52 @@
       }
 
       form {
-        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: min(640px, 100%);
+        height: 52px;
+        margin: 0 auto;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: var(--surface);
+        box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 12px 40px rgb(0 0 0 / 0.16);
       }
 
       .prompt {
-        display: block;
-        width: 100%;
+        flex: 1;
+        min-width: 0;
+        height: 100%;
         padding: 0;
         border: 0;
         background: transparent;
         color: var(--text);
-        caret-color: var(--accent);
         font: inherit;
-        font-size: clamp(40px, 6.4vw, 80px);
-        font-weight: 500;
-        letter-spacing: -0.035em;
-        line-height: 1.1;
-        text-align: center;
+        font-size: 17px;
+        text-align: left;
+        user-select: text;
       }
 
       .prompt::placeholder {
-        color: var(--hint);
+        color: var(--muted);
         opacity: 1;
       }
 
       .prompt:focus {
         outline: none;
+      }
+
+      .search-icon {
+        display: grid;
+        flex: none;
+        place-items: center;
+        color: var(--muted);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        form {
+          box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 12px 40px rgb(0 0 0 / 0.5);
+        }
       }
 
       .actions {
@@ -327,6 +347,12 @@
     <main>
       <!-- welcome -->
       <form id="search-form" action="yalqen://newtab/search" method="get" role="search">
+        <span class="search-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <circle cx="8.8" cy="8.8" r="5.8" />
+            <path d="m13.2 13.2 4 4" />
+          </svg>
+        </span>
         <input
           id="q"
           class="prompt"
@@ -338,8 +364,8 @@
           spellcheck="false"
           autofocus
         />
-        <!-- welcome-action -->
       </form>
+      <!-- welcome-action -->
       <div class="actions">
         <label class="pill" for="q">
           <span class="blank"></span>

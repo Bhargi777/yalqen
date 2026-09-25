@@ -122,7 +122,7 @@ export function serveInternalPages(
     const welcomeVisible = showWelcome();
     const welcome = welcomeVisible ? renderWelcome() : '';
     const welcomeAction = welcomeVisible
-      ? '<button class="welcome-start" type="submit">Aramaya başla <span aria-hidden="true">↗</span></button>'
+      ? '<button class="welcome-start" type="submit" form="search-form">Aramaya başla <span aria-hidden="true">↗</span></button>'
       : '';
     return new Response(
       page
