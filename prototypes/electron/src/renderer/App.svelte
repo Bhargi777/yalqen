@@ -12,6 +12,7 @@
   const GLASS_PAGE_INSET = 8;
   const GLASS_PAGE_RADIUS = 10;
   const PREFS_KEY = 'yalqen:panel';
+  const DEVICE_BEZEL = 10;
 
   let browser: BrowserState = $state({
     tabs: [],
@@ -20,6 +21,7 @@
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     material: 'opaque',
+    device: null,
   });
   let width = $state(DEFAULT_WIDTH);
   let toolbar: Toolbar;
@@ -91,7 +93,22 @@
     aria-hidden="true"
     style:margin="{pageInset}px 0 {pageInset}px {pageInset}px"
     style:border-radius="{pageRadius}px"
-  ></main>
+  >
+    {#if browser.device}
+      {@const device = browser.device}
+      <div class="device-label" style:left="{device.x - DEVICE_BEZEL}px" style:top="{device.y - DEVICE_BEZEL - 20}px" style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px">
+        {device.label} · {device.width}×{device.height}{device.scale < 1 ? ` · %${Math.round(device.scale * 100)}` : ''}
+      </div>
+      <div
+        class="device"
+        style:left="{device.x - DEVICE_BEZEL}px"
+        style:top="{device.y - DEVICE_BEZEL}px"
+        style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px"
+        style:height="{device.viewHeight + 2 * DEVICE_BEZEL}px"
+        style:border-radius="{Math.round(device.cornerRadius * device.scale) + DEVICE_BEZEL}px"
+      ></div>
+    {/if}
+  </main>
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
@@ -121,7 +138,27 @@
   }
 
   .page {
+    position: relative;
+    overflow: hidden;
     background: var(--page);
     box-shadow: var(--page-shadow);
+  }
+
+  .device {
+    position: absolute;
+    background: #1d1d1b;
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.2);
+  }
+
+  .device-label {
+    position: absolute;
+    height: 16px;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: 16px;
+    text-align: center;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 </style>

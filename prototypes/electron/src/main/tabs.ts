@@ -1,10 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
-import { NEW_TAB_URL, type BrowserState, type TabId, type TabSnapshot } from '../shared/types.js';
+import { NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type TabId, type TabSnapshot } from '../shared/types.js';
+import { applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
 const MAX_CLOSED_TABS = 20;
 const NEW_TAB_TITLE = 'Yeni sekme';
+/** Space kept around an emulated device for the bezel and label drawn by the UI. */
+const DEVICE_MARGIN = 32;
+const DEVICE_LABEL_HEIGHT = 24;
+const MIN_DEVICE_SCALE = 0.25;
 
 interface Tab {
   id: TabId;
@@ -19,6 +24,8 @@ interface Tab {
   frozen: boolean;
   /** Navigation history kept while the tab is discarded. */
   history: SavedHistory | null;
+  /** Set while the tab is shown as a device. Not persisted. */
+  emulation: Emulation | null;
 }
 
 export interface RestoreTiming {
@@ -62,22 +69,48 @@ export class TabManager {
     return this.tabs.length;
   }
 
-  state(): Pick<BrowserState, 'tabs' | 'activeTabId'> {
+  state(): Pick<BrowserState, 'tabs' | 'activeTabId' | 'device'> {
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
       activeTabId: this.activeId,
+      device: this.deviceFrame(),
     };
   }
 
   setPageBounds(bounds: Rectangle): void {
     this.pageBounds = bounds;
-    this.active()?.view?.setBounds(bounds);
+    const tab = this.active();
+    if (!tab?.view) return;
+    this.layoutView(tab, tab.view);
+    if (tab.emulation) this.changed();
+  }
+
+  /** Turns device emulation on with `deviceId`, or off, for the active tab. */
+  toggleEmulation(deviceId: DeviceId): void {
+    const tab = this.active();
+    if (!tab) return;
+    this.setEmulation(tab, tab.emulation ? null : { deviceId, landscape: false });
+  }
+
+  /** Shows the active tab as `deviceId`, keeping the orientation if already emulated. */
+  selectDevice(deviceId: DeviceId): void {
+    const tab = this.active();
+    if (!tab) return;
+    this.setEmulation(tab, { deviceId, landscape: tab.emulation?.landscape ?? false });
+  }
+
+  rotateDevice(): void {
+    const tab = this.active();
+    if (!tab?.emulation) return;
+    this.setEmulation(tab, { ...tab.emulation, landscape: !tab.emulation.landscape });
   }
 
   setPageRadius(radius: number): void {
     if (radius === this.pageRadius) return;
     this.pageRadius = radius;
-    for (const tab of this.tabs) tab.view?.setBorderRadius(radius);
+    for (const tab of this.tabs) {
+      if (!tab.emulation) tab.view?.setBorderRadius(radius);
+    }
   }
 
   open(url = NEW_TAB_URL, { activate = true } = {}): TabId {
@@ -106,7 +139,8 @@ export class TabManager {
     if (previous && previous.id !== id) this.maybeFreeze(previous);
     const view = this.ensureLive(next);
     this.unfreeze(next);
-    view.setBounds(this.pageBounds);
+    // The page area may have changed while the tab was in the background.
+    this.layoutView(next, view);
     this.options.window.contentView.addChildView(view);
     // A new tab page leaves focus with the address bar.
     if (next.url !== NEW_TAB_URL && next.url !== 'about:blank') view.webContents.focus();
@@ -183,6 +217,13 @@ export class TabManager {
   navigate(url: string): void {
     const tab = this.active();
     if (!tab) return;
+    if (!tab.view && tab.emulation) {
+      // The page load is deferred until the device is applied; load the new address instead.
+      tab.url = url;
+      tab.history = null;
+      this.ensureLive(tab);
+      return;
+    }
     void this.ensureLive(tab).webContents.loadURL(url);
   }
 
@@ -271,6 +312,7 @@ export class TabManager {
       loading: false,
       frozen: false,
       history: saved.history ?? null,
+      emulation: null,
     };
   }
 
@@ -287,10 +329,21 @@ export class TabManager {
     });
     tab.view = view;
     // Background tabs get real bounds too, so they lay out like visible pages.
-    view.setBounds(this.pageBounds);
-    view.setBorderRadius(this.pageRadius);
     this.attachListeners(tab, view);
+    const emulated = this.layoutView(tab, view);
+    if (emulated) {
+      // Load only after the device overrides are in place, so the first request
+      // already carries the device user agent.
+      void emulated.then(() => {
+        if (tab.view === view) this.load(tab, view);
+      });
+    } else {
+      this.load(tab, view);
+    }
+    return view;
+  }
 
+  private load(tab: Tab, view: WebContentsView): void {
     const history = tab.history;
     tab.history = null;
     if (history && history.entries.length > 0) {
@@ -312,7 +365,82 @@ export class TabManager {
     } else {
       void view.webContents.loadURL(tab.url);
     }
-    return view;
+  }
+
+  private setEmulation(tab: Tab, emulation: Emulation | null): void {
+    const wasEmulated = tab.emulation !== null;
+    tab.emulation = emulation;
+    const view = tab.view;
+    if (view) {
+      const applied = emulation ? this.layoutView(tab, view) : this.clearDevice(tab, view);
+      void (applied ?? Promise.resolve()).then(() => {
+        // Reload when switching between desktop and device so the server
+        // also sees the new user agent. Rotation and device changes do not reload.
+        const contents = view.webContents;
+        if (wasEmulated !== (emulation !== null) && !contents.isDestroyed() && contents.getURL() !== '') {
+          contents.reload();
+        }
+      });
+    }
+    this.changed();
+  }
+
+  private clearDevice(tab: Tab, view: WebContentsView): Promise<void> {
+    this.layoutView(tab, view);
+    return clearEmulation(view.webContents).catch((error: unknown) => {
+      console.warn('[emulation] could not clear device overrides:', error);
+    });
+  }
+
+  /**
+   * Sizes the view for the page area and applies the tab's device overrides.
+   * Returns a promise only when a device is applied.
+   */
+  private layoutView(tab: Tab, view: WebContentsView): Promise<void> | null {
+    if (!tab.emulation) {
+      view.setBorderRadius(this.pageRadius);
+      view.setBounds(this.pageBounds);
+      return null;
+    }
+    const frame = this.fitDevice(tab.emulation);
+    view.setBorderRadius(Math.round(frame.cornerRadius * frame.scale));
+    view.setBounds({
+      x: this.pageBounds.x + frame.x,
+      y: this.pageBounds.y + frame.y,
+      width: frame.viewWidth,
+      height: frame.viewHeight,
+    });
+    return applyEmulation(view.webContents, tab.emulation, frame.scale).catch((error: unknown) => {
+      console.warn('[emulation] could not apply device overrides:', error);
+    });
+  }
+
+  /** Centers the device in the page area, scaled down to fit when needed. */
+  private fitDevice(emulation: Emulation): DeviceFrame {
+    const device = findDevice(emulation.deviceId);
+    const { width, height } = deviceSize(emulation);
+    const page = this.pageBounds;
+    const availableWidth = page.width - 2 * DEVICE_MARGIN;
+    const availableHeight = page.height - 2 * DEVICE_MARGIN - DEVICE_LABEL_HEIGHT;
+    const scale = Math.max(MIN_DEVICE_SCALE, Math.min(1, availableWidth / width, availableHeight / height));
+    const viewWidth = Math.round(width * scale);
+    const viewHeight = Math.round(height * scale);
+    return {
+      label: device.label,
+      width,
+      height,
+      scale,
+      cornerRadius: device.cornerRadius,
+      x: Math.round((page.width - viewWidth) / 2),
+      y: DEVICE_LABEL_HEIGHT + Math.round((page.height - DEVICE_LABEL_HEIGHT - viewHeight) / 2),
+      viewWidth,
+      viewHeight,
+    };
+  }
+
+  private deviceFrame(): DeviceFrame | null {
+    const emulation = this.active()?.emulation;
+    return emulation ? this.fitDevice(emulation) : null;
   }
 
   private attachListeners(tab: Tab, view: WebContentsView): void {
@@ -348,6 +476,14 @@ export class TabManager {
       tab.url = contents.getURL();
       this.changed();
     };
+    contents.debugger.on('detach', () => {
+      // The protocol session ended (overrides are gone with it); drop the device
+      // instead of showing stale bounds.
+      if (tab.view !== view || !tab.emulation || contents.isDestroyed()) return;
+      tab.emulation = null;
+      this.layoutView(tab, view);
+      this.changed();
+    });
     contents.on('did-navigate', updateUrl);
     contents.on('did-navigate-in-page', updateUrl);
     contents.on('render-process-gone', () => {

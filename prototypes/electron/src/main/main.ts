@@ -11,6 +11,7 @@ import {
   type UiCommand,
   type WindowMaterial,
 } from '../shared/types.js';
+import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import { buildMenu } from './menu.js';
@@ -83,6 +84,9 @@ function createBrowser(): void {
   nativeTheme.themeSource = settings.get().theme;
   let layout: ChromeLayout = { panelWidth: 240, windowControls: true, pageInset: 0, pageRadius: 0 };
   let totalMemoryMB: number | null = null;
+  // Device used by the phone view shortcut; the last one picked from the menu.
+  // Radio items keep their own checked state, so the menu is not rebuilt.
+  let deviceId = DEFAULT_DEVICE_ID;
   // Optimistic until the glass view is added, so the UI does not start opaque.
   let glassApplied = glassAvailable;
 
@@ -191,6 +195,17 @@ function createBrowser(): void {
       goForward: () => tabs.goForward(),
       togglePanel,
       toggleDevTools: () => tabs.toggleDevTools(),
+      toggleDeviceView: () => tabs.toggleEmulation(deviceId),
+      rotateDevice: () => tabs.rotateDevice(),
+      devices: DEVICES.map((device) => ({
+        id: device.id,
+        label: device.label,
+        checked: device.id === deviceId,
+      })),
+      selectDevice: (id) => {
+        deviceId = id;
+        tabs.selectDevice(id);
+      },
       selectTab: (index) => tabs.selectByIndex(index),
       openPageSet: () => {
         for (const url of readPageSet()) tabs.open(url, { activate: false });

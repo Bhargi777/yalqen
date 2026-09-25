@@ -22,6 +22,23 @@ export interface TabSnapshot {
   canGoForward: boolean;
 }
 
+export type DeviceId = 'iphone-15' | 'iphone-se' | 'pixel-8' | 'ipad-mini';
+
+/** Where the emulated device screen sits, relative to the page area. */
+export interface DeviceFrame {
+  label: string;
+  /** Emulated size in CSS pixels. */
+  width: number;
+  height: number;
+  /** Rendered size divided by emulated size; below 1 when the window is too small. */
+  scale: number;
+  cornerRadius: number;
+  x: number;
+  y: number;
+  viewWidth: number;
+  viewHeight: number;
+}
+
 /**
  * `glass`: the window is transparent over the system glass material and only the
  * page card is opaque. `opaque`: no glass view (other platforms, addon missing)
@@ -36,6 +53,8 @@ export interface BrowserState {
   addressPlaceholder: string;
   panelCollapsed: boolean;
   material: WindowMaterial;
+  /** Set while the active tab is shown as a device. */
+  device: DeviceFrame | null;
 }
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
