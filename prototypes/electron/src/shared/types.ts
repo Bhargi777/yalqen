@@ -102,6 +102,25 @@ export interface YalqenApi {
   send(action: UiAction): void;
 }
 
+/** Sent to the command bar each time it opens. */
+export interface CommandBarOpen {
+  placeholder: string;
+}
+
+/** Requests the command bar sends to the main process. */
+export type CommandBarAction = { type: 'submit'; input: string } | { type: 'dismiss' };
+
+export const CommandBarChannel = {
+  open: 'yalqen-command:open',
+  action: 'yalqen-command:action',
+} as const;
+
+/** API exposed to the command bar overlay by its preload script. */
+export interface CommandBarApi {
+  onOpen(listener: (open: CommandBarOpen) => void): () => void;
+  send(action: CommandBarAction): void;
+}
+
 /** User settings the settings window can change. */
 export interface SettingsValues {
   searchEngine: SearchEngineId;

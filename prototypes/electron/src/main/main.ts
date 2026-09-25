@@ -11,6 +11,7 @@ import {
   type UiCommand,
   type WindowMaterial,
 } from '../shared/types.js';
+import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -110,11 +111,22 @@ function createBrowser(): void {
     ui.webContents.send(IpcChannel.command, command);
   };
 
+  const commandBar = new CommandBar({
+    window,
+    preload: path.join(__dirname, '../preload/command-preload.js'),
+    page: path.join(__dirname, '../renderer/command.html'),
+    onSubmit: (input) => tabs.open(resolveInput(input, searchEngine())),
+    onDismiss: () => {
+      if (!tabs.focusActive()) ui.webContents.focus();
+    },
+  });
+
   const tabs: TabManager = new TabManager({
     window,
     session: daily,
     freezeBackground: () => settings.get().freezeBackgroundTabs,
     onChange: () => {
+      commandBar.keepOnTop();
       pushState();
       store.scheduleSave(() => tabs.toSession());
     },
@@ -126,6 +138,7 @@ function createBrowser(): void {
   const applyLayout = () => {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
+    commandBar.fitWindow();
     tabs.setPageBounds({
       x: layout.pageInset,
       y: layout.pageInset,
@@ -182,7 +195,7 @@ function createBrowser(): void {
 
   Menu.setApplicationMenu(
     buildMenu({
-      newTab: newTabWithAddress,
+      newTab: () => commandBar.open({ placeholder: searchEngine().placeholder }),
       closeTab: () => {
         // The shortcut is app-wide; in the settings window it closes that window.
         if (settingsWindow.isFocused()) settingsWindow.close();
@@ -303,6 +316,7 @@ function createBrowser(): void {
     nativeTheme.off('updated', pushState);
     store.saveNow(tabs.toSession());
     tabs.destroyAll();
+    commandBar.destroy();
     if (!ui.webContents.isDestroyed()) ui.webContents.close();
   });
 

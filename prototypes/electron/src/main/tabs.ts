@@ -147,6 +147,14 @@ export class TabManager {
     this.changed();
   }
 
+  /** Gives focus back to the active page. Returns false for a new tab page or a discarded tab. */
+  focusActive(): boolean {
+    const tab = this.active();
+    if (!tab?.view || tab.url === NEW_TAB_URL || tab.url === 'about:blank') return false;
+    tab.view.webContents.focus();
+    return true;
+  }
+
   close(id: TabId): void {
     const index = this.indexOf(id);
     if (index < 0) return;

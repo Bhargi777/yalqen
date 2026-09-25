@@ -13,7 +13,11 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'chrome140',
     rolldownOptions: {
-      input: { index: page('index.html'), settings: page('settings.html') },
+      input: {
+        index: page('index.html'),
+        settings: page('settings.html'),
+        command: page('command.html'),
+      },
     },
   },
 });

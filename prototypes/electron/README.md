@@ -48,7 +48,8 @@ Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yokt
 
 | Kısayol | İşlem |
 |---|---|
-| ⌘T / ⌘W | Yeni sekme / sekmeyi kapat |
+| ⌘T | Pencerenin ortasında arama kutusu; Enter yeni sekmede açar, Esc veya dışarı tıklama sekme açmadan kapatır |
+| ⌘W | Sekmeyi kapat |
 | ⇧⌘T | Kapatılan sekmeyi aç |
 | ⌘L | Adres çubuğu |
 | ⌘R | Yenile |

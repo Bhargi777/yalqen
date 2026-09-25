@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import type { SettingsApi, YalqenApi } from '../shared/types';
+import type { CommandBarApi, SettingsApi, YalqenApi } from '../shared/types';
 
 declare global {
   interface Window {
@@ -7,5 +7,7 @@ declare global {
     yalqen: YalqenApi;
     /** Present in the settings window. */
     yalqenSettings: SettingsApi;
+    /** Present in the command bar overlay. */
+    yalqenCommand: CommandBarApi;
   }
 }
