@@ -115,6 +115,9 @@
 
   <div class="side trailing">
     <div class="capsule">
+      <button class="icon" title="Geçmiş (⌘Y)" aria-label="Geçmiş" onclick={() => send({ type: 'open-history' })}>
+        <Icon name="history" />
+      </button>
       <button class="icon" title="Profil" aria-label="Profil" onclick={() => send({ type: 'open-profile-menu' })}>
         <Icon name="profile" />
       </button>

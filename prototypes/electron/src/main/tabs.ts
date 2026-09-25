@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
-import { NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type TabId, type TabSnapshot } from '../shared/types.js';
+import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
@@ -29,6 +29,7 @@ interface Tab {
   history: SavedHistory | null;
   /** Set while the tab is shown as a device. Not persisted. */
   emulation: Emulation | null;
+  visitId: string | null;
 }
 
 export interface RestoreTiming {
@@ -49,6 +50,10 @@ export interface TabManagerOptions {
   /** A search typed on the new tab page, or empty when it asked for the address bar. */
   onNewTabSearch: (query: string) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
+  onVisit: (url: string, title: string) => string | null;
+  onVisitTitle: (id: string | null, title: string) => void;
+  onHistoryDelete: (id: string) => void;
+  onHistoryClear: () => void;
 }
 
 export interface RecentPage {
@@ -275,6 +280,12 @@ export class TabManager {
     void this.ensureLive(tab).webContents.loadURL(url);
   }
 
+  openHistory(): void {
+    const existing = this.tabs.find((tab) => tab.url.startsWith(HISTORY_URL));
+    if (existing) this.activate(existing.id);
+    else this.open(HISTORY_URL);
+  }
+
   goBack(): void {
     const history = this.active()?.view?.webContents.navigationHistory;
     if (history?.canGoBack()) history.goBack();
@@ -361,6 +372,7 @@ export class TabManager {
       frozen: false,
       history: saved.history ?? null,
       emulation: null,
+      visitId: null,
     };
   }
 
@@ -501,6 +513,20 @@ export class TabManager {
     contents.on('will-navigate', (event) => {
       const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
       const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
+      const historyDelete = event.url.startsWith(`${HISTORY_URL}delete?`);
+      const historyClear = event.url === `${HISTORY_URL}clear`;
+      if (historyDelete || historyClear) {
+        event.preventDefault();
+        if (!contents.getURL().startsWith(HISTORY_URL)) return;
+        if (historyDelete) {
+          this.options.onHistoryDelete(new URL(event.url).searchParams.get('id') ?? '');
+          contents.reload();
+        } else {
+          this.options.onHistoryClear();
+          void contents.loadURL(HISTORY_URL);
+        }
+        return;
+      }
       if (!search && !forget) return;
       event.preventDefault();
       // Only the new tab page itself may use these links.
@@ -517,6 +543,7 @@ export class TabManager {
       return { action: 'deny' };
     });
     contents.on('page-title-updated', (_event, title) => {
+      if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
       if (tab.title === title) return;
       tab.title = title;
       this.changed(true);
@@ -533,6 +560,7 @@ export class TabManager {
     });
     contents.on('did-stop-loading', () => {
       tab.loading = false;
+      this.options.onVisitTitle(tab.visitId, contents.getTitle());
       // Background tabs are frozen once loaded, not mid-load.
       this.maybeFreeze(tab);
       this.changed();
@@ -543,6 +571,7 @@ export class TabManager {
     contents.on('devtools-closed', () => this.maybeFreeze(tab));
     const updateUrl = () => {
       tab.url = contents.getURL();
+      tab.visitId = this.options.onVisit(tab.url, tab.url);
       // Navigation history can change even when the URL stays the same.
       this.changed(true);
     };

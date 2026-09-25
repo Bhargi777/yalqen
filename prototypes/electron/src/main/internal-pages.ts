@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import { protocol, type Session } from 'electron';
-import { INTERNAL_SCHEME } from '../shared/types.js';
+import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
+import type { HistoryEntry } from './history.js';
 import type { RecentPage } from './tabs.js';
 
 // Favicons of recent pages come from the web; nothing else is loaded.
 const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
 const RECENT_MARKER = '<!-- recent -->';
+const HISTORY_MARKER = '<!-- visits -->';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 
@@ -46,12 +48,58 @@ export function renderRecent(pages: RecentPage[]): string {
   return `<h2>Son kapatılanlar</h2><ul class="recent">${items}</ul>`;
 }
 
-/** Serves yalqen://newtab/ from a static file, with the recently closed pages filled in. */
-export function serveInternalPages(session: Session, newTabFile: string, recent: () => RecentPage[]): void {
+export function renderHistory(entries: HistoryEntry[], query: string): string {
+  const search = query.trim().slice(0, 200);
+  const form = `<form action="${HISTORY_URL}" method="get"><input name="q" type="search" placeholder="Geçmişte ara" aria-label="Geçmişte ara" value="${escapeHtml(search)}" autofocus /></form>`;
+  if (entries.length === 0) {
+    const message = search ? 'Eşleşen sayfa bulunamadı.' : 'Henüz ziyaret edilen bir sayfa yok.';
+    return `${form}<p class="empty">${message}</p>`;
+  }
+  let previousDay = '';
+  const rows = entries.map((entry) => {
+    const day = new Date(entry.visitedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const heading = day === previousDay ? '' : `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
+    previousDay = day;
+    const time = new Date(entry.visitedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const host = hostOf(entry.url);
+    const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
+    return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
+  }).join('');
+  const clear = search ? '' : `<a class="clear" href="${HISTORY_URL}confirm-clear">Tüm geçmişi temizle</a>`;
+  return `${form}<div class="results"><div class="summary"><span>${entries.length} ziyaret</span>${clear}</div><ol>${rows}</ol></div>`;
+}
+
+/** Serves the browser's own pages with their current data filled in. */
+export function serveInternalPages(
+  session: Session,
+  newTabFile: string,
+  historyFile: string,
+  recent: () => RecentPage[],
+  visits: (query: string) => HistoryEntry[],
+): void {
   const page = fs.readFileSync(newTabFile, 'utf8');
+  const historyPage = fs.readFileSync(historyFile, 'utf8');
 
   session.protocol.handle(INTERNAL_SCHEME, (request) => {
     const url = new URL(request.url);
+    if (url.host === 'history') {
+      let content: string;
+      if (url.pathname === '/') {
+        const query = url.searchParams.get('q') ?? '';
+        content = renderHistory(visits(query), query);
+      } else if (url.pathname === '/confirm-clear') {
+        content = `<div class="confirm"><h2>Tüm geçmiş temizlensin mi?</h2><p>Bu işlem ziyaret kayıtlarını kalıcı olarak siler.</p><div class="confirm-actions"><a href="${HISTORY_URL}">Vazgeç</a><a class="danger" href="${HISTORY_URL}clear">Geçmişi temizle</a></div></div>`;
+      } else {
+        return new Response('Not found', { status: 404 });
+      }
+      return new Response(historyPage.replace(HISTORY_MARKER, content), {
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'content-security-policy': NEW_TAB_CSP,
+          'cache-control': 'no-store',
+        },
+      });
+    }
     if (url.host !== 'newtab' || url.pathname !== '/') {
       return new Response('Not found', { status: 404 });
     }

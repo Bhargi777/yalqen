@@ -1,7 +1,7 @@
 import { buildSearchUrl, type SearchEngine } from './search.js';
 
 // Anything else that parses as "scheme:rest" (e.g. "localhost:3000") is treated as a host.
-const EXPLICIT_SCHEMES = new Set(['http:', 'https:', 'file:', 'about:', 'data:', 'view-source:']);
+const EXPLICIT_SCHEMES = new Set(['http:', 'https:', 'file:', 'about:', 'data:', 'view-source:', 'yalqen:']);
 
 /** Turns address bar input into a URL: explicit URLs, bare hosts, or a search. */
 export function resolveInput(input: string, engine: SearchEngine): string {

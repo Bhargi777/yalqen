@@ -3,6 +3,7 @@ export type TabId = string;
 /** Scheme for the browser's own pages, served from the tab session. */
 export const INTERNAL_SCHEME = 'yalqen';
 export const NEW_TAB_URL = 'yalqen://newtab/';
+export const HISTORY_URL = 'yalqen://history/';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
@@ -96,6 +97,7 @@ export type UiAction =
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
   | { type: 'open-downloads' }
+  | { type: 'open-history' }
   /** Shows the window controls while the pointer stays within `width` of the window's top-left corner. */
   | { type: 'reveal-window-controls'; width: number }
   | { type: 'open-settings' };
