@@ -94,6 +94,8 @@ export type UiAction =
   | { type: 'reload' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
+  | { type: 'open-profile-menu' }
+  | { type: 'open-downloads' }
   /** Shows the window controls while the pointer stays within `width` of the window's top-left corner. */
   | { type: 'reveal-window-controls'; width: number }
   | { type: 'open-settings' };

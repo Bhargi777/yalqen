@@ -10,7 +10,6 @@
     side,
     leadingInset,
     trailingInset,
-    blank,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
@@ -20,8 +19,6 @@
     leadingInset: number;
     /** Gap between settings and the window edge or sidebar. */
     trailingInset: number;
-    /** A new tab page is showing; it has its own search field, so the strip steps aside. */
-    blank: boolean;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -57,14 +54,21 @@
 <!-- The active tab doubles as the address field; the existing capsules now frame the tab strip. -->
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading">
-    {#if collapsed && side === 'left'}
-      <div class="capsule">
-        <button class="icon" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={() => send({ type: 'toggle-panel' })}>
-          <Icon name="sidebar" />
-        </button>
-      </div>
-    {/if}
+    <div class="capsule">
+      <button
+        class="icon panel-toggle"
+        class:right={side === 'right'}
+        title={collapsed ? 'Paneli genişlet (⌘S)' : 'Paneli daralt (⌘S)'}
+        aria-expanded={!collapsed}
+        onclick={() => send({ type: 'toggle-panel' })}
+      >
+        <Icon name={collapsed ? 'sidebar' : 'panel-close'} />
+      </button>
+    </div>
     <nav class="capsule navigation" aria-label="Gezinme">
+      <button class="icon" title="Yenile" onclick={() => send({ type: 'reload' })}>
+        <Icon name="reload" />
+      </button>
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />
       </button>
@@ -75,7 +79,7 @@
   </div>
 
   <div class="tab-group">
-    <ol class="strip" class:hidden={blank} bind:this={strip} aria-label="Açık sekmeler">
+    <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
     {#each tabs as tab (tab.id)}
       {@const active = tab.id === activeTabId}
       <li class="chip" class:active>
@@ -83,9 +87,6 @@
           <button class="address" title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
-          </button>
-          <button class="icon small" title="Yenile" onclick={() => send({ type: 'reload' })}>
-            <Icon name="reload" size={14} />
           </button>
         {:else}
           <button
@@ -114,17 +115,16 @@
 
   <div class="side trailing">
     <div class="capsule">
+      <button class="icon" title="Profil" aria-label="Profil" onclick={() => send({ type: 'open-profile-menu' })}>
+        <Icon name="profile" />
+      </button>
       <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
         <Icon name="settings" />
       </button>
+      <button class="icon" title="İndirilenler klasörünü aç" aria-label="İndirilenler klasörünü aç" onclick={() => send({ type: 'open-downloads' })}>
+        <Icon name="download" />
+      </button>
     </div>
-    {#if collapsed && side === 'right'}
-      <div class="capsule">
-        <button class="icon" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={() => send({ type: 'toggle-panel' })}>
-          <Icon name="sidebar" />
-        </button>
-      </div>
-    {/if}
   </div>
 </header>
 
@@ -153,7 +153,10 @@
 
   .trailing {
     justify-content: flex-end;
-    gap: 6px;
+  }
+
+  .panel-toggle.right {
+    transform: scaleX(-1);
   }
 
   .tab-group {
@@ -234,10 +237,6 @@
     scrollbar-width: none;
   }
 
-  .strip.hidden {
-    visibility: hidden;
-  }
-
   .strip::-webkit-scrollbar {
     display: none;
   }
@@ -263,6 +262,8 @@
   .chip.active {
     width: clamp(220px, 32vw, 420px);
     max-width: none;
+    min-width: 120px;
+    flex-shrink: 1;
     background: var(--surface);
     box-shadow: var(--shadow);
   }

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { BrowserState } from '../shared/types';
   import { isNewTab } from './format';
+  import BrandMark from './components/BrandMark.svelte';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
@@ -43,6 +44,8 @@
 
   // Traffic lights are drawn by macOS only.
   const windowControls = navigator.userAgent.includes('Macintosh');
+  const brandStart = windowControls ? WINDOW_CONTROLS_END : PAGE_INSET;
+  const brandEnd = brandStart + 34;
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
@@ -92,27 +95,25 @@
   style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${CHROME_HEIGHT}px minmax(0, 1fr)`}
 >
   {#if !browser.pageFullScreen}
+  <span class="brand" role="img" title="Yalqen" aria-label="Yalqen" style:left="{brandStart}px">
+    <BrandMark scale={1.5} />
+  </span>
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     {collapsed}
-    {windowControls}
     {side}
-    leadingInset={side === 'left' && windowControls ? WINDOW_CONTROLS_END : 0}
-    trailingInset={0}
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
-    onToggle={() => window.yalqen.send({ type: 'toggle-panel' })}
   />
   <Toolbar
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     {collapsed}
     {side}
-    leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : WINDOW_CONTROLS_END : 0}
+    leadingInset={side === 'left' ? Math.max(0, brandEnd - panelWidth) : brandEnd}
     trailingInset={PAGE_INSET}
-    {blank}
   />
   {#if windowControls}
     <!--
@@ -176,6 +177,18 @@
 
   .shell.fullscreen .page {
     box-shadow: none;
+  }
+
+  .brand {
+    position: fixed;
+    top: 8px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    color: var(--text);
+    pointer-events: none;
   }
 
   /* Over the buttons while the traffic lights are hidden, so reaching them reveals the lights. */

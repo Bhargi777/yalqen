@@ -6,30 +6,19 @@
     tabs,
     activeTabId,
     collapsed,
-    windowControls,
     side,
-    leadingInset,
-    trailingInset,
     width = $bindable(),
     minWidth,
     maxWidth,
-    onToggle,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     collapsed: boolean;
-    /** macOS draws the traffic lights, so the logo is left out. */
-    windowControls: boolean;
     /** Window edge the panel sits on; the resize handle and toggle icons follow it. */
     side: PanelSide;
-    /** Room kept free at the start of the top row for the back and forward buttons. */
-    leadingInset: number;
-    /** Room kept free at the end of the top row for the new tab and settings buttons. */
-    trailingInset: number;
     width: number;
     minWidth: number;
     maxWidth: number;
-    onToggle: () => void;
   } = $props();
 
   let dragId: TabId | null = $state(null);
@@ -108,17 +97,6 @@
   </span>
 {/snippet}
 
-{#snippet logo()}
-  <span class="logo" aria-hidden="true">
-    <svg viewBox="274 254 482 622" width="11" height="14">
-      <g fill="none" stroke-width="110" stroke-linecap="round">
-        <path d="M330 310 L450 470" stroke="#2F5FD0" />
-        <path d="M700 310 L470 770 Q445 820 385 820" stroke="currentColor" />
-      </g>
-    </svg>
-  </span>
-{/snippet}
-
 <aside class="panel" class:collapsed class:right={side === 'right'} aria-label="Sekmeler">
   {#if !collapsed}
     <div
@@ -130,16 +108,7 @@
     ></div>
   {/if}
 
-  <div class="top" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
-    {#if !collapsed}
-      <!-- On macOS the traffic lights take the logo's place. -->
-      {#if !windowControls}{@render logo()}{/if}
-      <span class="spacer"></span>
-      <button class="icon toggle" title="Paneli daralt (⌘S)" aria-expanded="true" onclick={onToggle}>
-        <Icon name="panel-close" />
-      </button>
-    {/if}
-  </div>
+  <div class="top"></div>
 
   {#if favorites.length > 0}
     <ul class="favorites" aria-label="Favoriler">
@@ -271,11 +240,6 @@
     left: -2px;
   }
 
-  /* The panel icons point at the window edge the panel sits on. */
-  .panel.right .toggle {
-    transform: scaleX(-1);
-  }
-
   .top {
     display: flex;
     flex: none;
@@ -284,36 +248,6 @@
     height: 44px;
     transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
-  }
-
-  .spacer {
-    flex: 1;
-  }
-
-  .logo {
-    display: grid;
-    flex: none;
-    place-items: center;
-    color: var(--text);
-  }
-
-  .icon {
-    display: grid;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text-muted);
-    transition: background var(--transition);
-    -webkit-app-region: no-drag;
-  }
-
-  .icon:hover {
-    background: var(--surface-hover);
-    color: var(--text);
   }
 
   /* Favorites: a row of small tiles, a single column when collapsed. */

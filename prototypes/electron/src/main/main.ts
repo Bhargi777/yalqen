@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, screen, session } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, screen, session, shell } from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -400,6 +400,18 @@ function createBrowser(): void {
         break;
       case 'open-address':
         openCenteredAddress();
+        break;
+      case 'open-profile-menu':
+        Menu.buildFromTemplate([
+          { label: 'Yalqen profili', enabled: false },
+          { type: 'separator' },
+          { label: 'Ayarlar…', click: () => settingsWindow.open() },
+        ]).popup({ window });
+        break;
+      case 'open-downloads':
+        void shell.openPath(app.getPath('downloads')).then((error) => {
+          if (error) console.warn(`[downloads] could not open folder: ${error}`);
+        });
         break;
       case 'reveal-window-controls':
         revealWindowControls(action.width);
