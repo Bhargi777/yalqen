@@ -1,26 +1,33 @@
 :root {
-  --bg: #f7f4f8;
+  --bg: #e6e8eb;
   --surface: #ffffff;
-  --surface-hover: #eee9f1;
+  --surface-strong: #f6f7f8;
+  --surface-hover: rgb(16 18 24 / 0.05);
   --surface-active: #ffffff;
-  --border: #e5dfe9;
-  --text: #211c27;
-  --text-muted: #77717d;
-  --accent: #7652a7;
-  --focus: #7652a7;
+  /* Grouped containers in the sidebar: favorite tiles, the tab list, the footer. */
+  --well: #dcdfe3;
+  --well-hover: #d3d6db;
+  --border: #d2d5da;
+  --text: #1a1b1e;
+  --text-muted: #6b6e75;
+  --accent: #6d4aff;
+  --focus: #6d4aff;
   --warn: #a34a06;
-  --shadow: 0 1px 2px rgb(44 26 61 / 0.05), 0 0 0 1px rgb(44 26 61 / 0.05);
+  --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
   /* Window background under the UI; transparent over the glass material. */
   --window: var(--bg);
   --page: var(--surface);
-  --page-shadow: 0 0 0 1px rgb(44 26 61 / 0.06), 0 6px 24px rgb(44 26 61 / 0.06);
+  --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 2px 10px rgb(16 18 24 / 0.05);
+  --page-divider: rgb(16 18 24 / 0.06);
+  /* Shown in the page area before a page view is drawn. */
+  --page-empty: #f3f4f6;
   --badge: var(--bg);
   /* Grouped toolbar controls; only drawn as a platter on glass. */
   --platter: transparent;
   --rim: none;
 
   --radius: 10px;
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
   --font-size: 13px;
   --font-size-small: 11px;
   --transition: 120ms ease-out;
@@ -30,17 +37,24 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-material='glass']) {
-    --bg: #1b1b1a;
-    --surface: #262624;
-    --surface-hover: #2f2f2d;
-    --surface-active: #353533;
-    --border: #353533;
-    --text: #ececea;
-    --text-muted: #9a9a92;
-    --accent: #7a9cff;
-    --focus: #7a9cff;
+    --bg: #141517;
+    --surface: #26282c;
+    --surface-strong: #2d2f34;
+    --surface-hover: rgb(255 255 255 / 0.06);
+    --surface-active: #2d2f34;
+    --well: #1e2023;
+    --well-hover: #25272b;
+    --border: #2f3136;
+    --text: #eceef1;
+    --text-muted: #9a9ea6;
+    --accent: #9b85ff;
+    --focus: #9b85ff;
     --warn: #f0a35c;
-    --shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+    --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.3);
+    --page: #1f2124;
+    --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 2px 10px rgb(0 0 0 / 0.3);
+    --page-divider: rgb(255 255 255 / 0.06);
+    --page-empty: #1b1c1f;
     color-scheme: dark;
   }
 }
@@ -48,23 +62,28 @@
 /*
  * Liquid Glass: the system material (NSGlassEffectView) is drawn behind the
  * transparent UI by the main process. These tokens only tint controls on top of
- * it; the web page stays on an opaque card. Values: design/TOKENS.md.
+ * it; the web page stays on an opaque card.
  */
 :root[data-material='glass'] {
   --window: transparent;
   --bg: transparent;
-  --surface: rgb(255 255 255 / 0.78);
-  --surface-hover: rgb(87 55 111 / 0.09);
-  --surface-active: rgb(255 255 255 / 0.82);
-  --border: rgb(70 45 83 / 0.12);
-  --text: #211c27;
-  --text-muted: rgb(54 43 62 / 0.7);
-  --accent: #7652a7;
-  --focus: #7652a7;
-  --shadow: 0 0 0 0.5px rgb(70 45 83 / 0.11), 0 2px 6px rgb(44 26 61 / 0.07);
+  --surface: rgb(255 255 255 / 0.82);
+  --surface-strong: rgb(255 255 255 / 0.95);
+  --surface-hover: rgb(16 18 24 / 0.06);
+  --surface-active: rgb(255 255 255 / 0.86);
+  --well: rgb(16 18 24 / 0.06);
+  --well-hover: rgb(16 18 24 / 0.1);
+  --border: rgb(16 18 24 / 0.12);
+  --text: #1a1b1e;
+  --text-muted: rgb(40 42 48 / 0.7);
+  --accent: #6d4aff;
+  --focus: #6d4aff;
+  --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08);
   --page: #ffffff;
-  --page-shadow: 0 0 0 0.5px rgb(70 45 83 / 0.1), 0 4px 18px rgb(44 26 61 / 0.08);
-  --badge: #efe9f3;
+  --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 4px 18px rgb(16 18 24 / 0.08);
+  --page-divider: rgb(16 18 24 / 0.06);
+  --page-empty: #f3f4f6;
+  --badge: #eceef1;
   --platter: rgb(255 255 255 / 0.48);
   --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.5);
   color-scheme: light;
@@ -73,17 +92,22 @@
 @media (prefers-color-scheme: dark) {
   :root[data-material='glass'] {
     --surface: rgb(255 255 255 / 0.12);
+    --surface-strong: rgb(255 255 255 / 0.18);
     --surface-hover: rgb(255 255 255 / 0.07);
-    --surface-active: rgb(255 255 255 / 0.12);
+    --surface-active: rgb(255 255 255 / 0.14);
+    --well: rgb(255 255 255 / 0.05);
+    --well-hover: rgb(255 255 255 / 0.09);
     --border: rgb(255 255 255 / 0.1);
     --text: #f4f4f7;
     --text-muted: rgb(235 235 245 / 0.64);
-    --accent: #8fb0ff;
-    --focus: #8fb0ff;
+    --accent: #9b85ff;
+    --focus: #9b85ff;
     --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2);
-    --page: #1e1e22;
+    --page: #1f2124;
     --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2);
-    --badge: #2a2940;
+    --page-divider: rgb(255 255 255 / 0.06);
+    --page-empty: #1b1c1f;
+    --badge: #2a2c30;
     --platter: rgb(255 255 255 / 0.08);
     --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.12);
     color-scheme: dark;
@@ -120,7 +144,7 @@ button:not(:disabled) {
 }
 
 ::selection {
-  background: rgb(118 82 167 / 0.2);
+  background: rgb(109 74 255 / 0.2);
 }
 
 :focus-visible {

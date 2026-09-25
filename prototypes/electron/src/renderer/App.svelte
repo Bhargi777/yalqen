@@ -1,17 +1,21 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import type { BrowserState } from '../shared/types';
+  import PageHeader from './components/PageHeader.svelte';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
-  const COLLAPSED_WIDTH = 48;
-  const MIN_WIDTH = 200;
-  const MAX_WIDTH = 420;
-  const DEFAULT_WIDTH = 264;
-  /** Keep the page on its own card in both opaque and glass windows. */
-  const CHROME_HEIGHT = 54;
-  const PAGE_INSET = 8;
-  const PAGE_RADIUS = 12;
+  const COLLAPSED_WIDTH = 64;
+  const MIN_WIDTH = 220;
+  const MAX_WIDTH = 400;
+  const DEFAULT_WIDTH = 280;
+  /** Top bar height, page card gap to the window edges, card header and radius. */
+  const CHROME_HEIGHT = 56;
+  const PAGE_INSET = 10;
+  const PAGE_HEADER_HEIGHT = 44;
+  const PAGE_RADIUS = 14;
+  /** Right edge of the macOS traffic lights, measured from the window's left edge. */
+  const WINDOW_CONTROLS_END = 80;
   const PREFS_KEY = 'yalqen:panel';
   const DEVICE_BEZEL = 10;
 
@@ -25,9 +29,6 @@
     device: null,
   });
   let width = $state(DEFAULT_WIDTH);
-  let toolbar: Toolbar;
-  // Set while waiting for the main process to expand the panel before focusing the address bar.
-  let focusAfterExpand = false;
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
@@ -38,6 +39,8 @@
     // Preferences are optional.
   }
 
+  // Traffic lights are drawn by macOS only.
+  const windowControls = navigator.userAgent.includes('Macintosh');
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
@@ -48,7 +51,14 @@
   });
 
   $effect(() => {
-    window.yalqen.setLayout({ panelWidth, windowControls: true, chromeHeight: CHROME_HEIGHT, pageInset: PAGE_INSET, pageRadius: PAGE_RADIUS });
+    window.yalqen.setLayout({
+      panelWidth,
+      windowControls: true,
+      chromeHeight: CHROME_HEIGHT,
+      pageInset: PAGE_INSET,
+      pageHeaderHeight: PAGE_HEADER_HEIGHT,
+      pageRadius: PAGE_RADIUS,
+    });
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
@@ -56,26 +66,11 @@
     }
   });
 
-  $effect(() => {
-    if (collapsed || !focusAfterExpand) return;
-    focusAfterExpand = false;
-    void tick().then(() => toolbar.focusAddress());
-  });
-
-  function focusAddress(): void {
-    if (!collapsed) {
-      toolbar.focusAddress();
-      return;
-    }
-    focusAfterExpand = true;
-    window.yalqen.send({ type: 'toggle-panel' });
-  }
-
   onMount(() => {
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
     const offCommand = window.yalqen.onCommand((command) => {
-      if (command.type === 'focus-address') focusAddress();
+      if (command.type === 'focus-address') window.yalqen.send({ type: 'open-address' });
     });
     return () => {
       offState();
@@ -84,105 +79,73 @@
   });
 </script>
 
-<div class="shell" style:grid-template-columns="1fr {panelWidth}px">
-  <header class="window-chrome">
-    <span class="window-brand">yalqen</span>
-    <span class="window-divider" aria-hidden="true"></span>
-    <span class="window-tab">{activeTab?.title ?? 'Yeni sekme'}</span>
-  </header>
-  <!-- The page view is drawn by the main process over this area. -->
-  <main
-    class="page"
-    aria-hidden="true"
-    style:margin="{PAGE_INSET}px 0 {PAGE_INSET}px {PAGE_INSET}px"
-    style:border-radius="{PAGE_RADIUS}px"
-  >
-    {#if browser.device}
-      {@const device = browser.device}
-      <div class="device-label" style:left="{device.x - DEVICE_BEZEL}px" style:top="{device.y - DEVICE_BEZEL - 20}px" style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px">
-        {device.label} · {device.width}×{device.height}{device.scale < 1 ? ` · %${Math.round(device.scale * 100)}` : ''}
-      </div>
-      <div
-        class="device"
-        style:left="{device.x - DEVICE_BEZEL}px"
-        style:top="{device.y - DEVICE_BEZEL}px"
-        style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px"
-        style:height="{device.viewHeight + 2 * DEVICE_BEZEL}px"
-        style:border-radius="{Math.round(device.cornerRadius * device.scale) + DEVICE_BEZEL}px"
-      ></div>
-    {/if}
-  </main>
+<div class="shell" style:grid-template-columns="{panelWidth}px minmax(0, 1fr)" style:grid-template-rows="{CHROME_HEIGHT}px minmax(0, 1fr)">
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     totalMemoryMB={browser.totalMemoryMB}
     {collapsed}
+    {windowControls}
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
     onToggle={() => window.yalqen.send({ type: 'toggle-panel' })}
+  />
+  <Toolbar
+    tabs={browser.tabs}
+    activeTabId={browser.activeTabId}
+    leadingInset={windowControls ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : 0}
+  />
+  <section
+    class="page"
+    style:margin="0 {PAGE_INSET}px {PAGE_INSET}px 0"
+    style:border-radius="{PAGE_RADIUS}px"
   >
-    {#snippet header()}
-      <Toolbar
-        bind:this={toolbar}
-        tab={activeTab}
-        placeholder={browser.addressPlaceholder}
-        {collapsed}
-        onSearch={focusAddress}
-      />
-    {/snippet}
-  </TabPanel>
+    <PageHeader tab={activeTab} height={PAGE_HEADER_HEIGHT} />
+    <!-- The page view is drawn by the main process over this area. -->
+    <div class="viewport" aria-hidden="true">
+      {#if browser.device}
+        {@const device = browser.device}
+        <div class="device-label" style:left="{device.x - DEVICE_BEZEL}px" style:top="{device.y - DEVICE_BEZEL - 20}px" style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px">
+          {device.label} · {device.width}×{device.height}{device.scale < 1 ? ` · %${Math.round(device.scale * 100)}` : ''}
+        </div>
+        <div
+          class="device"
+          style:left="{device.x - DEVICE_BEZEL}px"
+          style:top="{device.y - DEVICE_BEZEL}px"
+          style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px"
+          style:height="{device.viewHeight + 2 * DEVICE_BEZEL}px"
+          style:border-radius="{Math.round(device.cornerRadius * device.scale) + DEVICE_BEZEL}px"
+        ></div>
+      {/if}
+    </div>
+  </section>
 </div>
 
 <style>
   .shell {
     display: grid;
     height: 100%;
-    grid-template-rows: 54px minmax(0, 1fr);
-  }
-
-  .window-chrome {
-    display: flex;
-    grid-column: 1;
-    grid-row: 1;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    padding: 0 16px 0 94px;
-    color: var(--text-muted);
-    font-size: 12px;
-    -webkit-app-region: drag;
-  }
-
-  .window-brand {
-    flex: none;
-    color: var(--text);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-  }
-
-  .window-divider {
-    flex: none;
-    width: 1px;
-    height: 15px;
-    background: var(--border);
-  }
-
-  .window-tab {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .page {
     position: relative;
-    grid-column: 1;
+    display: flex;
+    grid-column: 2;
     grid-row: 2;
+    flex-direction: column;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
     background: var(--page);
     box-shadow: var(--page-shadow);
+  }
+
+  .viewport {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: var(--page-empty);
   }
 
   .device {

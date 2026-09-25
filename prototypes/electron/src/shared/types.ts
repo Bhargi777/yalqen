@@ -59,13 +59,16 @@ export interface BrowserState {
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
 export interface ChromeLayout {
+  /** Width of the sidebar on the left, including its gap to the page card. */
   panelWidth: number;
   /** Whether the macOS window controls are visible. */
   windowControls: boolean;
-  /** Height of the window chrome above the page. */
+  /** Height of the top bar above the page card. */
   chromeHeight: number;
-  /** Gap between the page card and its available window area. */
+  /** Gap between the page card and the right and bottom window edges. */
   pageInset: number;
+  /** Height of the page card's own header; the page view starts below it. */
+  pageHeaderHeight: number;
   /** Corner radius of the page card. */
   pageRadius: number;
 }
@@ -85,6 +88,7 @@ export type UiAction =
   | { type: 'go-forward' }
   | { type: 'reload' }
   | { type: 'toggle-panel' }
+  | { type: 'open-address' }
   | { type: 'open-settings' };
 
 export const IpcChannel = {

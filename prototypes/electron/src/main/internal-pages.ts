@@ -1,8 +1,11 @@
 import fs from 'node:fs';
 import { protocol, type Session } from 'electron';
 import { INTERNAL_SCHEME } from '../shared/types.js';
+import type { RecentPage } from './tabs.js';
 
-const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'";
+// Favicons of recent pages come from the web; nothing else is loaded.
+const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
+const RECENT_MARKER = '<!-- recent -->';
 
 /** Must run before the app is ready. */
 export function registerInternalScheme(): void {
@@ -11,22 +14,42 @@ export function registerInternalScheme(): void {
   ]);
 }
 
-/**
- * Serves yalqen://newtab/ from a static file. The welcome text is written out
- * on the first new tab page of each launch and shown finished afterwards.
- */
-export function serveInternalPages(session: Session, newTabFile: string): void {
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/** Renders the recently closed pages list, or nothing when there are none. */
+export function renderRecent(pages: RecentPage[]): string {
+  if (pages.length === 0) return '';
+  const items = pages
+    .map((page) => {
+      const icon = page.faviconUrl?.startsWith('https:')
+        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="18" height="18" />`
+        : '<span class="dot"></span>';
+      return `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(hostOf(page.url))}</span></a></li>`;
+    })
+    .join('');
+  return `<h2>Son kapatılanlar</h2><ul class="recent">${items}</ul>`;
+}
+
+/** Serves yalqen://newtab/ from a static file, with the recently closed pages filled in. */
+export function serveInternalPages(session: Session, newTabFile: string, recent: () => RecentPage[]): void {
   const page = fs.readFileSync(newTabFile, 'utf8');
-  let welcomed = false;
 
   session.protocol.handle(INTERNAL_SCHEME, (request) => {
     const url = new URL(request.url);
     if (url.host !== 'newtab' || url.pathname !== '/') {
       return new Response('Not found', { status: 404 });
     }
-    const html = welcomed ? page : page.replace('<html lang="tr">', '<html lang="tr" class="animate">');
-    welcomed = true;
-    return new Response(html, {
+    return new Response(page.replace(RECENT_MARKER, renderRecent(recent())), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': NEW_TAB_CSP },
     });
   });

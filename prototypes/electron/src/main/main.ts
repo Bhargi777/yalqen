@@ -27,8 +27,8 @@ import { resolveInput } from './url.js';
 const DAILY_PARTITION = 'persist:daily';
 const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
-// Offset of the traffic lights from the top-left window chrome.
-const WINDOW_CONTROLS_INSET = { x: 14, y: 15 };
+// Offset of the traffic lights from the top-left corner, centered in the sidebar's top row.
+const WINDOW_CONTROLS_INSET = { x: 18, y: 22 };
 
 // Keep prototype data apart from any other Electron app.
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
@@ -72,7 +72,7 @@ function createBrowser(): void {
     callback(ALLOWED_PERMISSIONS.has(permission)),
   );
   daily.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission));
-  serveInternalPages(daily, path.join(__dirname, '../renderer/newtab.html'));
+  serveInternalPages(daily, path.join(__dirname, '../renderer/newtab.html'), () => tabs.recentlyClosed());
 
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
@@ -84,7 +84,14 @@ function createBrowser(): void {
     icon: appIcon,
   });
   nativeTheme.themeSource = settings.get().theme;
-  let layout: ChromeLayout = { panelWidth: 264, windowControls: true, chromeHeight: 54, pageInset: 8, pageRadius: 12 };
+  let layout: ChromeLayout = {
+    panelWidth: 280,
+    windowControls: true,
+    chromeHeight: 56,
+    pageInset: 10,
+    pageHeaderHeight: 44,
+    pageRadius: 14,
+  };
   let totalMemoryMB: number | null = null;
   // Device used by the phone view shortcut; the last one picked from the menu.
   // Radio items keep their own checked state, so the menu is not rebuilt.
@@ -133,17 +140,21 @@ function createBrowser(): void {
     onRestore: (timing) => {
       metricsLog.write({ event: 'restore', ...timing });
     },
+    onNewTabSearch: () => openCenteredAddress(),
   });
 
   const applyLayout = () => {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
     commandBar.fitWindow();
+    // The page card sits right of the sidebar and below the top bar; the page
+    // view fills the card under its header.
+    const top = layout.chromeHeight + layout.pageHeaderHeight;
     tabs.setPageBounds({
-      x: layout.pageInset,
-      y: layout.chromeHeight + layout.pageInset,
+      x: layout.panelWidth,
+      y: top,
       width: Math.max(0, width - layout.panelWidth - layout.pageInset),
-      height: Math.max(0, height - layout.chromeHeight - 2 * layout.pageInset),
+      height: Math.max(0, height - top - layout.pageInset),
     });
     tabs.setPageRadius(layout.pageRadius);
     if (process.platform === 'darwin') {
@@ -299,6 +310,9 @@ function createBrowser(): void {
         break;
       case 'toggle-panel':
         togglePanel();
+        break;
+      case 'open-address':
+        openCenteredAddress();
         break;
       case 'open-settings':
         settingsWindow.open();

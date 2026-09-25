@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
   import type { TabId, TabSnapshot } from '../../shared/types';
   import Icon from './Icon.svelte';
 
@@ -8,21 +7,22 @@
     activeTabId,
     totalMemoryMB,
     collapsed,
+    windowControls,
     width = $bindable(),
     minWidth,
     maxWidth,
     onToggle,
-    header,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     totalMemoryMB: number | null;
     collapsed: boolean;
+    /** Leaves room for the macOS traffic lights in the top row. */
+    windowControls: boolean;
     width: number;
     minWidth: number;
     maxWidth: number;
     onToggle: () => void;
-    header: Snippet;
   } = $props();
 
   let dragId: TabId | null = $state(null);
@@ -30,6 +30,10 @@
   let brokenIcons: Record<string, true> = $state({});
 
   const send = window.yalqen.send;
+
+  // Tabs kept alive are shown as favorites above the list.
+  const favorites = $derived(tabs.filter((tab) => tab.keepAlive));
+  const listed = $derived(tabs.filter((tab) => !tab.keepAlive));
 
   function label(tab: TabSnapshot): string {
     const states = [
@@ -52,8 +56,11 @@
   function onDrop(event: DragEvent): void {
     event.preventDefault();
     if (dragId && dropIndex !== null) {
+      // Drop positions count listed tabs only; the main process orders all tabs.
       const from = tabs.findIndex((tab) => tab.id === dragId);
-      const toIndex = dropIndex > from ? dropIndex - 1 : dropIndex;
+      const before = listed[dropIndex];
+      const target = before ? tabs.indexOf(before) : tabs.indexOf(listed[listed.length - 1]) + 1;
+      const toIndex = target > from ? target - 1 : target;
       if (toIndex !== from) send({ type: 'move-tab', id: dragId, toIndex });
     }
     dragId = null;
@@ -66,7 +73,7 @@
     const startX = event.clientX;
     const startWidth = width;
     const move = (e: PointerEvent) => {
-      width = Math.round(Math.min(maxWidth, Math.max(minWidth, startWidth + startX - e.clientX)));
+      width = Math.round(Math.min(maxWidth, Math.max(minWidth, startWidth + e.clientX - startX)));
     };
     const end = () => {
       handle.removeEventListener('pointermove', move);
@@ -76,6 +83,33 @@
     handle.addEventListener('pointerup', end);
   }
 </script>
+
+{#snippet favicon(tab: TabSnapshot, size: number)}
+  <span class="favicon" style:width="{size}px" style:height="{size}px">
+    {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
+      <img
+        src={tab.faviconUrl}
+        alt=""
+        width={size}
+        height={size}
+        onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
+      />
+    {:else}
+      <Icon name="globe" size={size} />
+    {/if}
+  </span>
+{/snippet}
+
+{#snippet logo()}
+  <span class="logo" aria-hidden="true">
+    <svg viewBox="274 254 482 622" width="16" height="20">
+      <g fill="none" stroke-width="110" stroke-linecap="round">
+        <path d="M330 310 L450 470" stroke="#2F5FD0" />
+        <path d="M700 310 L470 770 Q445 820 385 820" stroke="currentColor" />
+      </g>
+    </svg>
+  </span>
+{/snippet}
 
 <aside class="panel" class:collapsed aria-label="Sekmeler">
   {#if !collapsed}
@@ -88,115 +122,131 @@
     ></div>
   {/if}
 
-  {@render header()}
+  <div class="top" class:controls={windowControls}>
+    {#if !collapsed}
+      {@render logo()}
+      <span class="spacer"></span>
+      <button class="icon" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+        <Icon name="plus" />
+      </button>
+      <button class="icon" title="Paneli daralt (⌘S)" aria-expanded="true" onclick={onToggle}>
+        <Icon name="panel-close" />
+      </button>
+    {/if}
+  </div>
 
-  {#if !collapsed}
-    <div class="section-heading">
-      <span>Sekmeler</span>
-      <span class="tab-count">{tabs.length}</span>
-    </div>
+  {#if collapsed}
+    {@render logo()}
   {/if}
 
-  <ol class="tabs" ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
-    {#each tabs as tab, index (tab.id)}
-      <li
-        class="tab"
-        class:active={tab.id === activeTabId}
-        class:discarded={!tab.live}
-        class:drop-before={dropIndex === index}
-        class:drop-after={dropIndex === index + 1 && index === tabs.length - 1}
-        draggable="true"
-        ondragstart={() => (dragId = tab.id)}
-        ondragend={() => ((dragId = null), (dropIndex = null))}
-        ondragover={(e) => onDragOver(e, index)}
-      >
-        <button
-          class="select"
-          title={collapsed ? label(tab) : tab.url}
-          aria-label={label(tab)}
-          aria-current={tab.id === activeTabId ? 'page' : undefined}
-          onclick={() => send({ type: 'activate-tab', id: tab.id })}
-          onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-        >
-          <span class="favicon">
-            {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
-              <img
-                src={tab.faviconUrl}
-                alt=""
-                width="16"
-                height="16"
-                onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
-              />
-            {:else}
-              <Icon name="globe" />
-            {/if}
-            {#if tab.keepAlive}<span class="badge pin"><Icon name="pin" size={10} /></span>{/if}
-            {#if !tab.live}<span class="badge sleep"><Icon name="moon" size={10} /></span>{/if}
-          </span>
+  {#if favorites.length > 0}
+    <ul class="favorites" aria-label="Favoriler">
+      {#each favorites as tab (tab.id)}
+        <li class="favorite" class:active={tab.id === activeTabId} class:discarded={!tab.live}>
+          <button
+            class="tile"
+            title={label(tab)}
+            aria-label={label(tab)}
+            aria-current={tab.id === activeTabId ? 'page' : undefined}
+            onclick={() => send({ type: 'activate-tab', id: tab.id })}
+            onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+          >
+            {@render favicon(tab, 18)}
+          </button>
           {#if !collapsed}
-            <span class="title">{tab.title}</span>
-          {/if}
-        </button>
-
-        {#if !collapsed}
-          <span class="actions">
             <button
-              class="action"
-              class:on={tab.keepAlive}
-              title={tab.keepAlive ? 'Canlı tutmayı kaldır' : 'Canlı tut'}
-              aria-pressed={tab.keepAlive}
+              class="unpin"
+              title="Favorilerden çıkar"
               onclick={() => send({ type: 'toggle-keep-alive', id: tab.id })}
             >
-              <Icon name="pin" size={14} />
+              <Icon name="close" size={10} />
             </button>
-            {#if tab.live && tab.id !== activeTabId}
+          {/if}
+        </li>
+      {/each}
+    </ul>
+  {/if}
+
+  {#if listed.length > 0}
+    <ol class="tabs" ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
+      {#each listed as tab, index (tab.id)}
+        <li
+          class="tab"
+          class:active={tab.id === activeTabId}
+          class:discarded={!tab.live}
+          class:drop-before={dropIndex === index}
+          class:drop-after={dropIndex === index + 1 && index === listed.length - 1}
+          draggable="true"
+          ondragstart={() => (dragId = tab.id)}
+          ondragend={() => ((dragId = null), (dropIndex = null))}
+          ondragover={(e) => onDragOver(e, index)}
+        >
+          <button
+            class="select"
+            title={collapsed ? label(tab) : tab.url}
+            aria-label={label(tab)}
+            aria-current={tab.id === activeTabId ? 'page' : undefined}
+            onclick={() => send({ type: 'activate-tab', id: tab.id })}
+            onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+          >
+            {@render favicon(tab, collapsed ? 18 : 16)}
+            {#if !collapsed}
+              <span class="title">{tab.title}</span>
+            {/if}
+          </button>
+
+          {#if !collapsed}
+            <span class="actions">
+              <button
+                class="action extra"
+                title="Favorilere ekle (canlı tut)"
+                onclick={() => send({ type: 'toggle-keep-alive', id: tab.id })}
+              >
+                <Icon name="pin" size={14} />
+              </button>
+              {#if tab.live && tab.id !== activeTabId}
+                <button
+                  class="action extra"
+                  title="Bellekten çıkar"
+                  onclick={() => send({ type: 'discard-tab', id: tab.id })}
+                >
+                  <Icon name="moon" size={14} />
+                </button>
+              {/if}
               <button
                 class="action"
-                title="Bellekten çıkar"
-                onclick={() => send({ type: 'discard-tab', id: tab.id })}
+                title="Kapat"
+                onclick={() => send({ type: 'close-tab', id: tab.id })}
               >
-                <Icon name="moon" size={14} />
+                <Icon name="close" size={14} />
               </button>
-            {/if}
-            <button
-              class="action"
-              title="Kapat"
-              onclick={() => send({ type: 'close-tab', id: tab.id })}
-            >
-              <Icon name="close" size={14} />
-            </button>
-          </span>
-        {/if}
-      </li>
-    {/each}
-    <li class="tab new-tab">
-      <button class="select" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-        <span class="favicon"><Icon name="plus" /></span>
-        {#if !collapsed}<span class="title">Yeni sekme</span>{/if}
-      </button>
-    </li>
-  </ol>
+            </span>
+          {/if}
+        </li>
+      {/each}
+    </ol>
+  {/if}
+
+  <button class="new-tab" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+    <Icon name="plus" />
+    {#if !collapsed}<span>Yeni sekme</span>{/if}
+  </button>
+  {#if !collapsed}<hr />{/if}
 
   <footer class="footer">
+    {#if collapsed}
+      <button class="icon" title="Paneli genişlet (⌘S)" aria-expanded="false" onclick={onToggle}>
+        <Icon name="sidebar" />
+      </button>
+    {/if}
     <span class="memory" title="Uygulamanın toplam bellek kullanımı (working set)">
+      <span class="dot" aria-hidden="true"></span>
       {#if totalMemoryMB === null}—{:else}{totalMemoryMB}{/if}{#if !collapsed}&nbsp;MB{/if}
     </span>
-    <button
-      class="footer-button"
-      title="Ayarlar (⌘,)"
-      aria-label="Ayarlar"
-      onclick={() => send({ type: 'open-settings' })}
-    >
-      <Icon name="settings" />
-    </button>
-    <button
-      class="footer-button toggle"
-      title={collapsed ? 'Paneli genişlet (⌘S)' : 'Paneli daralt (⌘S)'}
-      aria-expanded={!collapsed}
-      onclick={onToggle}
-    >
-      <Icon name="sidebar" />
-    </button>
+    {#if !collapsed}
+      <span class="spacer"></span>
+      <span class="tab-count" title="Açık sekme sayısı">{tabs.length} sekme</span>
+    {/if}
   </footer>
 </aside>
 
@@ -204,77 +254,185 @@
   .panel {
     position: relative;
     display: flex;
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 1 / span 2;
     flex-direction: column;
-    height: 100%;
-    padding: 0 10px 10px;
+    min-height: 0;
+    padding: 0 10px 10px 12px;
   }
 
   .panel.collapsed {
-    padding: 0 7px 8px;
-  }
-
-  .section-heading {
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 9px 9px;
-    color: var(--text-muted);
-    font-size: 10px;
-    font-weight: 650;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .tab-count {
-    min-width: 18px;
-    padding: 2px 5px;
-    border-radius: 6px;
-    background: var(--surface-hover);
-    font-size: 10px;
-    line-height: 1.2;
-    text-align: center;
+    padding: 0 0 10px 10px;
   }
 
   .resize {
     position: absolute;
     top: 0;
+    right: -2px;
     bottom: 0;
-    left: -3px;
     width: 6px;
     cursor: col-resize;
   }
 
-  .tabs {
+  .top {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    height: 56px;
+    -webkit-app-region: drag;
+  }
+
+  .panel:not(.collapsed) .top.controls {
+    padding-left: 70px;
+  }
+
+  .spacer {
     flex: 1;
-    margin: 0;
-    padding: 0 1px;
-    overflow-y: auto;
+  }
+
+  .logo {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+  }
+
+  .collapsed .logo {
+    margin-bottom: 12px;
+  }
+
+  .icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-muted);
+    transition: background var(--transition);
+    -webkit-app-region: no-drag;
+  }
+
+  .icon:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  /* Favorites: a grid of tiles, a single column when collapsed. */
+  .favorites {
+    display: grid;
+    flex: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 10px;
+    padding: 0;
     list-style: none;
+  }
+
+  .collapsed .favorites {
+    grid-template-columns: 44px;
+    padding: 4px;
+    border-radius: 14px;
+    background: var(--well);
+  }
+
+  .favorite {
+    position: relative;
+  }
+
+  .tile {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 48px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--well);
+    transition: background var(--transition);
+  }
+
+  .collapsed .tile {
+    height: 44px;
+    background: transparent;
+  }
+
+  .tile:hover {
+    background: var(--well-hover);
+  }
+
+  .favorite.active .tile {
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .unpin {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: none;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text-muted);
+  }
+
+  .favorite:hover .unpin {
+    display: grid;
+  }
+
+  /* Tab list: a well with the active tab raised on a white row. */
+  .tabs {
+    flex: 0 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 4px;
+    overflow-y: auto;
+    border-radius: 14px;
+    background: var(--well);
+    list-style: none;
+  }
+
+  .collapsed .tabs {
+    width: 52px;
   }
 
   .tab {
     position: relative;
     display: flex;
     align-items: center;
-    height: 36px;
-    margin-bottom: 4px;
-    border: 1px solid transparent;
-    border-radius: var(--radius);
+    height: 42px;
+    border-radius: 10px;
+    transition: background var(--transition);
+  }
+
+  .tab + .tab {
+    margin-top: 2px;
   }
 
   .tab:hover {
-    background: var(--surface-hover);
+    background: var(--well-hover);
   }
 
   .tab.active {
     background: var(--surface-active);
-    border-color: var(--border);
     box-shadow: var(--shadow);
   }
 
-  :global([data-material='glass']) .tab.active {
+  :global([data-material='glass']) .tab.active,
+  :global([data-material='glass']) .favorite.active .tile {
     box-shadow: var(--shadow), var(--rim);
   }
 
@@ -282,8 +440,8 @@
   .tab.drop-after::after {
     content: '';
     position: absolute;
-    right: 4px;
-    left: 4px;
+    right: 6px;
+    left: 6px;
     height: 2px;
     border-radius: 1px;
     background: var(--accent);
@@ -301,14 +459,20 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
     height: 100%;
-    padding: 0 10px;
+    padding: 0 12px;
     border: 0;
-    border-radius: var(--radius);
+    border-radius: 10px;
     background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
     text-align: left;
+  }
+
+  .tab.active .select {
+    color: var(--text);
   }
 
   .collapsed .select {
@@ -321,47 +485,19 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 16px;
-    height: 16px;
     color: var(--text-muted);
   }
 
   .favicon img {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
   }
 
   .discarded .favicon img,
   .discarded .favicon > :global(svg) {
     opacity: 0.45;
     filter: grayscale(1);
-  }
-
-  .discarded .title {
-    color: var(--text-muted);
-  }
-
-  .badge {
-    position: absolute;
-    display: grid;
-    place-items: center;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--badge);
-    color: var(--text);
-  }
-
-  .badge.sleep {
-    right: -5px;
-    bottom: -5px;
-  }
-
-  .badge.pin {
-    top: -5px;
-    right: -5px;
-    color: var(--accent);
   }
 
   .title {
@@ -372,8 +508,7 @@
 
   .actions {
     display: none;
-    gap: 0;
-    padding-right: 4px;
+    padding-right: 8px;
   }
 
   .tab:hover .actions,
@@ -382,86 +517,115 @@
     display: flex;
   }
 
+  .tab.active:not(:hover, :focus-within) .extra {
+    display: none;
+  }
+
   .action {
     display: grid;
     place-items: center;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border: 0;
-    border-radius: 5px;
+    border-radius: 6px;
     background: transparent;
+    color: var(--text);
+  }
+
+  .action.extra {
     color: var(--text-muted);
   }
 
   .action:hover {
     background: var(--surface-hover);
+  }
+
+  .new-tab {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+    height: 42px;
+    margin-top: 12px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .collapsed .new-tab {
+    justify-content: center;
+    width: 44px;
+    margin-top: 10px;
+    padding: 0;
+  }
+
+  .new-tab:hover {
+    background: var(--surface-hover);
     color: var(--text);
   }
 
-  .action.on {
-    color: var(--accent);
+  hr {
+    flex: none;
+    width: calc(100% - 32px);
+    margin: 8px 16px 0;
+    border: 0;
+    border-top: 1px solid var(--border);
   }
 
   .footer {
     display: flex;
+    align-items: center;
     gap: 4px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
+    margin-top: auto;
+    padding: 5px;
+    border-radius: 14px;
+    background: var(--well);
   }
 
   .collapsed .footer {
     flex-direction: column;
-    align-items: center;
-  }
-
-  .footer-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 30px;
-    padding: 0 8px;
-    border: 0;
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--text-muted);
-  }
-
-  .new-tab .select {
-    color: var(--text-muted);
-  }
-
-  .new-tab {
-    margin-top: 5px;
-    border-color: var(--border);
-    background: var(--surface);
-  }
-
-  .new-tab:hover .select {
-    color: var(--text);
+    width: 52px;
   }
 
   .memory {
-    flex: 1;
-    align-self: center;
-    padding: 0 8px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    font-size: 13px;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .collapsed .memory {
-    padding: 4px 0;
-    text-align: center;
-  }
-
-  .collapsed .footer-button {
     justify-content: center;
-    width: 32px;
+    gap: 4px;
+    width: 42px;
     padding: 0;
+    font-size: var(--font-size-small);
   }
 
-  .footer-button:hover {
-    background: var(--surface-hover);
-    color: var(--text);
+  .collapsed .memory .dot {
+    display: none;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .tab-count {
+    padding: 0 10px;
+    color: var(--text-muted);
+    font-size: 13px;
   }
 </style>

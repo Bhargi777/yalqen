@@ -5,6 +5,8 @@ import { applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation 
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
 const MAX_CLOSED_TABS = 20;
+/** Link on the new tab page that opens the centered address bar instead of navigating. */
+const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_TITLE = 'Yeni sekme';
 /** Space kept around an emulated device for the bezel and label drawn by the UI. */
 const DEVICE_MARGIN = 32;
@@ -41,6 +43,14 @@ export interface TabManagerOptions {
   freezeBackground: () => boolean;
   onChange: () => void;
   onRestore: (timing: RestoreTiming) => void;
+  /** The new tab page asked for the address bar. */
+  onNewTabSearch: () => void;
+}
+
+export interface RecentPage {
+  url: string;
+  title: string;
+  faviconUrl: string | null;
 }
 
 /** Owns tab records and their page views. Only the active tab's view is attached to the window. */
@@ -71,6 +81,17 @@ export class TabManager {
 
   get count(): number {
     return this.tabs.length;
+  }
+
+  /** Recently closed web pages, newest first, one per address. */
+  recentlyClosed(limit = 5): RecentPage[] {
+    const pages: RecentPage[] = [];
+    for (const tab of [...this.closed].reverse()) {
+      if (!/^https?:/.test(tab.url) || pages.some((page) => page.url === tab.url)) continue;
+      pages.push({ url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl });
+      if (pages.length === limit) break;
+    }
+    return pages;
   }
 
   state(): Pick<BrowserState, 'tabs' | 'activeTabId' | 'device'> {
@@ -458,6 +479,12 @@ export class TabManager {
   private attachListeners(tab: Tab, view: WebContentsView): void {
     const contents = view.webContents;
 
+    contents.on('will-navigate', (event) => {
+      if (event.url !== NEW_TAB_SEARCH_URL) return;
+      event.preventDefault();
+      // Only the new tab page itself may open the address bar this way.
+      if (contents.getURL() === NEW_TAB_URL) this.options.onNewTabSearch();
+    });
     contents.setWindowOpenHandler(({ url }) => {
       this.open(url);
       return { action: 'deny' };

@@ -4,26 +4,32 @@
     <meta charset="UTF-8" />
     <title>Yeni sekme</title>
     <!--
-      Served as yalqen://newtab/ by the main process, which adds class="animate"
-      to <html> on the first new tab page of each launch.
+      Served as yalqen://newtab/ by the main process, which fills in the recently
+      closed pages. Links to yalqen://newtab/search open the centered address bar.
     -->
     <style>
       :root {
-        --page: #fbf9fc;
-        --text: #211c27;
-        --muted: #77717d;
-        --border: #e8e0eb;
-        --card: rgb(255 255 255 / 0.78);
+        --page: #f3f4f6;
+        --text: #1a1b1e;
+        --hint: #b4b7bd;
+        --muted: #6b6e75;
+        --surface: #ffffff;
+        --well: #e8eaed;
+        --hover: rgb(0 0 0 / 0.04);
+        --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.08), 0 1px 3px rgb(16 18 24 / 0.08);
         color-scheme: light;
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --page: #211d27;
-          --text: #f3eef6;
-          --muted: #b3aab9;
-          --border: #3b3443;
-          --card: rgb(255 255 255 / 0.06);
+          --page: #1b1c1f;
+          --text: #eceef1;
+          --hint: #53565d;
+          --muted: #9a9ea6;
+          --surface: #2a2c30;
+          --well: #242529;
+          --hover: rgb(255 255 255 / 0.05);
+          --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 1px 3px rgb(0 0 0 / 0.3);
           color-scheme: dark;
         }
       }
@@ -39,201 +45,147 @@
       }
 
       body {
-        background: radial-gradient(circle at 50% 30%, #f1e9f8 0, var(--page) 48%);
+        display: grid;
+        place-items: center;
+        background: var(--page);
         color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+        font: 15px / 1.35 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
         overflow: hidden;
         user-select: none;
+        -webkit-font-smoothing: antialiased;
       }
 
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: radial-gradient(circle at 50% 30%, #30253c 0, var(--page) 50%);
-        }
+      a {
+        color: inherit;
+        text-decoration: none;
       }
 
-      .start {
+      main {
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: min(760px, 100%);
-        height: 100%;
-        margin: 0 auto;
-        padding: 34px 32px 30px;
+        width: min(720px, 100%);
+        padding: 0 24px 6vh;
       }
 
-      .brand {
-        display: flex;
-        align-items: center;
-        align-self: flex-start;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: -0.025em;
-      }
-
-      .brand svg {
-        width: 20px;
-        height: 26px;
-      }
-
-      .welcome {
-        display: flex;
-        flex: 1;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        padding-bottom: 8vh;
-        text-align: center;
-      }
-
-      .eyebrow {
-        color: #7652a7;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .eyebrow {
-          color: #c4a7e5;
-        }
-      }
-
-      .wordmark {
-        width: min(420px, 72vw);
-        height: auto;
-        margin: 18px 0 14px;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(26px, 3vw, 36px);
-        font-weight: 650;
-        letter-spacing: -0.04em;
+      .prompt {
+        color: var(--hint);
+        font-size: clamp(40px, 6.4vw, 80px);
+        font-weight: 500;
+        letter-spacing: -0.035em;
         line-height: 1.1;
+        text-align: center;
+        white-space: nowrap;
+        transition: color 120ms ease-out;
       }
 
-      p {
-        margin: 12px 0 28px;
+      .prompt:hover {
         color: var(--muted);
-        font-size: 14px;
-        line-height: 1.5;
       }
 
-      .shortcut {
+      .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 36px;
+      }
+
+      .pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 44px;
+        padding: 0 14px;
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .pill.square {
+        justify-content: center;
+        width: 44px;
+        padding: 0;
+      }
+
+      .blank {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: var(--well);
+      }
+
+      .pill svg {
+        color: var(--muted);
+      }
+
+      h2 {
+        margin: 22px 0 12px;
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .recent {
+        width: 260px;
+        margin: 0;
+        padding: 6px;
+        border-radius: 16px;
+        background: var(--well);
+        list-style: none;
+      }
+
+      .recent a {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 10px 12px 10px 16px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: var(--card);
-        box-shadow: 0 8px 32px rgb(64 37 87 / 0.05);
+        height: 48px;
+        padding: 0 14px;
+        border-radius: 11px;
         color: var(--muted);
-        font-size: 12px;
       }
 
-      kbd {
-        padding: 4px 7px;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        background: var(--page);
+      .recent a:hover {
+        background: var(--surface);
+        box-shadow: var(--shadow);
         color: var(--text);
-        font: inherit;
-        font-weight: 600;
       }
 
-      footer {
-        color: var(--muted);
-        font-size: 11px;
+      .recent span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      .animate .wordmark path {
-        stroke-dasharray: 1 1.01;
-        stroke-dashoffset: 1.001;
-        animation: write 1.8s cubic-bezier(0.23, 1, 0.32, 1) 0.1s forwards;
+      .recent img,
+      .dot {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
       }
 
-      @keyframes write {
-        to {
-          stroke-dashoffset: 0;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .animate .wordmark path {
-          animation: none;
-          stroke-dashoffset: 0;
-        }
-      }
-
-      @media (max-width: 600px) {
-        .start {
-          padding: 24px;
-        }
-
-        .welcome {
-          padding-bottom: 4vh;
-        }
-
-        .shortcut {
-          gap: 8px;
-        }
+      .dot {
+        background: var(--surface);
+        box-shadow: var(--shadow);
       }
     </style>
   </head>
   <body>
-    <main class="start">
-      <div class="brand">
-        <svg viewBox="274 254 482 622" aria-hidden="true">
-          <g fill="none" stroke-width="96" stroke-linecap="round">
-            <path d="M330 310 L450 470" stroke="#7652a7" />
-            <path d="M700 310 L470 770 Q445 820 385 820" stroke="currentColor" />
-          </g>
-        </svg>
-        <span>yalqen</span>
+    <main>
+      <a class="prompt" href="yalqen://newtab/search">Aramak için yaz…</a>
+      <div class="actions">
+        <a class="pill" href="yalqen://newtab/search">
+          <span class="blank"></span>
+          <span>Yeni sekme</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+            <path d="M2.5 4.5h8M2.5 8h8M2.5 11.5h5M12 10v4M10 12h4" />
+          </svg>
+        </a>
+        <a class="pill square" href="yalqen://newtab/search" aria-label="Ara veya adres yaz">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+        </a>
       </div>
-      <section class="welcome">
-        <span class="eyebrow">Yeni sekme</span>
-        <svg class="wordmark" viewBox="0 40 500 180" role="img" aria-label="merhaba">
-      <defs>
-        <linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="20" y1="0" x2="480" y2="0">
-          <stop offset="0" stop-color="#7a60ad" />
-          <stop offset="0.35" stop-color="#ab80c2" />
-          <stop offset="0.7" stop-color="#d49bbf" />
-          <stop offset="1" stop-color="#8b6ab8" />
-        </linearGradient>
-      </defs>
-      <!-- A single stroke of handwriting: "merhaba". -->
-      <path
-        pathLength="1"
-        fill="none"
-        stroke="url(#ink)"
-        stroke-width="9"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        d="
-          M 18 204 C 30 198 40 170 42 142 L 41 200
-          C 45 162 52 140 63 140 C 75 140 80 150 80 165 L 80 200
-          C 84 162 92 140 103 140 C 115 140 120 150 120 165 L 120 188 C 120 200 128 204 138 200
-          C 150 194 168 178 167 158 C 166 144 152 138 144 150 C 136 164 138 196 158 201 C 170 204 180 198 188 188
-          C 194 170 198 152 200 141 C 206 147 213 147 220 141 C 217 162 215 185 217 199 C 221 204 229 200 236 190
-          C 252 160 272 96 268 70 C 265 52 245 54 246 80 C 247 120 247 170 247 200
-          C 251 162 259 140 270 140 C 282 140 286 150 286 165 L 286 188 C 286 198 290 202 296 200
-          C 300 186 304 160 318 145 C 324 139 334 140 338 145 C 326 136 310 142 307 166 C 304 192 320 204 332 190 C 338 180 340 160 340 142 L 340 188 C 340 200 346 204 354 199
-          C 370 160 390 96 386 70 C 383 52 363 54 364 80 C 365 120 365 170 365 198 C 369 168 381 142 397 148 C 409 154 405 190 386 199 C 377 203 375 186 389 182 C 399 179 406 170 414 158
-          C 420 148 434 140 446 145 C 434 136 418 142 415 166 C 412 192 428 204 440 190 C 446 180 448 160 448 142 L 448 188 C 448 202 462 206 480 194
-        "
-      />
-        </svg>
-        <h1>Bugün nereye gidelim?</h1>
-        <p>Aramak veya bir adres açmak için ortadaki arama çubuğunu aç.</p>
-        <div class="shortcut"><span>Arama çubuğunu aç</span><kbd>⌘ L</kbd></div>
-      </section>
-      <footer>Yeni bir sayfa aç, keşfe devam et.</footer>
+      <!-- recent -->
     </main>
   </body>
 </html>
