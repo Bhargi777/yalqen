@@ -492,7 +492,7 @@ app.setAboutPanelOptions({
 });
 
 app.whenReady().then(() => {
-  // macOS ignores the window icon; unpackaged runs need the Dock icon set explicitly.
+  // The unpackaged macOS run needs its Dock icon set separately from the bundle icon.
   app.dock?.setIcon(appIcon);
   createBrowser();
 });

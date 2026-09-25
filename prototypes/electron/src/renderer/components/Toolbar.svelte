@@ -1,20 +1,16 @@
 <script lang="ts">
-  import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
+  import type { TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
 
   let {
     tabs,
     activeTabId,
-    collapsed,
-    side,
     leadingInset,
     trailingInset,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
-    collapsed: boolean;
-    side: PanelSide;
     /** Space kept for macOS window controls when the sidebar is narrow. */
     leadingInset: number;
     /** Gap between settings and the window edge or sidebar. */
@@ -54,26 +50,15 @@
 <!-- The active tab doubles as the address field; the existing capsules now frame the tab strip. -->
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading">
-    <div class="capsule">
-      <button
-        class="icon panel-toggle"
-        class:right={side === 'right'}
-        title={collapsed ? 'Paneli genişlet (⌘S)' : 'Paneli daralt (⌘S)'}
-        aria-expanded={!collapsed}
-        onclick={() => send({ type: 'toggle-panel' })}
-      >
-        <Icon name={collapsed ? 'sidebar' : 'panel-close'} />
-      </button>
-    </div>
     <nav class="capsule navigation" aria-label="Gezinme">
-      <button class="icon" title="Yenile" onclick={() => send({ type: 'reload' })}>
-        <Icon name="reload" />
-      </button>
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />
       </button>
       <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
         <Icon name="forward" />
+      </button>
+      <button class="icon" title="Yenile" onclick={() => send({ type: 'reload' })}>
+        <Icon name="reload" />
       </button>
     </nav>
   </div>
@@ -156,10 +141,6 @@
 
   .trailing {
     justify-content: flex-end;
-  }
-
-  .panel-toggle.right {
-    transform: scaleX(-1);
   }
 
   .tab-group {
