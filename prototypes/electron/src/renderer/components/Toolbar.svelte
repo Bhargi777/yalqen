@@ -12,7 +12,7 @@
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
-    /** Space kept free on the left, e.g. for traffic lights over a collapsed sidebar. */
+    /** Space kept free on the left for the back and forward buttons over a narrow sidebar. */
     leadingInset: number;
     placeholder: string;
   } = $props();
@@ -23,7 +23,6 @@
   let query = $state('');
 
   const send = window.yalqen.send;
-  const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
   /** Focuses the new tab's search field, as Safari does. */
   export function focusSearch(): void {
@@ -85,16 +84,7 @@
   is a search field of its own.
 -->
 <header class="toolbar" style:padding-left="{leadingInset}px">
-  <span class="side">
-    <nav class="capsule" aria-label="Gezinme">
-      <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
-        <Icon name="back" />
-      </button>
-      <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
-        <Icon name="forward" />
-      </button>
-    </nav>
-  </span>
+  <span class="side"></span>
 
   <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
     {#each tabs as tab (tab.id)}
@@ -162,6 +152,7 @@
     gap: 8px;
     min-width: 0;
     padding-right: 8px;
+    transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
   }
 

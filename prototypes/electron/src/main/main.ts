@@ -31,7 +31,9 @@ const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write'])
 // Offset of the traffic lights from the top-left corner, centered in the sidebar's top row.
 const WINDOW_CONTROLS_INSET = { x: 16, y: 16 };
 // Corner that keeps hover-revealed traffic lights visible, and how often it is checked.
-const WINDOW_CONTROLS_ZONE = { width: 76, height: 44 };
+const WINDOW_CONTROLS_ZONE = { minWidth: 76, maxWidth: 240, height: 44 };
+// Lets the UI move its buttons out of the way before the controls appear.
+const WINDOW_CONTROLS_DELAY_MS = 120;
 const WINDOW_CONTROLS_POLL_MS = 150;
 
 // Keep prototype data apart from any other Electron app.
@@ -117,9 +119,12 @@ function createBrowser(): void {
       ui.webContents.send(IpcChannel.state, browserState());
     }
   };
+  const notifyUi = (command: UiCommand) => {
+    if (!ui.webContents.isDestroyed()) ui.webContents.send(IpcChannel.command, command);
+  };
   const sendCommand = (command: UiCommand) => {
     ui.webContents.focus();
-    ui.webContents.send(IpcChannel.command, command);
+    notifyUi(command);
   };
 
   const commandBar = new CommandBar({
@@ -176,26 +181,35 @@ function createBrowser(): void {
   // buttons is not seen by the page.
   let controlsRevealed = false;
   let controlsTimer: NodeJS.Timeout | null = null;
-  const revealWindowControls = () => {
+  let controlsDelay: NodeJS.Timeout | null = null;
+  const revealWindowControls = (zoneWidth: number) => {
     if (process.platform !== 'darwin' || controlsRevealed) return;
+    const width = Math.min(
+      WINDOW_CONTROLS_ZONE.maxWidth,
+      Math.max(WINDOW_CONTROLS_ZONE.minWidth, Number(zoneWidth) || 0),
+    );
     controlsRevealed = true;
-    window.setWindowButtonVisibility(true);
+    notifyUi({ type: 'window-controls', visible: true });
+    controlsDelay = setTimeout(() => window.setWindowButtonVisibility(true), WINDOW_CONTROLS_DELAY_MS);
     controlsTimer = setInterval(() => {
       const cursor = screen.getCursorScreenPoint();
       const bounds = window.getContentBounds();
       const inside =
         cursor.x >= bounds.x &&
-        cursor.x < bounds.x + WINDOW_CONTROLS_ZONE.width &&
+        cursor.x < bounds.x + width &&
         cursor.y >= bounds.y &&
         cursor.y < bounds.y + WINDOW_CONTROLS_ZONE.height;
       if (inside) return;
       hideWindowControls();
       window.setWindowButtonVisibility(layout.windowControls);
+      notifyUi({ type: 'window-controls', visible: false });
     }, WINDOW_CONTROLS_POLL_MS);
   };
   const hideWindowControls = () => {
     if (controlsTimer) clearInterval(controlsTimer);
+    if (controlsDelay) clearTimeout(controlsDelay);
     controlsTimer = null;
+    controlsDelay = null;
     controlsRevealed = false;
   };
 
@@ -354,7 +368,7 @@ function createBrowser(): void {
         openCenteredAddress();
         break;
       case 'reveal-window-controls':
-        revealWindowControls();
+        revealWindowControls(action.width);
         break;
       case 'open-settings':
         settingsWindow.open();

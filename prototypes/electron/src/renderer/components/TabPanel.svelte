@@ -8,6 +8,7 @@
     totalMemoryMB,
     collapsed,
     windowControls,
+    leadingInset,
     width = $bindable(),
     minWidth,
     maxWidth,
@@ -17,8 +18,10 @@
     activeTabId: TabId | null;
     totalMemoryMB: number | null;
     collapsed: boolean;
-    /** Leaves room for the macOS traffic lights in the top row. */
+    /** macOS draws the traffic lights, so the logo is left out. */
     windowControls: boolean;
+    /** Room kept free at the start of the top row for the back and forward buttons. */
+    leadingInset: number;
     width: number;
     minWidth: number;
     maxWidth: number;
@@ -122,7 +125,7 @@
     ></div>
   {/if}
 
-  <div class="top" class:controls={windowControls}>
+  <div class="top" style:padding-left="{leadingInset}px">
     {#if !collapsed}
       <!-- On macOS the traffic lights take the logo's place. -->
       {#if !windowControls}{@render logo()}{/if}
@@ -269,12 +272,8 @@
     align-items: center;
     gap: 4px;
     height: 44px;
-    padding-left: 6px;
+    transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
-  }
-
-  .panel:not(.collapsed) .top.controls {
-    padding-left: 68px;
   }
 
   .spacer {

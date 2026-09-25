@@ -71,7 +71,10 @@ export interface ChromeLayout {
   pageRadius: number;
 }
 
-export type UiCommand = { type: 'focus-address' };
+export type UiCommand =
+  | { type: 'focus-address' }
+  /** The macOS window controls were revealed or hidden again. */
+  | { type: 'window-controls'; visible: boolean };
 
 /** Requests the UI sends to the main process. */
 export type UiAction =
@@ -87,7 +90,8 @@ export type UiAction =
   | { type: 'reload' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
-  | { type: 'reveal-window-controls' }
+  /** Shows the window controls while the pointer stays within `width` of the window's top-left corner. */
+  | { type: 'reveal-window-controls'; width: number }
   | { type: 'open-settings' };
 
 export const IpcChannel = {
