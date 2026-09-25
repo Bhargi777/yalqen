@@ -4,3 +4,4 @@ out/
 *.log
 .DS_Store
 bench/results/
+prototypes/cef-appkit/third_party/
