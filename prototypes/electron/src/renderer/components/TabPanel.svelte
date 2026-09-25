@@ -102,7 +102,7 @@
 
 {#snippet logo()}
   <span class="logo" aria-hidden="true">
-    <svg viewBox="274 254 482 622" width="16" height="20">
+    <svg viewBox="274 254 482 622" width="11" height="14">
       <g fill="none" stroke-width="110" stroke-linecap="round">
         <path d="M330 310 L450 470" stroke="#2F5FD0" />
         <path d="M700 310 L470 770 Q445 820 385 820" stroke="currentColor" />
@@ -124,20 +124,14 @@
 
   <div class="top" class:controls={windowControls}>
     {#if !collapsed}
-      {@render logo()}
+      <!-- On macOS the traffic lights take the logo's place. -->
+      {#if !windowControls}{@render logo()}{/if}
       <span class="spacer"></span>
-      <button class="icon" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-        <Icon name="plus" />
-      </button>
       <button class="icon" title="Paneli daralt (⌘S)" aria-expanded="true" onclick={onToggle}>
         <Icon name="panel-close" />
       </button>
     {/if}
   </div>
-
-  {#if collapsed}
-    {@render logo()}
-  {/if}
 
   {#if favorites.length > 0}
     <ul class="favorites" aria-label="Favoriler">
@@ -151,7 +145,7 @@
             onclick={() => send({ type: 'activate-tab', id: tab.id })}
             onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
           >
-            {@render favicon(tab, 18)}
+            {@render favicon(tab, 16)}
           </button>
           {#if !collapsed}
             <button
@@ -189,7 +183,7 @@
             onclick={() => send({ type: 'activate-tab', id: tab.id })}
             onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
           >
-            {@render favicon(tab, collapsed ? 18 : 16)}
+            {@render favicon(tab, 16)}
             {#if !collapsed}
               <span class="title">{tab.title}</span>
             {/if}
@@ -202,7 +196,7 @@
                 title="Favorilere ekle (canlı tut)"
                 onclick={() => send({ type: 'toggle-keep-alive', id: tab.id })}
               >
-                <Icon name="pin" size={14} />
+                <Icon name="pin" size={13} />
               </button>
               {#if tab.live && tab.id !== activeTabId}
                 <button
@@ -210,7 +204,7 @@
                   title="Bellekten çıkar"
                   onclick={() => send({ type: 'discard-tab', id: tab.id })}
                 >
-                  <Icon name="moon" size={14} />
+                  <Icon name="moon" size={13} />
                 </button>
               {/if}
               <button
@@ -218,7 +212,7 @@
                 title="Kapat"
                 onclick={() => send({ type: 'close-tab', id: tab.id })}
               >
-                <Icon name="close" size={14} />
+                <Icon name="close" size={12} />
               </button>
             </span>
           {/if}
@@ -228,10 +222,9 @@
   {/if}
 
   <button class="new-tab" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-    <Icon name="plus" />
+    <Icon name="plus" size={14} />
     {#if !collapsed}<span>Yeni sekme</span>{/if}
   </button>
-  {#if !collapsed}<hr />{/if}
 
   <footer class="footer">
     {#if collapsed}
@@ -240,13 +233,8 @@
       </button>
     {/if}
     <span class="memory" title="Uygulamanın toplam bellek kullanımı (working set)">
-      <span class="dot" aria-hidden="true"></span>
-      {#if totalMemoryMB === null}—{:else}{totalMemoryMB}{/if}{#if !collapsed}&nbsp;MB{/if}
+      {#if totalMemoryMB === null}—{:else}{totalMemoryMB}{/if}{#if !collapsed}&nbsp;MB · {tabs.length} sekme{/if}
     </span>
-    {#if !collapsed}
-      <span class="spacer"></span>
-      <span class="tab-count" title="Açık sekme sayısı">{tabs.length} sekme</span>
-    {/if}
   </footer>
 </aside>
 
@@ -258,12 +246,12 @@
     grid-row: 1 / span 2;
     flex-direction: column;
     min-height: 0;
-    padding: 0 10px 10px 12px;
+    padding: 0 8px 8px 10px;
   }
 
   .panel.collapsed {
     align-items: center;
-    padding: 0 0 10px 10px;
+    padding: 0 0 8px 8px;
   }
 
   .resize {
@@ -280,12 +268,13 @@
     flex: none;
     align-items: center;
     gap: 4px;
-    height: 56px;
+    height: 44px;
+    padding-left: 6px;
     -webkit-app-region: drag;
   }
 
   .panel:not(.collapsed) .top.controls {
-    padding-left: 70px;
+    padding-left: 68px;
   }
 
   .spacer {
@@ -296,25 +285,17 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
     color: var(--text);
-  }
-
-  .collapsed .logo {
-    margin-bottom: 12px;
   }
 
   .icon {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border: 0;
-    border-radius: 9px;
+    border-radius: 50%;
     background: transparent;
     color: var(--text-muted);
     transition: background var(--transition);
@@ -326,20 +307,21 @@
     color: var(--text);
   }
 
-  /* Favorites: a grid of tiles, a single column when collapsed. */
+  /* Favorites: a row of small tiles, a single column when collapsed. */
   .favorites {
     display: grid;
     flex: none;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-    margin: 0 0 10px;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 4px;
+    margin: 0 0 8px;
     padding: 0;
     list-style: none;
   }
 
   .collapsed .favorites {
-    grid-template-columns: 44px;
-    padding: 4px;
+    grid-template-columns: 36px;
+    gap: 2px;
+    padding: 3px;
     border-radius: 14px;
     background: var(--well);
   }
@@ -352,7 +334,8 @@
     display: grid;
     place-items: center;
     width: 100%;
-    height: 46px;
+    height: 34px;
+    padding: 0;
     border: 0;
     border-radius: 12px;
     background: var(--well);
@@ -360,7 +343,8 @@
   }
 
   .collapsed .tile {
-    height: 42px;
+    height: 34px;
+    border-radius: 11px;
     background: transparent;
   }
 
@@ -375,12 +359,12 @@
 
   .unpin {
     position: absolute;
-    top: -4px;
-    right: -4px;
+    top: -3px;
+    right: -3px;
     display: none;
     place-items: center;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     padding: 0;
     border: 0;
     border-radius: 50%;
@@ -393,12 +377,12 @@
     display: grid;
   }
 
-  /* Tab list: a well with the active tab raised on a white row. */
+  /* Tab list: a rounded well with the active tab raised. */
   .tabs {
     flex: 0 1 auto;
     min-height: 0;
     margin: 0;
-    padding: 4px;
+    padding: 3px;
     overflow-y: auto;
     border-radius: 14px;
     background: var(--well);
@@ -406,7 +390,7 @@
   }
 
   .collapsed .tabs {
-    width: 52px;
+    width: 42px;
   }
 
   /* Collapsed, favorites and tabs share one well, split by a line. */
@@ -425,7 +409,7 @@
     content: '';
     display: block;
     height: 1px;
-    margin: 0 6px 4px;
+    margin: 0 6px 3px;
     background: var(--border);
   }
 
@@ -433,17 +417,17 @@
     position: relative;
     display: flex;
     align-items: center;
-    height: 40px;
-    border-radius: 10px;
+    height: 30px;
+    border-radius: 11px;
     transition: background var(--transition);
   }
 
   .collapsed .tab {
-    height: 42px;
+    height: 34px;
   }
 
   .tab + .tab {
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
   .tab:hover {
@@ -483,15 +467,15 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
     height: 100%;
-    padding: 0 12px;
+    padding: 0 8px 0 10px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 11px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 15px;
+    font-size: 13px;
     text-align: left;
   }
 
@@ -512,14 +496,14 @@
     color: var(--text-muted);
   }
 
+  .tab:not(.active) .favicon {
+    opacity: 0.7;
+  }
+
   .favicon img {
     width: 100%;
     height: 100%;
     border-radius: 4px;
-  }
-
-  .tab:not(.active) .favicon {
-    opacity: 0.6;
   }
 
   .discarded .favicon img,
@@ -534,55 +518,55 @@
     white-space: nowrap;
   }
 
-  /* Close is always shown, as in the design; the other actions appear on hover. */
+  /* Actions only show on hover, except close on the active tab. */
   .actions {
     display: flex;
-    padding-right: 8px;
+    padding-right: 4px;
   }
 
-  .tab:not(:hover, :focus-within) .extra {
+  .tab:not(:hover, :focus-within) .extra,
+  .tab:not(.active, :hover, :focus-within) .actions {
     display: none;
   }
 
   .action {
     display: grid;
     place-items: center;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
     border: 0;
-    border-radius: 6px;
+    border-radius: 50%;
     background: transparent;
-    color: var(--text);
-  }
-
-  .action.extra {
     color: var(--text-muted);
   }
 
   .action:hover {
     background: var(--surface-hover);
+    color: var(--text);
   }
 
   .new-tab {
     display: flex;
     flex: none;
     align-items: center;
-    gap: 12px;
-    height: 42px;
-    margin-top: 12px;
-    padding: 0 16px;
+    gap: 8px;
+    height: 30px;
+    margin-top: 6px;
+    padding: 0 11px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 11px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 15px;
+    font-size: 13px;
   }
 
   .collapsed .new-tab {
     justify-content: center;
-    width: 44px;
-    margin-top: 10px;
+    width: 34px;
+    height: 34px;
     padding: 0;
+    border-radius: 50%;
   }
 
   .new-tab:hover {
@@ -590,65 +574,23 @@
     color: var(--text);
   }
 
-  hr {
-    flex: none;
-    width: calc(100% - 32px);
-    margin: 8px 16px 0;
-    border: 0;
-    border-top: 1px solid var(--border);
-  }
-
   .footer {
     display: flex;
     align-items: center;
     gap: 4px;
     margin-top: auto;
-    padding: 5px;
-    border-radius: 14px;
-    background: var(--well);
+    padding: 0 11px;
   }
 
   .collapsed .footer {
     flex-direction: column;
-    width: 52px;
+    padding: 0;
   }
 
   .memory {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    height: 34px;
-    padding: 0 12px;
-    border-radius: 10px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
-  }
-
-  .collapsed .memory {
-    justify-content: center;
-    gap: 4px;
-    width: 42px;
-    padding: 0;
-    font-size: var(--font-size-small);
-  }
-
-  .collapsed .memory .dot {
-    display: none;
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-
-  .tab-count {
-    padding: 0 10px;
-    color: var(--text-muted);
-    font-size: 13px;
   }
 </style>

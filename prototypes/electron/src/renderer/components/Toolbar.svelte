@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { TabId, TabSnapshot } from '../../shared/types';
-  import { siteLabel } from '../format';
+  import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
 
   let {
@@ -30,145 +30,169 @@
   });
 </script>
 
+{#snippet favicon(tab: TabSnapshot)}
+  <span class="favicon">
+    {#if isNewTab(tab.url)}
+      <Icon name="search" size={14} />
+    {:else if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
+      <img
+        src={tab.faviconUrl}
+        alt=""
+        width="16"
+        height="16"
+        onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
+      />
+    {:else}
+      <Icon name="globe" size={14} />
+    {/if}
+  </span>
+{/snippet}
+
+<!--
+  Safari-like: capsules on the window background. The active tab doubles as the
+  address field; clicking it opens the centered address bar.
+-->
 <header class="toolbar" style:padding-left="{leadingInset}px">
-  <span class="side"></span>
-  {#if !minimal}
-    <div class="center">
-      <nav class="group" aria-label="Gezinme">
-        <button class="square" title="Yenile" onclick={() => send({ type: 'reload' })}>
-          <Icon name="reload" />
-        </button>
-        <button
-          class="square"
-          title="Geri"
-          disabled={!activeTab?.canGoBack}
-          onclick={() => send({ type: 'go-back' })}
-        >
+  <span class="side">
+    {#if !minimal}
+      <nav class="capsule" aria-label="Gezinme">
+        <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
           <Icon name="back" />
         </button>
-        <button
-          class="square"
-          title="İleri"
-          disabled={!activeTab?.canGoForward}
-          onclick={() => send({ type: 'go-forward' })}
-        >
+        <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
           <Icon name="forward" />
         </button>
       </nav>
+    {/if}
+  </span>
 
-      <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
-        {#each tabs as tab (tab.id)}
-          <li class="chip" class:active={tab.id === activeTabId}>
+  {#if !minimal}
+    <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
+      {#each tabs as tab (tab.id)}
+        {@const active = tab.id === activeTabId}
+        <li class="chip" class:active>
+          {#if active}
+            <button class="address" title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
+              {@render favicon(tab)}
+              <span class="label">{isNewTab(tab.url) ? 'Ara veya adres yaz' : siteLabel(tab)}</span>
+            </button>
+            <button class="icon small" title="Yenile" onclick={() => send({ type: 'reload' })}>
+              <Icon name="reload" size={14} />
+            </button>
+          {:else}
             <button
-              class="chip-select"
+              class="select"
               title={tab.title}
-              aria-current={tab.id === activeTabId ? 'page' : undefined}
               onclick={() => send({ type: 'activate-tab', id: tab.id })}
               onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
             >
-              <span class="favicon">
-                {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
-                  <img
-                    src={tab.faviconUrl}
-                    alt=""
-                    width="18"
-                    height="18"
-                    onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
-                  />
-                {:else}
-                  <Icon name="globe" />
-                {/if}
-              </span>
-              <span class="chip-title">{siteLabel(tab)}</span>
+              {@render favicon(tab)}
+              <span class="label">{siteLabel(tab)}</span>
             </button>
-            <button class="chip-close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
-              <Icon name="close" size={14} />
-            </button>
-          </li>
-        {/each}
-      </ol>
-
-      <button class="square" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-        <Icon name="plus" />
-      </button>
-    </div>
+          {/if}
+          <button class="icon small close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
+            <Icon name="close" size={12} />
+          </button>
+          {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
+        </li>
+      {/each}
+    </ol>
   {/if}
 
   <span class="side end">
-    <button class="square" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
-      <Icon name="settings" />
-    </button>
+    <span class="capsule">
+      {#if !minimal}
+        <button class="icon" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+          <Icon name="plus" />
+        </button>
+      {/if}
+      <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
+        <Icon name="settings" />
+      </button>
+    </span>
   </span>
 </header>
 
 <style>
-  /* Navigation and tabs are centered over the page card; tools sit on the right. */
   .toolbar {
     display: flex;
     grid-column: 2;
     grid-row: 1;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
-    padding-right: 10px;
+    padding-right: 8px;
     -webkit-app-region: drag;
   }
 
+  /* Equal sides keep the tabs centered over the page card. */
   .side {
     display: flex;
     flex: 1 1 0;
-    min-width: 0;
+    min-width: max-content;
   }
 
   .side.end {
     justify-content: flex-end;
   }
 
-  .center {
+  .capsule {
     display: flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    -webkit-app-region: no-drag;
   }
 
-  .group {
-    display: flex;
-    flex: none;
-    gap: 6px;
+  :global([data-material='glass']) .capsule,
+  :global([data-material='glass']) .chip.active {
+    box-shadow: var(--shadow), var(--rim);
   }
 
-  .square {
+  .icon {
     display: grid;
     flex: none;
     place-items: center;
-    width: 38px;
-    height: 38px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border: 0;
-    border-radius: 11px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
+    border-radius: 50%;
+    background: transparent;
     color: var(--text);
     transition: background var(--transition);
     -webkit-app-region: no-drag;
   }
 
-  .square:hover:not(:disabled) {
-    background: var(--surface-strong);
+  .icon:hover:not(:disabled) {
+    background: var(--surface-hover);
   }
 
-  .square:disabled {
+  .icon:disabled {
     color: var(--text-muted);
-    opacity: 0.55;
+    opacity: 0.5;
+  }
+
+  .icon.small {
+    width: 22px;
+    height: 22px;
+    color: var(--text-muted);
+  }
+
+  .icon.small:hover {
+    color: var(--text);
   }
 
   .strip {
     display: flex;
     flex: 0 1 auto;
+    align-items: center;
     gap: 2px;
     min-width: 0;
     margin: 0;
-    padding: 3px;
+    padding: 2px;
     overflow-x: auto;
     list-style: none;
     scrollbar-width: none;
@@ -181,12 +205,12 @@
   .chip {
     position: relative;
     display: flex;
-    /* Tabs keep their width and the strip scrolls, like the design's pills. */
     flex: none;
     align-items: center;
-    max-width: 200px;
-    height: 38px;
-    border-radius: 11px;
+    max-width: 150px;
+    height: 32px;
+    padding-right: 5px;
+    border-radius: 999px;
     transition: background var(--transition);
     -webkit-app-region: no-drag;
   }
@@ -195,82 +219,88 @@
     background: var(--surface-hover);
   }
 
+  /* The active tab is the address field: wider, raised, site name centered. */
   .chip.active {
+    width: clamp(220px, 32vw, 420px);
+    max-width: none;
     background: var(--surface);
     box-shadow: var(--shadow);
   }
 
-  :global([data-material='glass']) .chip.active,
-  :global([data-material='glass']) .square {
-    box-shadow: var(--shadow), var(--rim);
+  .chip:not(.active) .close {
+    display: none;
   }
 
-  /* A thin divider between neighbouring inactive tabs. */
-  .chip:not(.active) + .chip:not(.active)::before {
-    content: '';
-    position: absolute;
-    top: 11px;
-    bottom: 11px;
-    left: -2px;
-    width: 1px;
-    background: var(--border);
+  .chip:not(.active):hover .close,
+  .chip .close:focus-visible {
+    display: grid;
   }
 
-  .chip-select {
+  .select,
+  .address {
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 9px;
+    gap: 7px;
     min-width: 0;
     height: 100%;
     padding: 0 6px 0 11px;
     border: 0;
-    border-radius: 11px;
+    border-radius: 999px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 15px;
+    font-size: 13px;
   }
 
-  .chip.active .chip-select {
+  .address {
+    justify-content: center;
+    padding-left: 28px;
     color: var(--text);
+    font-weight: 500;
   }
 
   .favicon {
     display: grid;
     flex: none;
     place-items: center;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     color: var(--text-muted);
   }
 
-  .favicon img {
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
+  .chip:not(.active) .favicon {
+    opacity: 0.7;
   }
 
-  .chip-title {
+  .favicon img {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+  }
+
+  .label {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .chip-close {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    margin-right: 7px;
-    padding: 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text);
+  .loading {
+    position: absolute;
+    right: 16px;
+    bottom: 1px;
+    left: 16px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+    animation: pulse 1.2s ease-in-out infinite alternate;
   }
 
-  .chip-close:hover {
-    background: var(--surface-hover);
+  @keyframes pulse {
+    from {
+      opacity: 0.2;
+    }
+    to {
+      opacity: 0.7;
+    }
   }
 </style>

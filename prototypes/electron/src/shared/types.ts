@@ -67,8 +67,6 @@ export interface ChromeLayout {
   chromeHeight: number;
   /** Gap between the page card and the right and bottom window edges. */
   pageInset: number;
-  /** Height of the page card's own header; the page view starts below it. */
-  pageHeaderHeight: number;
   /** Corner radius of the page card. */
   pageRadius: number;
 }

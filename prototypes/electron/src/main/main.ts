@@ -28,7 +28,7 @@ const DAILY_PARTITION = 'persist:daily';
 const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 // Offset of the traffic lights from the top-left corner, centered in the sidebar's top row.
-const WINDOW_CONTROLS_INSET = { x: 18, y: 22 };
+const WINDOW_CONTROLS_INSET = { x: 16, y: 16 };
 
 // Keep prototype data apart from any other Electron app.
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
@@ -85,12 +85,11 @@ function createBrowser(): void {
   });
   nativeTheme.themeSource = settings.get().theme;
   let layout: ChromeLayout = {
-    panelWidth: 280,
+    panelWidth: 220,
     windowControls: true,
-    chromeHeight: 56,
-    pageInset: 10,
-    pageHeaderHeight: 44,
-    pageRadius: 14,
+    chromeHeight: 44,
+    pageInset: 8,
+    pageRadius: 16,
   };
   let totalMemoryMB: number | null = null;
   // Device used by the phone view shortcut; the last one picked from the menu.
@@ -147,14 +146,12 @@ function createBrowser(): void {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
     commandBar.fitWindow();
-    // The page card sits right of the sidebar and below the top bar; the page
-    // view fills the card under its header.
-    const top = layout.chromeHeight + layout.pageHeaderHeight;
+    // The page card sits right of the sidebar and below the top bar.
     tabs.setPageBounds({
       x: layout.panelWidth,
-      y: top,
+      y: layout.chromeHeight,
       width: Math.max(0, width - layout.panelWidth - layout.pageInset),
-      height: Math.max(0, height - top - layout.pageInset),
+      height: Math.max(0, height - layout.chromeHeight - layout.pageInset),
     });
     tabs.setPageRadius(layout.pageRadius);
     if (process.platform === 'darwin') {
