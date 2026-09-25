@@ -2,6 +2,14 @@
 
 macOS için RAM odaklı, Chromium tabanlı kişisel tarayıcı.
 
-Durum: Planlama aşaması; geliştirme başlamadı.
+Durum: Faz 0 — tasarım ve teknik doğrulama.
 
-Proje planı: [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)
+## Yapı
+
+| Yol | İçerik |
+|---|---|
+| [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) | Proje planı |
+| [`docs/decisions/`](docs/decisions) | Mimari kararlar |
+| [`bench/SCENARIO.md`](bench/SCENARIO.md) | Faz 0 ortak ölçüm senaryosu |
+| [`prototypes/electron/`](prototypes/electron) | Electron + TypeScript + Svelte denemesi |
+| [`prototypes/cef-appkit/`](prototypes/cef-appkit) | CEF + Swift/AppKit denemesi |
