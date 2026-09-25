@@ -17,6 +17,7 @@ const DEFAULTS: Settings = {
   panelSide: 'left',
   freezeBackgroundTabs: true,
   adBlocking: true,
+  welcomeCompleted: false,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
@@ -27,8 +28,17 @@ const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Setti
 /** Keeps known, well-typed fields and takes the rest from `base`. */
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const { searchEngine, customSearchTemplate, theme, startupBehavior, panelCollapsed, panelSide, freezeBackgroundTabs, adBlocking } =
-    input;
+  const {
+    searchEngine,
+    customSearchTemplate,
+    theme,
+    startupBehavior,
+    panelCollapsed,
+    panelSide,
+    freezeBackgroundTabs,
+    adBlocking,
+    welcomeCompleted,
+  } = input;
   return {
     version: 1,
     searchEngine:
@@ -50,6 +60,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs:
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
+    welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
   };
 }
 

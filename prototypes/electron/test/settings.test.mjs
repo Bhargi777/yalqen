@@ -29,6 +29,7 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'left',
       freezeBackgroundTabs: true,
       adBlocking: true,
+      welcomeCompleted: false,
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');

@@ -158,6 +158,8 @@ export interface SettingsValues {
   freezeBackgroundTabs: boolean;
   /** Block ads on web pages. */
   adBlocking: boolean;
+  /** Whether the one-time first launch welcome has been dismissed. */
+  welcomeCompleted: boolean;
 }
 
 export interface SettingsView {

@@ -7,6 +7,8 @@ import type { RecentPage } from './tabs.js';
 // Favicons of recent pages come from the web; nothing else is loaded.
 const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
 const RECENT_MARKER = '<!-- recent -->';
+const WELCOME_MARKER = '<!-- welcome -->';
+const WELCOME_ACTION_MARKER = '<!-- welcome-action -->';
 const HISTORY_MARKER = '<!-- visits -->';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
@@ -48,6 +50,19 @@ export function renderRecent(pages: RecentPage[]): string {
   return `<h2>Son kapatılanlar</h2><ul class="recent">${items}</ul>`;
 }
 
+function renderWelcome(): string {
+  return `<section class="welcome" aria-labelledby="welcome-title">
+    <p class="eyebrow">YALQEN</p>
+    <h1 id="welcome-title">Merhaba, hoş geldin.</h1>
+    <p class="welcome-copy">İnternette kendi yolunu aç. Aramak ya da bir adres yazmak için başlayabilirsin.</p>
+    <ul class="tips">
+      <li><span class="tip-icon">↔</span><span><strong>Sekmelerin elinin altında</strong><small>Açık sayfalarını soldaki panelde düzenle.</small></span></li>
+      <li><span class="tip-icon">⌑</span><span><strong>Sık kullandıklarını sabitle</strong><small>Bir sekmeyi canlı tutmak için iğne simgesine bas.</small></span></li>
+      <li><span class="tip-icon">◈</span><span><strong>Daha az reklam</strong><small>Reklam engelleme varsayılan olarak açık.</small></span></li>
+    </ul>
+  </section>`;
+}
+
 export function renderHistory(entries: HistoryEntry[], query: string): string {
   const search = query.trim().slice(0, 200);
   const form = `<form action="${HISTORY_URL}" method="get"><input name="q" type="search" placeholder="Geçmişte ara" aria-label="Geçmişte ara" value="${escapeHtml(search)}" autofocus /></form>`;
@@ -76,6 +91,7 @@ export function serveInternalPages(
   historyFile: string,
   recent: () => RecentPage[],
   visits: (query: string) => HistoryEntry[],
+  showWelcome: () => boolean,
 ): void {
   const page = fs.readFileSync(newTabFile, 'utf8');
   const historyPage = fs.readFileSync(historyFile, 'utf8');
@@ -103,8 +119,17 @@ export function serveInternalPages(
     if (url.host !== 'newtab' || url.pathname !== '/') {
       return new Response('Not found', { status: 404 });
     }
-    return new Response(page.replace(RECENT_MARKER, renderRecent(recent())), {
-      headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': NEW_TAB_CSP },
-    });
+    const welcomeVisible = showWelcome();
+    const welcome = welcomeVisible ? renderWelcome() : '';
+    const welcomeAction = welcomeVisible
+      ? '<button class="welcome-start" type="submit">Aramaya başla <span aria-hidden="true">↗</span></button>'
+      : '';
+    return new Response(
+      page
+        .replace(WELCOME_MARKER, welcome)
+        .replace(WELCOME_ACTION_MARKER, welcomeAction)
+        .replace(RECENT_MARKER, renderRecent(recent())),
+      { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': NEW_TAB_CSP } },
+    );
   });
 }

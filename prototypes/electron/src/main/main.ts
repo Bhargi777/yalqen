@@ -79,14 +79,6 @@ function createBrowser(): void {
   );
   daily.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission));
   const history = new HistoryStore(app.getPath('userData'));
-  serveInternalPages(
-    daily,
-    path.join(__dirname, '../renderer/newtab.html'),
-    path.join(__dirname, '../renderer/history.html'),
-    () => tabs.recentlyClosed(),
-    (query) => history.list(query),
-  );
-
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
   const adBlocker = new AdBlocker(daily, path.join(app.getPath('userData'), 'adblock-engine.bin'));
@@ -185,6 +177,19 @@ function createBrowser(): void {
     onHistoryDelete: (id) => history.remove(id),
     onHistoryClear: () => history.clear(),
   });
+
+  serveInternalPages(
+    daily,
+    path.join(__dirname, '../renderer/newtab.html'),
+    path.join(__dirname, '../renderer/history.html'),
+    () => tabs.recentlyClosed(),
+    (query) => history.list(query),
+    () => {
+      const showWelcome = !settings.get().welcomeCompleted;
+      if (showWelcome) settings.update({ welcomeCompleted: true });
+      return showWelcome;
+    },
+  );
 
   // Showing the traffic lights again puts them back in their default place, so the
   // position is set each time they appear. In full screen macOS shows them in the
@@ -303,9 +308,6 @@ function createBrowser(): void {
       reopenClosedTab: () => tabs.reopenClosed(),
       focusAddress: openCenteredAddress,
       reload: () => tabs.reload(),
-      goBack: () => tabs.goBack(),
-      goForward: () => tabs.goForward(),
-      openHistory: () => tabs.openHistory(),
       togglePanel,
       toggleDevTools: () => tabs.toggleDevTools(),
       toggleDeviceView: () => tabs.toggleEmulation(deviceId),
@@ -319,7 +321,6 @@ function createBrowser(): void {
         deviceId = id;
         tabs.selectDevice(id);
       },
-      selectTab: (index) => tabs.selectByIndex(index),
       openSettings: () => settingsWindow.open(),
     }),
   );

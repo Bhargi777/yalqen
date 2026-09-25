@@ -13,27 +13,17 @@ export interface MenuActions {
   reopenClosedTab(): void;
   focusAddress(): void;
   reload(): void;
-  goBack(): void;
-  goForward(): void;
-  openHistory(): void;
   togglePanel(): void;
   toggleDevTools(): void;
   toggleDeviceView(): void;
   rotateDevice(): void;
   devices: DeviceMenuItem[];
   selectDevice(id: DeviceId): void;
-  selectTab(index: number): void;
   openSettings(): void;
 }
 
 /** Shortcuts live in the app menu so they work while a page has focus. */
 export function buildMenu(actions: MenuActions): Menu {
-  const tabShortcuts: MenuItemConstructorOptions[] = Array.from({ length: 9 }, (_, i) => ({
-    label: i === 8 ? 'Son sekme' : `Sekme ${i + 1}`,
-    accelerator: `CmdOrCtrl+${i + 1}`,
-    click: () => actions.selectTab(i === 8 ? -1 : i),
-  }));
-
   const isMac = process.platform === 'darwin';
   const settingsItem: MenuItemConstructorOptions = {
     label: 'Ayarlar…',
@@ -98,17 +88,6 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Cihazı döndür', accelerator: 'Shift+Alt+CmdOrCtrl+M', click: actions.rotateDevice },
       ],
     },
-    {
-      label: 'Geçmiş',
-      submenu: [
-        { label: 'Tüm geçmiş', accelerator: 'CmdOrCtrl+Y', click: actions.openHistory },
-        { type: 'separator' },
-        { label: 'Geri', accelerator: 'CmdOrCtrl+[', click: actions.goBack },
-        { label: 'İleri', accelerator: 'CmdOrCtrl+]', click: actions.goForward },
-      ],
-    },
-    { label: 'Sekmeler', submenu: tabShortcuts },
-    { role: 'windowMenu' },
   ];
 
   return Menu.buildFromTemplate(template);
