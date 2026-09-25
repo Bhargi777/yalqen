@@ -19,6 +19,7 @@ import { registerInternalScheme, serveInternalPages } from './internal-pages.js'
 import { applyGlass, glassAvailable } from './glass.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
+import { pageFrame } from './page-layout.js';
 import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
@@ -108,12 +109,16 @@ function createBrowser(): void {
   let deviceId = DEFAULT_DEVICE_ID;
   // Optimistic until the glass view is added, so the UI does not start opaque.
   let glassApplied = glassAvailable;
+  let windowFullScreen = false;
+  let htmlFullScreenTabId: string | null = null;
+  const isFullScreen = () => windowFullScreen || (htmlFullScreenTabId !== null && htmlFullScreenTabId === tabs.activeTabId);
 
   const material = (): WindowMaterial =>
     glassApplied && !nativeTheme.prefersReducedTransparency ? 'glass' : 'opaque';
 
   const browserState = (): BrowserState => ({
     ...tabs.state(),
+    fullScreen: isFullScreen(),
     addressPlaceholder: searchEngine().placeholder,
     panelCollapsed: settings.get().panelCollapsed,
     panelSide: settings.get().panelSide,
@@ -150,6 +155,10 @@ function createBrowser(): void {
     session: daily,
     freezeBackground: () => settings.get().freezeBackgroundTabs,
     onChange: (persist) => {
+      if (htmlFullScreenTabId && htmlFullScreenTabId !== tabs.activeTabId) {
+        htmlFullScreenTabId = null;
+        syncFullScreen();
+      }
       commandBar.keepOnTop();
       pushState();
       if (persist) store.scheduleSave(() => tabs.toSession());
@@ -160,6 +169,16 @@ function createBrowser(): void {
     onNewTabSearch: (query) => {
       if (query.trim() === '') openCenteredAddress();
       else tabs.navigate(resolveInput(query, searchEngine()));
+    },
+    onHtmlFullScreenChange: (tabId, fullScreen) => {
+      if (fullScreen) {
+        if (tabId !== tabs.activeTabId || htmlFullScreenTabId === tabId) return;
+        htmlFullScreenTabId = tabId;
+      } else {
+        if (htmlFullScreenTabId !== tabId) return;
+        htmlFullScreenTabId = null;
+      }
+      syncFullScreen();
     },
   });
 
@@ -175,14 +194,9 @@ function createBrowser(): void {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
     commandBar.fitWindow();
-    // The page card sits beside the sidebar and below the top bar.
-    tabs.setPageBounds({
-      x: layout.panelSide === 'left' ? layout.panelWidth : layout.pageInset,
-      y: layout.chromeHeight,
-      width: Math.max(0, width - layout.panelWidth - layout.pageInset),
-      height: Math.max(0, height - layout.chromeHeight - layout.pageInset),
-    });
-    tabs.setPageRadius(layout.pageRadius);
+    const { radius, ...bounds } = pageFrame(width, height, layout, isFullScreen());
+    tabs.setPageBounds(bounds);
+    tabs.setPageRadius(radius);
     if (process.platform === 'darwin') {
       setWindowControls(layout.windowControls || controlsRevealed);
     }
@@ -224,6 +238,15 @@ function createBrowser(): void {
     controlsRevealed = false;
   };
 
+  const syncFullScreen = () => {
+    if (isFullScreen()) {
+      commandBar.close();
+      hideWindowControls();
+    }
+    applyLayout();
+    pushState();
+  };
+
   window.on('resize', applyLayout);
   window.on('enter-full-screen', () => {
     // A reveal in progress is dropped: the title bar takes over.
@@ -231,9 +254,13 @@ function createBrowser(): void {
       hideWindowControls();
       notifyUi({ type: 'window-controls', visible: false });
     }
-    applyLayout();
+    windowFullScreen = true;
+    syncFullScreen();
   });
-  window.on('leave-full-screen', applyLayout);
+  window.on('leave-full-screen', () => {
+    windowFullScreen = false;
+    syncFullScreen();
+  });
   applyLayout();
 
   const recordSnapshot = (label: string) => {

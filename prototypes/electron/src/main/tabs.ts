@@ -48,6 +48,7 @@ export interface TabManagerOptions {
   /** The new tab page asked for the address bar. */
   /** A search typed on the new tab page, or empty when it asked for the address bar. */
   onNewTabSearch: (query: string) => void;
+  onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
 }
 
 export interface RecentPage {
@@ -494,6 +495,9 @@ export class TabManager {
   private attachListeners(tab: Tab, view: WebContentsView): void {
     const contents = view.webContents;
 
+    contents.on('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));
+    contents.on('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
+
     contents.on('will-navigate', (event) => {
       const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
       const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
@@ -613,6 +617,7 @@ export class TabManager {
   private destroyView(tab: Tab): void {
     const view = tab.view;
     if (!view) return;
+    this.options.onHtmlFullScreenChange(tab.id, false);
     tab.view = null;
     tab.loading = false;
     tab.frozen = false;

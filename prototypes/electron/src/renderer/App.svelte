@@ -29,6 +29,7 @@
   let browser: BrowserState = $state({
     tabs: [],
     activeTabId: null,
+    fullScreen: false,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     panelSide: 'left',
@@ -97,9 +98,11 @@
 <div
   class="shell"
   class:right={side === 'right'}
-  style:grid-template-columns={side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
-  style:grid-template-rows="{CHROME_HEIGHT}px minmax(0, 1fr)"
+  class:fullscreen={browser.fullScreen}
+  style:grid-template-columns={browser.fullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
+  style:grid-template-rows={browser.fullScreen ? 'minmax(0, 1fr)' : `${CHROME_HEIGHT}px minmax(0, 1fr)`}
 >
+  {#if !browser.fullScreen}
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
@@ -149,11 +152,12 @@
         window.yalqen.send({ type: 'reveal-window-controls', width: WINDOW_CONTROLS_END + NAV_WIDTH + NAV_GAP })}
     ></div>
   {/if}
+  {/if}
   <section
     class="page"
     class:blank
-    style:margin={side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
-    style:border-radius="{PAGE_RADIUS}px"
+    style:margin={browser.fullScreen ? '0' : side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
+    style:border-radius={browser.fullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
     <!-- The page view is drawn by the main process over this area. -->
     <div class="viewport" aria-hidden="true">
@@ -188,6 +192,15 @@
     grid-template-areas:
       'bar panel'
       'page panel';
+  }
+
+  .shell.fullscreen,
+  .shell.fullscreen.right {
+    grid-template-areas: 'page';
+  }
+
+  .shell.fullscreen .page {
+    box-shadow: none;
   }
 
   /* Capsules pinned to the top corners, whichever side the panel is on. */
