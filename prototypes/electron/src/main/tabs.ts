@@ -32,12 +32,6 @@ interface Tab {
   visitId: string | null;
 }
 
-export interface RestoreTiming {
-  tabId: TabId;
-  url: string;
-  ms: number;
-}
-
 export interface TabManagerOptions {
   window: BaseWindow;
   session: Session;
@@ -45,7 +39,6 @@ export interface TabManagerOptions {
   freezeBackground: () => boolean;
   /** A visible change may also require the saved session to be updated. */
   onChange: (persist: boolean) => void;
-  onRestore: (timing: RestoreTiming) => void;
   /** The new tab page asked for the address bar. */
   /** A search typed on the new tab page, or empty when it asked for the address bar. */
   onNewTabSearch: (query: string) => void;
@@ -309,23 +302,6 @@ export class TabManager {
     this.changed();
   }
 
-  /**
-   * Asks every app process to release caches and collect garbage, as under
-   * critical system memory pressure. For measuring what that frees; not automatic.
-   */
-  async simulateMemoryPressure(): Promise<boolean> {
-    const contents = this.tabs.find((tab) => tab.view)?.view?.webContents;
-    if (!contents || contents.isDestroyed()) return false;
-    try {
-      if (!contents.debugger.isAttached()) contents.debugger.attach('1.3');
-      await contents.debugger.sendCommand('Memory.simulatePressureNotification', { level: 'critical' });
-      return true;
-    } catch (error) {
-      console.warn(`[memory] pressure notification failed: ${(error as Error).message}`);
-      return false;
-    }
-  }
-
   toggleDevTools(): void {
     this.active()?.view?.webContents.toggleDevTools();
   }
@@ -408,13 +384,8 @@ export class TabManager {
     tab.history = null;
     const contents = view.webContents;
     if (history && history.entries.length > 0) {
-      const startedAt = performance.now();
       contents.navigationHistory
         .restore({ entries: history.entries, index: history.index })
-        .then(() => {
-          const ms = Math.round(performance.now() - startedAt);
-          this.options.onRestore({ tabId: tab.id, url: history.entries[history.index]?.url ?? tab.url, ms });
-        })
         .catch(() => {
           // The promise also rejects when a later navigation (e.g. going back
           // right after restore) aborts the load; fall back only if nothing was restored.

@@ -19,7 +19,6 @@ import { registerInternalScheme, serveInternalPages } from './internal-pages.js'
 import { applyGlass, glassAvailable } from './glass.js';
 import { HistoryStore } from './history.js';
 import { buildMenu } from './menu.js';
-import { MetricsLog, readProcessMemory } from './metrics.js';
 import { pageFrame } from './page-layout.js';
 import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
@@ -44,7 +43,6 @@ const WINDOW_CONTROLS_POLL_MS = 150;
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
 const repoRoot = path.resolve(app.getAppPath(), '../..');
-const metricsLog = new MetricsLog(process.env.YALQEN_METRICS_DIR ?? path.join(repoRoot, 'bench/results'));
 const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
 const appIcon = path.join(repoRoot, 'design/brand/png/fitted/icon-512.png');
 
@@ -170,9 +168,6 @@ function createBrowser(): void {
       pushState();
       if (persist) store.scheduleSave(() => tabs.toSession());
     },
-    onRestore: (timing) => {
-      metricsLog.write({ event: 'restore', ...timing });
-    },
     onNewTabSearch: (query) => {
       if (query.trim() === '') openCenteredAddress();
       else tabs.navigate(resolveInput(query, searchEngine()));
@@ -270,18 +265,6 @@ function createBrowser(): void {
   window.on('leave-full-screen', applyLayout);
   applyLayout();
 
-  const recordSnapshot = (label: string) => {
-    const memory = readProcessMemory();
-    const file = metricsLog.write({
-      event: 'snapshot',
-      label,
-      tabs: { total: tabs.count, live: tabs.liveCount, frozen: tabs.frozenCount },
-      totalWorkingSetKB: memory.totalKB,
-      processes: memory.processes,
-    });
-    console.log(`[metrics] ${label}: ${Math.round(memory.totalKB / 1024)} MB -> ${file}`);
-  };
-
   const settingsView = (): SettingsView => {
     const { version: _version, ...values } = settings.get();
     return {
@@ -343,13 +326,6 @@ function createBrowser(): void {
         for (const url of readPageSet()) tabs.open(url, { activate: false });
       },
       discardBackground: () => tabs.discardBackground(),
-      simulateMemoryPressure: () => {
-        void tabs.simulateMemoryPressure().then((sent) => {
-          if (sent) console.log('[memory] critical pressure notification sent');
-        });
-      },
-      recordSnapshot: () =>
-        recordSnapshot(`live-${tabs.liveCount}/frozen-${tabs.frozenCount}/total-${tabs.count}`),
       openSettings: () => settingsWindow.open(),
     }),
   );
