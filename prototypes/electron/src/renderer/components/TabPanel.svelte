@@ -249,12 +249,13 @@
     grid-row: 1 / span 2;
     flex-direction: column;
     min-height: 0;
-    padding: 0 8px 8px 10px;
+    /* Same gap on both sides: the window edge on the left, the page card on the right. */
+    padding: 0 8px 8px;
   }
 
   .panel.collapsed {
     align-items: center;
-    padding: 0 0 8px 8px;
+    padding: 0 0 8px;
   }
 
   .resize {
