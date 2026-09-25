@@ -335,12 +335,46 @@
     animation: pulse 1.2s ease-in-out infinite alternate;
   }
 
+  .chip.active .loading {
+    overflow: hidden;
+    background: transparent;
+    animation: none;
+  }
+
+  .chip.active .loading::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 28%;
+    height: 100%;
+    border-radius: inherit;
+    background: #f28c28;
+    content: '';
+    animation: search-sweep 1.4s ease-in-out infinite;
+  }
+
+  @keyframes search-sweep {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(360%);
+    }
+  }
+
   @keyframes pulse {
     from {
       opacity: 0.2;
     }
     to {
       opacity: 0.7;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chip.active .loading::after {
+      width: 100%;
+      animation: none;
     }
   }
 </style>

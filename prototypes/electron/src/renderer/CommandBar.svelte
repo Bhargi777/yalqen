@@ -84,7 +84,7 @@
     width: min(640px, 100%);
     height: 52px;
     padding: 0 16px;
-    border-radius: 14px;
+    border-radius: 999px;
     background: var(--surface);
     box-shadow:
       0 0 0 0.5px rgb(0 0 0 / 0.12),
