@@ -8,13 +8,14 @@
       closed pages. Links to yalqen://newtab/search open the centered address bar.
     -->
     <style>
+      /* The page matches the window background, so the new tab reads as an empty board. */
       :root {
-        --page: #f3f4f6;
+        --page: #e6e8eb;
         --text: #1a1b1e;
-        --hint: #b4b7bd;
+        --hint: #a4a7ad;
         --muted: #6b6e75;
         --surface: #ffffff;
-        --well: #e8eaed;
+        --well: #dcdfe3;
         --hover: rgb(0 0 0 / 0.04);
         --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.08), 0 1px 3px rgb(16 18 24 / 0.08);
         color-scheme: light;
@@ -22,12 +23,12 @@
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --page: #1b1c1f;
+          --page: #141517;
           --text: #eceef1;
           --hint: #53565d;
           --muted: #9a9ea6;
-          --surface: #2a2c30;
-          --well: #242529;
+          --surface: #26282c;
+          --well: #1e2023;
           --hover: rgb(255 255 255 / 0.05);
           --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 1px 3px rgb(0 0 0 / 0.3);
           color-scheme: dark;
@@ -132,20 +133,43 @@
         list-style: none;
       }
 
-      .recent a {
+      .recent li {
         display: flex;
         align-items: center;
-        gap: 12px;
         height: 48px;
-        padding: 0 14px;
         border-radius: 11px;
         color: var(--muted);
       }
 
-      .recent a:hover {
+      .recent li:hover {
         background: var(--surface);
         box-shadow: var(--shadow);
         color: var(--text);
+      }
+
+      .recent a:first-child {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        height: 100%;
+        padding: 0 14px;
+      }
+
+      .forget {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        margin-right: 10px;
+        border-radius: 7px;
+        color: var(--text);
+      }
+
+      .forget:hover {
+        background: var(--hover);
       }
 
       .recent span:last-child {

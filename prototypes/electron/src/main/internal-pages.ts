@@ -6,6 +6,8 @@ import type { RecentPage } from './tabs.js';
 // Favicons of recent pages come from the web; nothing else is loaded.
 const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
 const RECENT_MARKER = '<!-- recent -->';
+const FORGET_ICON =
+  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 
 /** Must run before the app is ready. */
 export function registerInternalScheme(): void {
@@ -34,7 +36,11 @@ export function renderRecent(pages: RecentPage[]): string {
       const icon = page.faviconUrl?.startsWith('https:')
         ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="18" height="18" />`
         : '<span class="dot"></span>';
-      return `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(hostOf(page.url))}</span></a></li>`;
+      const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
+      return (
+        `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(hostOf(page.url))}</span></a>` +
+        `<a class="forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır">${FORGET_ICON}</a></li>`
+      );
     })
     .join('');
   return `<h2>Son kapatılanlar</h2><ul class="recent">${items}</ul>`;

@@ -352,7 +352,7 @@
     display: grid;
     place-items: center;
     width: 100%;
-    height: 48px;
+    height: 46px;
     border: 0;
     border-radius: 12px;
     background: var(--well);
@@ -360,7 +360,7 @@
   }
 
   .collapsed .tile {
-    height: 44px;
+    height: 42px;
     background: transparent;
   }
 
@@ -409,13 +409,37 @@
     width: 52px;
   }
 
+  /* Collapsed, favorites and tabs share one well, split by a line. */
+  .collapsed .favorites:has(+ .tabs) {
+    margin-bottom: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .collapsed .favorites + .tabs {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .collapsed .favorites + .tabs::before {
+    content: '';
+    display: block;
+    height: 1px;
+    margin: 0 6px 4px;
+    background: var(--border);
+  }
+
   .tab {
     position: relative;
     display: flex;
     align-items: center;
-    height: 42px;
+    height: 40px;
     border-radius: 10px;
     transition: background var(--transition);
+  }
+
+  .collapsed .tab {
+    height: 42px;
   }
 
   .tab + .tab {
@@ -467,7 +491,7 @@
     border-radius: 10px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 15px;
     text-align: left;
   }
 
@@ -494,6 +518,10 @@
     border-radius: 4px;
   }
 
+  .tab:not(.active) .favicon {
+    opacity: 0.6;
+  }
+
   .discarded .favicon img,
   .discarded .favicon > :global(svg) {
     opacity: 0.45;
@@ -506,18 +534,13 @@
     white-space: nowrap;
   }
 
+  /* Close is always shown, as in the design; the other actions appear on hover. */
   .actions {
-    display: none;
+    display: flex;
     padding-right: 8px;
   }
 
-  .tab:hover .actions,
-  .tab:focus-within .actions,
-  .tab.active .actions {
-    display: flex;
-  }
-
-  .tab.active:not(:hover, :focus-within) .extra {
+  .tab:not(:hover, :focus-within) .extra {
     display: none;
   }
 
@@ -552,7 +575,7 @@
     border-radius: 10px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .collapsed .new-tab {

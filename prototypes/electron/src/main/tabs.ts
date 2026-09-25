@@ -5,8 +5,9 @@ import { applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation 
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
 const MAX_CLOSED_TABS = 20;
-/** Link on the new tab page that opens the centered address bar instead of navigating. */
+/** Links on the new tab page handled here instead of navigating: open the address bar, forget a recent page. */
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
+const NEW_TAB_FORGET_URL = `${NEW_TAB_URL}forget`;
 const NEW_TAB_TITLE = 'Yeni sekme';
 /** Space kept around an emulated device for the bezel and label drawn by the UI. */
 const DEVICE_MARGIN = 32;
@@ -81,6 +82,13 @@ export class TabManager {
 
   get count(): number {
     return this.tabs.length;
+  }
+
+  /** Drops a page from the recently closed list; it can no longer be reopened. */
+  forgetClosed(url: string): void {
+    for (let i = this.closed.length - 1; i >= 0; i--) {
+      if (this.closed[i].url === url) this.closed.splice(i, 1);
+    }
   }
 
   /** Recently closed web pages, newest first, one per address. */
@@ -480,10 +488,18 @@ export class TabManager {
     const contents = view.webContents;
 
     contents.on('will-navigate', (event) => {
-      if (event.url !== NEW_TAB_SEARCH_URL) return;
+      const search = event.url === NEW_TAB_SEARCH_URL;
+      const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
+      if (!search && !forget) return;
       event.preventDefault();
-      // Only the new tab page itself may open the address bar this way.
-      if (contents.getURL() === NEW_TAB_URL) this.options.onNewTabSearch();
+      // Only the new tab page itself may use these links.
+      if (contents.getURL() !== NEW_TAB_URL) return;
+      if (search) {
+        this.options.onNewTabSearch();
+      } else {
+        this.forgetClosed(new URL(event.url).searchParams.get('url') ?? '');
+        contents.reload();
+      }
     });
     contents.setWindowOpenHandler(({ url }) => {
       this.open(url);

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { BrowserState } from '../shared/types';
+  import { isNewTab } from './format';
   import PageHeader from './components/PageHeader.svelte';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
@@ -8,12 +9,12 @@
   const COLLAPSED_WIDTH = 64;
   const MIN_WIDTH = 220;
   const MAX_WIDTH = 400;
-  const DEFAULT_WIDTH = 280;
+  const DEFAULT_WIDTH = 248;
   /** Top bar height, page card gap to the window edges, card header and radius. */
   const CHROME_HEIGHT = 56;
   const PAGE_INSET = 10;
-  const PAGE_HEADER_HEIGHT = 44;
-  const PAGE_RADIUS = 14;
+  const PAGE_HEADER_HEIGHT = 42;
+  const PAGE_RADIUS = 12;
   /** Right edge of the macOS traffic lights, measured from the window's left edge. */
   const WINDOW_CONTROLS_END = 80;
   const PREFS_KEY = 'yalqen:panel';
@@ -45,6 +46,9 @@
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
+  // The new tab page is an empty board: no card or header, the page blends into the window.
+  const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
+  const headerHeight = $derived(blank ? 0 : PAGE_HEADER_HEIGHT);
 
   $effect(() => {
     document.documentElement.dataset.material = browser.material;
@@ -56,7 +60,7 @@
       windowControls: true,
       chromeHeight: CHROME_HEIGHT,
       pageInset: PAGE_INSET,
-      pageHeaderHeight: PAGE_HEADER_HEIGHT,
+      pageHeaderHeight: headerHeight,
       pageRadius: PAGE_RADIUS,
     });
     try {
@@ -95,13 +99,15 @@
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     leadingInset={windowControls ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : 0}
+    minimal={blank && browser.tabs.length === 1}
   />
   <section
     class="page"
+    class:blank
     style:margin="0 {PAGE_INSET}px {PAGE_INSET}px 0"
     style:border-radius="{PAGE_RADIUS}px"
   >
-    <PageHeader tab={activeTab} height={PAGE_HEADER_HEIGHT} />
+    {#if !blank}<PageHeader tab={activeTab} height={PAGE_HEADER_HEIGHT} />{/if}
     <!-- The page view is drawn by the main process over this area. -->
     <div class="viewport" aria-hidden="true">
       {#if browser.device}
@@ -139,6 +145,15 @@
     overflow: hidden;
     background: var(--page);
     box-shadow: var(--page-shadow);
+  }
+
+  .page.blank {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .page.blank .viewport {
+    background: transparent;
   }
 
   .viewport {

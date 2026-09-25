@@ -7,11 +7,14 @@
     tabs,
     activeTabId,
     leadingInset,
+    minimal,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     /** Space kept free on the left, e.g. for traffic lights over a collapsed sidebar. */
     leadingInset: number;
+    /** Only the tools: the new tab page shows its own tab controls. */
+    minimal: boolean;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -28,67 +31,70 @@
 </script>
 
 <header class="toolbar" style:padding-left="{leadingInset}px">
-  <nav class="group" aria-label="Gezinme">
-    <button class="square" title="Yenile" onclick={() => send({ type: 'reload' })}>
-      <Icon name="reload" />
-    </button>
-    <button
-      class="square"
-      title="Geri"
-      disabled={!activeTab?.canGoBack}
-      onclick={() => send({ type: 'go-back' })}
-    >
-      <Icon name="back" />
-    </button>
-    <button
-      class="square"
-      title="İleri"
-      disabled={!activeTab?.canGoForward}
-      onclick={() => send({ type: 'go-forward' })}
-    >
-      <Icon name="forward" />
-    </button>
-  </nav>
-
-  <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
-    {#each tabs as tab (tab.id)}
-      <li class="chip" class:active={tab.id === activeTabId}>
+  <span class="side"></span>
+  {#if !minimal}
+    <div class="center">
+      <nav class="group" aria-label="Gezinme">
+        <button class="square" title="Yenile" onclick={() => send({ type: 'reload' })}>
+          <Icon name="reload" />
+        </button>
         <button
-          class="chip-select"
-          title={tab.title}
-          aria-current={tab.id === activeTabId ? 'page' : undefined}
-          onclick={() => send({ type: 'activate-tab', id: tab.id })}
-          onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+          class="square"
+          title="Geri"
+          disabled={!activeTab?.canGoBack}
+          onclick={() => send({ type: 'go-back' })}
         >
-          <span class="favicon">
-            {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
-              <img
-                src={tab.faviconUrl}
-                alt=""
-                width="18"
-                height="18"
-                onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
-              />
-            {:else}
-              <Icon name="globe" />
-            {/if}
-          </span>
-          <span class="chip-title">{siteLabel(tab)}</span>
+          <Icon name="back" />
         </button>
-        <button class="chip-close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
-          <Icon name="close" size={14} />
+        <button
+          class="square"
+          title="İleri"
+          disabled={!activeTab?.canGoForward}
+          onclick={() => send({ type: 'go-forward' })}
+        >
+          <Icon name="forward" />
         </button>
-      </li>
-    {/each}
-  </ol>
+      </nav>
 
-  <button class="square" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-    <Icon name="plus" />
-  </button>
+      <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
+        {#each tabs as tab (tab.id)}
+          <li class="chip" class:active={tab.id === activeTabId}>
+            <button
+              class="chip-select"
+              title={tab.title}
+              aria-current={tab.id === activeTabId ? 'page' : undefined}
+              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+            >
+              <span class="favicon">
+                {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
+                  <img
+                    src={tab.faviconUrl}
+                    alt=""
+                    width="18"
+                    height="18"
+                    onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
+                  />
+                {:else}
+                  <Icon name="globe" />
+                {/if}
+              </span>
+              <span class="chip-title">{siteLabel(tab)}</span>
+            </button>
+            <button class="chip-close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
+              <Icon name="close" size={14} />
+            </button>
+          </li>
+        {/each}
+      </ol>
 
-  <span class="spacer"></span>
+      <button class="square" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+        <Icon name="plus" />
+      </button>
+    </div>
+  {/if}
 
-  <span class="group tools">
+  <span class="side end">
     <button class="square" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
       <Icon name="settings" />
     </button>
@@ -96,6 +102,7 @@
 </header>
 
 <style>
+  /* Navigation and tabs are centered over the page card; tools sit on the right. */
   .toolbar {
     display: flex;
     grid-column: 2;
@@ -105,6 +112,24 @@
     min-width: 0;
     padding-right: 10px;
     -webkit-app-region: drag;
+  }
+
+  .side {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .side.end {
+    justify-content: flex-end;
+  }
+
+  .center {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
   }
 
   .group {
@@ -135,11 +160,6 @@
   .square:disabled {
     color: var(--text-muted);
     opacity: 0.55;
-  }
-
-  .spacer {
-    flex: 1;
-    min-width: 12px;
   }
 
   .strip {
@@ -208,7 +228,7 @@
     border-radius: 11px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .chip.active .chip-select {
@@ -248,13 +268,6 @@
     border-radius: 6px;
     background: transparent;
     color: var(--text);
-    visibility: hidden;
-  }
-
-  .chip:hover .chip-close,
-  .chip.active .chip-close,
-  .chip-close:focus-visible {
-    visibility: visible;
   }
 
   .chip-close:hover {

@@ -41,6 +41,15 @@
 
   <span class="side end">
     {#if tab}
+      <button
+        class="icon"
+        class:on={tab.keepAlive}
+        title={tab.keepAlive ? 'Favorilerden çıkar' : 'Favorilere ekle (canlı tut)'}
+        aria-pressed={tab.keepAlive}
+        onclick={() => send({ type: 'toggle-keep-alive', id: tab.id })}
+      >
+        <Icon name="sparkle" />
+      </button>
       <button class="icon" title="Sekmeyi kapat (⌘W)" onclick={() => send({ type: 'close-tab', id: tab.id })}>
         <Icon name="close" />
       </button>
@@ -57,7 +66,6 @@
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     padding: 0 10px;
-    border-bottom: 1px solid var(--page-divider);
   }
 
   .side {
@@ -84,6 +92,10 @@
   .icon:hover:not(:disabled) {
     background: var(--surface-hover);
     color: var(--text);
+  }
+
+  .icon.on {
+    color: var(--accent);
   }
 
   .icon:disabled {
