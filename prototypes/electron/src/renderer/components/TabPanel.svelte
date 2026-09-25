@@ -331,7 +331,7 @@
   }
 
   .collapsed .favorites {
-    grid-template-columns: 36px;
+    grid-template-columns: 32px;
     gap: 2px;
     padding: 3px;
     border-radius: 14px;
@@ -402,7 +402,7 @@
   }
 
   .collapsed .tabs {
-    width: 42px;
+    width: 38px;
   }
 
   /* Collapsed, favorites and tabs share one well, split by a line. */

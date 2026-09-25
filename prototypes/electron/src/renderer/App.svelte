@@ -6,7 +6,7 @@
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
-  const COLLAPSED_WIDTH = 56;
+  const COLLAPSED_WIDTH = 44;
   const MIN_WIDTH = 180;
   const MAX_WIDTH = 360;
   const DEFAULT_WIDTH = 220;
