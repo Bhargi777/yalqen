@@ -15,6 +15,7 @@ export interface MenuActions {
   reload(): void;
   goBack(): void;
   goForward(): void;
+  openHistory(): void;
   togglePanel(): void;
   toggleDevTools(): void;
   toggleDeviceView(): void;
@@ -104,6 +105,8 @@ export function buildMenu(actions: MenuActions): Menu {
     {
       label: 'Geçmiş',
       submenu: [
+        { label: 'Tüm geçmiş', accelerator: 'CmdOrCtrl+Y', click: actions.openHistory },
+        { type: 'separator' },
         { label: 'Geri', accelerator: 'CmdOrCtrl+[', click: actions.goBack },
         { label: 'İleri', accelerator: 'CmdOrCtrl+]', click: actions.goForward },
       ],

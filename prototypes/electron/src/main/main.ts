@@ -17,6 +17,7 @@ import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { applyGlass, glassAvailable } from './glass.js';
+import { HistoryStore } from './history.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
 import { pageFrame } from './page-layout.js';
@@ -81,7 +82,14 @@ function createBrowser(): void {
     callback(ALLOWED_PERMISSIONS.has(permission)),
   );
   daily.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission));
-  serveInternalPages(daily, path.join(__dirname, '../renderer/newtab.html'), () => tabs.recentlyClosed());
+  const history = new HistoryStore(app.getPath('userData'));
+  serveInternalPages(
+    daily,
+    path.join(__dirname, '../renderer/newtab.html'),
+    path.join(__dirname, '../renderer/history.html'),
+    () => tabs.recentlyClosed(),
+    (query) => history.list(query),
+  );
 
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
@@ -179,6 +187,10 @@ function createBrowser(): void {
       }
       syncPageFullScreen();
     },
+    onVisit: (url, title) => history.visit(url, title),
+    onVisitTitle: (id, title) => history.setTitle(id, title),
+    onHistoryDelete: (id) => history.remove(id),
+    onHistoryClear: () => history.clear(),
   });
 
   // Showing the traffic lights again puts them back in their default place, so the
@@ -312,6 +324,7 @@ function createBrowser(): void {
       reload: () => tabs.reload(),
       goBack: () => tabs.goBack(),
       goForward: () => tabs.goForward(),
+      openHistory: () => tabs.openHistory(),
       togglePanel,
       toggleDevTools: () => tabs.toggleDevTools(),
       toggleDeviceView: () => tabs.toggleEmulation(deviceId),
@@ -413,6 +426,9 @@ function createBrowser(): void {
           if (error) console.warn(`[downloads] could not open folder: ${error}`);
         });
         break;
+      case 'open-history':
+        tabs.openHistory();
+        break;
       case 'reveal-window-controls':
         revealWindowControls(action.width);
         break;
@@ -439,6 +455,7 @@ function createBrowser(): void {
         ? tabs.toSession()
         : { version: 1, activeTabId: null, tabs: [] },
     );
+    history.saveNow();
     tabs.destroyAll();
     commandBar.destroy();
     if (!ui.webContents.isDestroyed()) ui.webContents.close();
