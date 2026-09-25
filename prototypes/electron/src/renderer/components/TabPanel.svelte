@@ -204,6 +204,8 @@
   .panel {
     position: relative;
     display: flex;
+    grid-column: 2;
+    grid-row: 1 / span 2;
     flex-direction: column;
     height: 100%;
     padding: 0 10px 10px;

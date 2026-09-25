@@ -6,7 +6,7 @@ export interface CommandBarOptions {
   preload: string;
   page: string;
   /** Called with the text the user submitted; the bar is already closed. */
-  onSubmit: (input: string) => void;
+  onSubmit: (input: string, mode: CommandBarOpen['mode']) => void;
   /** Called after the bar is closed without a submit. */
   onDismiss: () => void;
 }
@@ -19,6 +19,7 @@ export interface CommandBarOptions {
 export class CommandBar {
   private readonly view: WebContentsView;
   private opened = false;
+  private mode: CommandBarOpen['mode'] = 'navigate';
 
   constructor(private readonly options: CommandBarOptions) {
     this.view = new WebContentsView({
@@ -43,8 +44,14 @@ export class CommandBar {
 
   open(open: CommandBarOpen): void {
     this.fitWindow();
-    this.opened = true;
-    this.options.window.contentView.addChildView(this.view);
+    this.mode = open.mode;
+    if (!this.opened) {
+      this.opened = true;
+      this.options.window.contentView.addChildView(this.view);
+    } else {
+      this.keepOnTop();
+    }
+    this.options.window.focus();
     this.view.webContents.focus();
     this.view.webContents.send(CommandBarChannel.open, open);
   }
@@ -79,7 +86,7 @@ export class CommandBar {
     if (event.sender !== this.view.webContents || !this.opened) return;
     this.close();
     if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
-      this.options.onSubmit(action.input);
+      this.options.onSubmit(action.input, this.mode);
     } else {
       this.options.onDismiss();
     }

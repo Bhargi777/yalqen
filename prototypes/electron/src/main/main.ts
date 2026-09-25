@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, session } from 'electron';
 import {
+  NEW_TAB_URL,
   IpcChannel,
   SettingsChannel,
   type BrowserState,
   type ChromeLayout,
   type UiAction,
   type SettingsView,
-  type UiCommand,
   type WindowMaterial,
 } from '../shared/types.js';
 import { CommandBar } from './command-bar.js';
@@ -27,7 +27,7 @@ import { resolveInput } from './url.js';
 const DAILY_PARTITION = 'persist:daily';
 const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
-// Offset of the traffic lights from the left edge and top of the tab panel.
+// Offset of the traffic lights from the top-left window chrome.
 const WINDOW_CONTROLS_INSET = { x: 14, y: 15 };
 
 // Keep prototype data apart from any other Electron app.
@@ -39,6 +39,7 @@ const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
 const appIcon = path.join(repoRoot, 'design/brand/png/icon-512.png');
 
 registerInternalScheme();
+app.setName('yalqen');
 
 function createBrowser(): void {
   const window = new BaseWindow({
@@ -83,7 +84,7 @@ function createBrowser(): void {
     icon: appIcon,
   });
   nativeTheme.themeSource = settings.get().theme;
-  let layout: ChromeLayout = { panelWidth: 240, windowControls: true, pageInset: 0, pageRadius: 0 };
+  let layout: ChromeLayout = { panelWidth: 264, windowControls: true, chromeHeight: 54, pageInset: 8, pageRadius: 12 };
   let totalMemoryMB: number | null = null;
   // Device used by the phone view shortcut; the last one picked from the menu.
   // Radio items keep their own checked state, so the menu is not rebuilt.
@@ -106,16 +107,15 @@ function createBrowser(): void {
       ui.webContents.send(IpcChannel.state, browserState());
     }
   };
-  const sendCommand = (command: UiCommand) => {
-    ui.webContents.focus();
-    ui.webContents.send(IpcChannel.command, command);
-  };
-
   const commandBar = new CommandBar({
     window,
     preload: path.join(__dirname, '../preload/command-preload.js'),
     page: path.join(__dirname, '../renderer/command.html'),
-    onSubmit: (input) => tabs.open(resolveInput(input, searchEngine())),
+    onSubmit: (input, mode) => {
+      const url = resolveInput(input, searchEngine());
+      if (mode === 'new-tab') tabs.open(url);
+      else tabs.navigate(url);
+    },
     onDismiss: () => {
       if (!tabs.focusActive()) ui.webContents.focus();
     },
@@ -141,16 +141,15 @@ function createBrowser(): void {
     commandBar.fitWindow();
     tabs.setPageBounds({
       x: layout.pageInset,
-      y: layout.pageInset,
+      y: layout.chromeHeight + layout.pageInset,
       width: Math.max(0, width - layout.panelWidth - layout.pageInset),
-      height: Math.max(0, height - 2 * layout.pageInset),
+      height: Math.max(0, height - layout.chromeHeight - 2 * layout.pageInset),
     });
     tabs.setPageRadius(layout.pageRadius);
     if (process.platform === 'darwin') {
-      // The traffic lights live in the top row of the tab panel.
       window.setWindowButtonVisibility(layout.windowControls);
       window.setWindowButtonPosition({
-        x: width - layout.panelWidth + WINDOW_CONTROLS_INSET.x,
+        x: WINDOW_CONTROLS_INSET.x,
         y: WINDOW_CONTROLS_INSET.y,
       });
     }
@@ -190,19 +189,28 @@ function createBrowser(): void {
 
   const newTabWithAddress = () => {
     tabs.open();
-    sendCommand({ type: 'focus-address' });
+    commandBar.open({ placeholder: searchEngine().placeholder, mode: 'navigate' });
+  };
+
+  const openCenteredAddress = () => {
+    const url = tabs.activeUrl;
+    commandBar.open({
+      placeholder: searchEngine().placeholder,
+      mode: 'navigate',
+      value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
+    });
   };
 
   Menu.setApplicationMenu(
     buildMenu({
-      newTab: () => commandBar.open({ placeholder: searchEngine().placeholder }),
+      newTab: () => commandBar.open({ placeholder: searchEngine().placeholder, mode: 'new-tab' }),
       closeTab: () => {
         // The shortcut is app-wide; in the settings window it closes that window.
         if (settingsWindow.isFocused()) settingsWindow.close();
         else if (tabs.activeTabId) tabs.close(tabs.activeTabId);
       },
       reopenClosedTab: () => tabs.reopenClosed(),
-      focusAddress: () => sendCommand({ type: 'focus-address' }),
+      focusAddress: openCenteredAddress,
       reload: () => tabs.reload(),
       goBack: () => tabs.goBack(),
       goForward: () => tabs.goForward(),

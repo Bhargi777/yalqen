@@ -121,8 +121,6 @@
     align-items: center;
     gap: 2px;
     height: 48px;
-    /* Leaves room for the macOS traffic lights on the left. */
-    padding-left: 76px;
     -webkit-app-region: drag;
   }
 

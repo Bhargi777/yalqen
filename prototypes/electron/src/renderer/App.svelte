@@ -9,6 +9,7 @@
   const MAX_WIDTH = 420;
   const DEFAULT_WIDTH = 264;
   /** Keep the page on its own card in both opaque and glass windows. */
+  const CHROME_HEIGHT = 54;
   const PAGE_INSET = 8;
   const PAGE_RADIUS = 12;
   const PREFS_KEY = 'yalqen:panel';
@@ -47,7 +48,7 @@
   });
 
   $effect(() => {
-    window.yalqen.setLayout({ panelWidth, windowControls: !collapsed, pageInset: PAGE_INSET, pageRadius: PAGE_RADIUS });
+    window.yalqen.setLayout({ panelWidth, windowControls: true, chromeHeight: CHROME_HEIGHT, pageInset: PAGE_INSET, pageRadius: PAGE_RADIUS });
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
@@ -84,6 +85,11 @@
 </script>
 
 <div class="shell" style:grid-template-columns="1fr {panelWidth}px">
+  <header class="window-chrome">
+    <span class="window-brand">yalqen</span>
+    <span class="window-divider" aria-hidden="true"></span>
+    <span class="window-tab">{activeTab?.title ?? 'Yeni sekme'}</span>
+  </header>
   <!-- The page view is drawn by the main process over this area. -->
   <main
     class="page"
@@ -132,10 +138,48 @@
   .shell {
     display: grid;
     height: 100%;
+    grid-template-rows: 54px minmax(0, 1fr);
+  }
+
+  .window-chrome {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 0 16px 0 94px;
+    color: var(--text-muted);
+    font-size: 12px;
+    -webkit-app-region: drag;
+  }
+
+  .window-brand {
+    flex: none;
+    color: var(--text);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .window-divider {
+    flex: none;
+    width: 1px;
+    height: 15px;
+    background: var(--border);
+  }
+
+  .window-tab {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .page {
     position: relative;
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+    min-height: 0;
     overflow: hidden;
     background: var(--page);
     box-shadow: var(--page-shadow);

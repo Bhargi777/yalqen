@@ -57,6 +57,10 @@ export class TabManager {
     return this.activeId;
   }
 
+  get activeUrl(): string {
+    return this.active()?.url ?? NEW_TAB_URL;
+  }
+
   get liveCount(): number {
     return this.tabs.filter((tab) => tab.view).length;
   }

@@ -60,9 +60,11 @@ export interface BrowserState {
 /** Regions of the window reserved for the UI; the page view fills the rest. */
 export interface ChromeLayout {
   panelWidth: number;
-  /** Whether the macOS window controls fit at the top of the tab panel. */
+  /** Whether the macOS window controls are visible. */
   windowControls: boolean;
-  /** Gap between the page card and the left, top and bottom window edges. */
+  /** Height of the window chrome above the page. */
+  chromeHeight: number;
+  /** Gap between the page card and its available window area. */
   pageInset: number;
   /** Corner radius of the page card. */
   pageRadius: number;
@@ -105,6 +107,8 @@ export interface YalqenApi {
 /** Sent to the command bar each time it opens. */
 export interface CommandBarOpen {
   placeholder: string;
+  mode: 'navigate' | 'new-tab';
+  value?: string;
 }
 
 /** Requests the command bar sends to the main process. */

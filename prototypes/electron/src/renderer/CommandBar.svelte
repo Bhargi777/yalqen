@@ -29,6 +29,7 @@
   onMount(() =>
     window.yalqenCommand.onOpen((open) => {
       placeholder = open.placeholder;
+      value = open.value ?? '';
       input?.focus();
       input?.select();
     }),
