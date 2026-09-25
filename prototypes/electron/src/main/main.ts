@@ -289,6 +289,7 @@ function createBrowser(): void {
 
   const openCenteredAddress = () => {
     const url = tabs.activeUrl;
+    if (url === NEW_TAB_URL && tabs.focusNewTabSearch()) return;
     preconnector.opened(searchEngine());
     commandBar.open({
       placeholder: searchEngine().placeholder,

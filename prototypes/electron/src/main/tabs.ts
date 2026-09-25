@@ -193,6 +193,22 @@ export class TabManager {
     return true;
   }
 
+  /** Focuses the existing search field on the new tab page. */
+  focusNewTabSearch(): boolean {
+    const tab = this.active();
+    const view = tab?.view;
+    if (!tab || !view || tab.url !== NEW_TAB_URL) return false;
+
+    const focusInput = () => {
+      if (tab.view !== view || tab.url !== NEW_TAB_URL || view.webContents.isDestroyed()) return;
+      void view.webContents.executeJavaScript("document.getElementById('q')?.focus()").catch(() => {});
+    };
+    view.webContents.focus();
+    if (view.webContents.isLoadingMainFrame()) view.webContents.once('did-finish-load', focusInput);
+    else focusInput();
+    return true;
+  }
+
   close(id: TabId): void {
     const index = this.indexOf(id);
     if (index < 0) return;
