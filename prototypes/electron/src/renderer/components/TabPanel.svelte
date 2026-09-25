@@ -162,6 +162,14 @@
       {#if !collapsed}<span>Yeni sekme</span>{/if}
     </button>
     <button
+      class="footer-button"
+      title="Ayarlar (⌘,)"
+      aria-label="Ayarlar"
+      onclick={() => send({ type: 'open-settings' })}
+    >
+      <Icon name="settings" />
+    </button>
+    <button
       class="footer-button toggle"
       title={collapsed ? 'Paneli genişlet (⌘S)' : 'Paneli daralt (⌘S)'}
       aria-expanded={!collapsed}

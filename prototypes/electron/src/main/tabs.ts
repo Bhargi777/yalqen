@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
-import type { BrowserState, TabId, TabSnapshot } from '../shared/types.js';
+import { NEW_TAB_URL, type BrowserState, type TabId, type TabSnapshot } from '../shared/types.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -65,7 +65,7 @@ export class TabManager {
     this.active()?.view?.setBounds(bounds);
   }
 
-  open(url = 'about:blank', { activate = true } = {}): TabId {
+  open(url = NEW_TAB_URL, { activate = true } = {}): TabId {
     const tab = this.createRecord({ url });
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
@@ -91,7 +91,8 @@ export class TabManager {
     const view = this.ensureLive(next);
     view.setBounds(this.pageBounds);
     this.options.window.contentView.addChildView(view);
-    if (next.url !== 'about:blank') view.webContents.focus();
+    // A new tab page leaves focus with the address bar.
+    if (next.url !== NEW_TAB_URL && next.url !== 'about:blank') view.webContents.focus();
     this.changed();
   }
 

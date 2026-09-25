@@ -8,7 +8,7 @@ Faz 0 adayı: Electron + TypeScript + Svelte. Amaç ürün değil, [ölçüm sen
 npm install
 npm start          # derler ve uygulamayı açar
 npm run typecheck  # main/preload için tsc, arayüz için svelte-check
-npm test           # adres çözümleme ve arama motoru birim testleri
+npm test           # adres çözümleme, arama motoru ve ayar birim testleri
 npm run build
 ```
 
@@ -25,6 +25,9 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Yeni pencere istekleri sekme olarak açılır. İzinler varsayılan olarak reddedilir (tam ekran ve pano yazma hariç).
 - Sayfa çökerse sekme bellekten çıkarılmış duruma geçer; otomatik yeniden yüklenmez.
 - Arama motoru seçimi: Google (varsayılan), Yandex, DuckDuckGo, Bing, Brave Search, Ecosia veya özel adres. Adres çubuğunun ipucu metni seçime göre değişir.
+- Giriş sayfası (`yalqen://newtab/`): yeni sekmelerde açılır, çevrimdışı çalışır, adres çubuğunda boş görünür. Ortadaki "merhaba" el yazısı her uygulama açılışında ilk giriş sayfasında kendini yazar, sonrakilerde hazır görünür; "Hareketi azalt" açıksa animasyon oynamaz.
+- Ayrı ayarlar penceresi (⌘, veya panel altındaki ayar düğmesi).
+- Uygulama adı `yalqen` (`package.json` → `productName`), "yalqen Hakkında" penceresi. Paketlenmemiş çalıştırmada macOS menü çubuğundaki kalın uygulama adı yine "Electron" görünür; bu, uygulama paketlenince düzelir.
 - Uygulama ikonu [`design/brand/png/icon-512.png`](../../design/brand/png/icon-512.png): macOS'ta Dock ikonu, diğer sistemlerde pencere ikonu olarak ayarlanır.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
@@ -40,15 +43,19 @@ Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yokt
 | ⌘[ / ⌘] | Geri / ileri |
 | ⌘1…⌘8, ⌘9 | Sekme seç, son sekme |
 | ⌘S | Sekme panelini daralt/genişlet |
+| ⌘, | Ayarlar |
 | ⌥⌘I | Sayfa DevTools |
 | ⇧⌘M | Bellek ölçümü kaydet |
 
 ## Ayarlar
 
-Ayarlar penceresi henüz yok (tasarım prototipe uygulanırken eklenecek). Şimdilik:
+Ayarlar penceresi (⌘,) değişiklikleri hemen uygular ve `settings.json` dosyasına kaydeder:
 
-- **Ayarlar → Arama motoru** menüsünden seçim yapılır; seçim `settings.json` dosyasına kaydedilir.
-- **Özel arama motoru:** Ayarlar → Ayar dosyasını aç ile `settings.json` açılır, `customSearchTemplate` alanına `%s` içeren bir http(s) adresi yazılır (ör. `"https://ornek.com/search?q=%s"`), uygulama yeniden başlatılınca menüde "Özel" seçilebilir. Geçersiz adreste Google kullanılır.
+- **Arama motoru:** listeden seçilir. "Özel" seçilince `%s` içeren bir http(s) adresi girilir (ör. `https://ornek.com/search?q=%s`); adres geçersizken uyarı gösterilir ve Google kullanılır.
+- **Sekme paneli:** geniş veya dar. ⌘S ve paneldeki düğme de bu ayarı değiştirir. Panel genişliği ayrıca arayüzde saklanır.
+- **Tema:** sistem, açık veya koyu. Arayüz, ayarlar penceresi ve sayfalar (`prefers-color-scheme`) birlikte değişir.
+
+Bellek ayarları Faz 2 kapsamındadır; pencerede henüz yoktur.
 
 ## Ölçüm
 

@@ -1,5 +1,6 @@
 {
   "name": "yalqen-electron-prototype",
+  "productName": "yalqen",
   "version": "0.0.0",
   "private": true,
   "description": "Phase 0 Electron + TypeScript + Svelte prototype",

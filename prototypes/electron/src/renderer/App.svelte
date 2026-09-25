@@ -16,15 +16,14 @@
     activeTabId: null,
     totalMemoryMB: null,
     addressPlaceholder: 'Ara veya adres yaz',
+    panelCollapsed: false,
   });
-  let collapsed = $state(false);
   let width = $state(DEFAULT_WIDTH);
   let toolbar: Toolbar;
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
     if (saved) {
-      collapsed = Boolean(saved.collapsed);
       width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved.width) || DEFAULT_WIDTH));
     }
   } catch {
@@ -32,12 +31,14 @@
   }
 
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
+  // Collapsed state is a setting kept by the main process; width is a local convenience.
+  const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
 
   $effect(() => {
     window.yalqen.setLayout({ toolbarHeight: TOOLBAR_HEIGHT, panelWidth });
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed, width }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
       // Preferences are optional.
     }
@@ -47,7 +48,6 @@
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
     const offCommand = window.yalqen.onCommand((command) => {
-      if (command.type === 'toggle-panel') collapsed = !collapsed;
       if (command.type === 'focus-address') toolbar.focusAddress();
     });
     return () => {
@@ -76,7 +76,7 @@
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
-    onToggle={() => (collapsed = !collapsed)}
+    onToggle={() => window.yalqen.send({ type: 'toggle-panel' })}
   />
 </div>
 
