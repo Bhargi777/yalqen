@@ -10,8 +10,8 @@
   --border: #d2d5da;
   --text: #1a1b1e;
   --text-muted: #6b6e75;
-  --accent: #6d4aff;
-  --focus: #6d4aff;
+  --accent: #f28c28;
+  --focus: #f28c28;
   --warn: #a34a06;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
   /* Window background under the UI; transparent over the glass material. */
@@ -47,8 +47,8 @@
     --border: #2f3136;
     --text: #eceef1;
     --text-muted: #9a9ea6;
-    --accent: #9b85ff;
-    --focus: #9b85ff;
+    --accent: #f28c28;
+    --focus: #f28c28;
     --warn: #f0a35c;
     --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.3);
     --page: #1f2124;
@@ -76,8 +76,8 @@
   --border: rgb(16 18 24 / 0.12);
   --text: #1a1b1e;
   --text-muted: rgb(40 42 48 / 0.7);
-  --accent: #6d4aff;
-  --focus: #6d4aff;
+  --accent: #f28c28;
+  --focus: #f28c28;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08);
   --page: #ffffff;
   --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 4px 18px rgb(16 18 24 / 0.08);
@@ -100,8 +100,8 @@
     --border: rgb(255 255 255 / 0.1);
     --text: #f4f4f7;
     --text-muted: rgb(235 235 245 / 0.64);
-    --accent: #9b85ff;
-    --focus: #9b85ff;
+    --accent: #f28c28;
+    --focus: #f28c28;
     --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2);
     --page: #1f2124;
     --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2);
