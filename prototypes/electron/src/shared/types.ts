@@ -71,10 +71,8 @@ export interface ChromeLayout {
   pageRadius: number;
 }
 
-export type UiCommand =
-  | { type: 'focus-address' }
-  /** The macOS window controls were revealed or hidden again. */
-  | { type: 'window-controls'; visible: boolean };
+/** The macOS window controls were revealed or hidden again. */
+export type UiCommand = { type: 'window-controls'; visible: boolean };
 
 /** Requests the UI sends to the main process. */
 export type UiAction =

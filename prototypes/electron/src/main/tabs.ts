@@ -45,7 +45,8 @@ export interface TabManagerOptions {
   onChange: () => void;
   onRestore: (timing: RestoreTiming) => void;
   /** The new tab page asked for the address bar. */
-  onNewTabSearch: () => void;
+  /** A search typed on the new tab page, or empty when it asked for the address bar. */
+  onNewTabSearch: (query: string) => void;
 }
 
 export interface RecentPage {
@@ -175,8 +176,8 @@ export class TabManager {
     // The page area may have changed while the tab was in the background.
     this.layoutView(next, view);
     this.options.window.contentView.addChildView(view);
-    // A new tab page leaves focus with the address bar.
-    if (next.url !== NEW_TAB_URL && next.url !== 'about:blank') view.webContents.focus();
+    // The new tab page has its own search field; a blank page leaves focus with the UI.
+    if (next.url !== 'about:blank') view.webContents.focus();
     this.changed();
   }
 
@@ -488,14 +489,14 @@ export class TabManager {
     const contents = view.webContents;
 
     contents.on('will-navigate', (event) => {
-      const search = event.url === NEW_TAB_SEARCH_URL;
+      const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
       const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
       if (!search && !forget) return;
       event.preventDefault();
       // Only the new tab page itself may use these links.
       if (contents.getURL() !== NEW_TAB_URL) return;
       if (search) {
-        this.options.onNewTabSearch();
+        this.options.onNewTabSearch(new URL(event.url).searchParams.get('q') ?? '');
       } else {
         this.forgetClosed(new URL(event.url).searchParams.get('url') ?? '');
         contents.reload();

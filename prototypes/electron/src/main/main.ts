@@ -122,10 +122,6 @@ function createBrowser(): void {
   const notifyUi = (command: UiCommand) => {
     if (!ui.webContents.isDestroyed()) ui.webContents.send(IpcChannel.command, command);
   };
-  const sendCommand = (command: UiCommand) => {
-    ui.webContents.focus();
-    notifyUi(command);
-  };
 
   const commandBar = new CommandBar({
     window,
@@ -153,7 +149,10 @@ function createBrowser(): void {
     onRestore: (timing) => {
       metricsLog.write({ event: 'restore', ...timing });
     },
-    onNewTabSearch: () => sendCommand({ type: 'focus-address' }),
+    onNewTabSearch: (query) => {
+      if (query.trim() === '') openCenteredAddress();
+      else tabs.navigate(resolveInput(query, searchEngine()));
+    },
   });
 
   const applyLayout = () => {
@@ -246,12 +245,6 @@ function createBrowser(): void {
   };
   const togglePanel = () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed });
 
-  // A new tab opens with its search field focused in the tab strip.
-  const newTabWithSearch = () => {
-    tabs.open();
-    sendCommand({ type: 'focus-address' });
-  };
-
   const openCenteredAddress = () => {
     const url = tabs.activeUrl;
     commandBar.open({
@@ -263,18 +256,14 @@ function createBrowser(): void {
 
   Menu.setApplicationMenu(
     buildMenu({
-      newTab: newTabWithSearch,
+      newTab: () => tabs.open(),
       closeTab: () => {
         // The shortcut is app-wide; in the settings window it closes that window.
         if (settingsWindow.isFocused()) settingsWindow.close();
         else if (tabs.activeTabId) tabs.close(tabs.activeTabId);
       },
       reopenClosedTab: () => tabs.reopenClosed(),
-      focusAddress: () => {
-        const url = tabs.activeUrl;
-        if (url === NEW_TAB_URL || url === 'about:blank') sendCommand({ type: 'focus-address' });
-        else openCenteredAddress();
-      },
+      focusAddress: openCenteredAddress,
       reload: () => tabs.reload(),
       goBack: () => tabs.goBack(),
       goForward: () => tabs.goForward(),
@@ -332,7 +321,7 @@ function createBrowser(): void {
     switch (action.type) {
       case 'new-tab':
         if (action.url) tabs.open(action.url);
-        else newTabWithSearch();
+        else tabs.open();
         break;
       case 'activate-tab':
         tabs.activate(action.id);

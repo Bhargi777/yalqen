@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { tick } from 'svelte';
   import type { TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
@@ -8,50 +7,19 @@
     tabs,
     activeTabId,
     leadingInset,
-    placeholder,
+    blank,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     /** Space kept free on the left for the back and forward buttons over a narrow sidebar. */
     leadingInset: number;
-    placeholder: string;
+    /** A new tab page is showing; it has its own search field, so the strip steps aside. */
+    blank: boolean;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
   let strip: HTMLElement | undefined = $state();
-  let search: HTMLInputElement | undefined = $state();
-  let query = $state('');
-
   const send = window.yalqen.send;
-
-  /** Focuses the new tab's search field, as Safari does. */
-  export function focusSearch(): void {
-    void tick().then(() => {
-      search?.focus();
-      search?.select();
-    });
-  }
-
-  function submit(event: SubmitEvent): void {
-    event.preventDefault();
-    if (query.trim() === '') return;
-    send({ type: 'navigate', input: query });
-    query = '';
-    search?.blur();
-  }
-
-  function onSearchKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      query = '';
-      search?.blur();
-    }
-  }
-
-  $effect(() => {
-    // A half-typed search belongs to the tab it was typed in.
-    void activeTabId;
-    query = '';
-  });
 
   $effect(() => {
     // Keep the active tab in view when it changes.
@@ -80,31 +48,16 @@
 
 <!--
   Safari-like: capsules on the window background. The active tab doubles as the
-  address field: clicking it opens the centered address bar, and on a new tab it
-  is a search field of its own.
+  address field: clicking it opens the centered address bar.
 -->
 <header class="toolbar" style:padding-left="{leadingInset}px">
   <span class="side"></span>
 
-  <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
+  <ol class="strip" class:hidden={blank} bind:this={strip} aria-label="Açık sekmeler">
     {#each tabs as tab (tab.id)}
       {@const active = tab.id === activeTabId}
       <li class="chip" class:active>
-        {#if active && isNewTab(tab.url)}
-          <form class="search" role="search" onsubmit={submit}>
-            <span class="favicon"><Icon name="search" size={14} /></span>
-            <input
-              bind:this={search}
-              bind:value={query}
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              {placeholder}
-              aria-label="Ara veya adres yaz"
-              onkeydown={onSearchKeydown}
-            />
-          </form>
-        {:else if active}
+        {#if active}
           <button class="address" title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
@@ -229,6 +182,10 @@
     scrollbar-width: none;
   }
 
+  .strip.hidden {
+    visibility: hidden;
+  }
+
   .strip::-webkit-scrollbar {
     display: none;
   }
@@ -281,42 +238,6 @@
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
-  }
-
-  .search {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
-    height: 100%;
-    padding-left: 11px;
-  }
-
-  .search input {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--text);
-    font: inherit;
-    font-size: 13px;
-    user-select: text;
-  }
-
-  .search input::placeholder {
-    color: var(--text-muted);
-  }
-
-  .search input:focus {
-    outline: none;
-  }
-
-  /* Focus ring around the whole capsule, like Safari's search field. */
-  .chip.active:has(input:focus) {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 35%, transparent), var(--shadow);
   }
 
   .address {

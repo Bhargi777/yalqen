@@ -34,7 +34,6 @@
     device: null,
   });
   let width = $state(DEFAULT_WIDTH);
-  let toolbar: Toolbar;
   let controlsShown = $state(false);
 
   try {
@@ -82,7 +81,6 @@
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
     const offCommand = window.yalqen.onCommand((command) => {
-      if (command.type === 'focus-address') toolbar.focusSearch();
       if (command.type === 'window-controls') controlsShown = command.visible;
     });
     return () => {
@@ -106,11 +104,10 @@
     onToggle={() => window.yalqen.send({ type: 'toggle-panel' })}
   />
   <Toolbar
-    bind:this={toolbar}
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
     leadingInset={Math.max(0, navEnd - panelWidth)}
-    placeholder={browser.addressPlaceholder}
+    {blank}
   />
   <nav class="navigation" aria-label="Gezinme" style:transform="translateX({navStart}px)">
     <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => window.yalqen.send({ type: 'go-back' })}>

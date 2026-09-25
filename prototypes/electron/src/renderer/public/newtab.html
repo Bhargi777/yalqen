@@ -5,16 +5,21 @@
     <title>Yeni sekme</title>
     <!--
       Served as yalqen://newtab/ by the main process, which fills in the recently
-      closed pages. Links to yalqen://newtab/search focus the tab's search field.
+      closed pages. The search form submits to yalqen://newtab/search?q=…, which the
+      main process turns into a navigation; the page itself runs no scripts.
     -->
     <style>
       /* The page matches the window background, so the new tab reads as an empty board. */
       :root {
         --page: #e6e8eb;
         --text: #1a1b1e;
-        --mark: #cfd2d7;
-        --muted: #8a8d94;
-        --hover: rgb(16 18 24 / 0.05);
+        --hint: #a4a7ad;
+        --muted: #6b6e75;
+        --surface: #ffffff;
+        --well: #dcdfe3;
+        --hover: rgb(0 0 0 / 0.04);
+        --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.08), 0 1px 3px rgb(16 18 24 / 0.08);
+        --accent: #6d4aff;
         color-scheme: light;
       }
 
@@ -22,9 +27,13 @@
         :root {
           --page: #141517;
           --text: #eceef1;
-          --mark: #2a2c30;
-          --muted: #6f737a;
+          --hint: #53565d;
+          --muted: #9a9ea6;
+          --surface: #26282c;
+          --well: #1e2023;
           --hover: rgb(255 255 255 / 0.05);
+          --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 1px 3px rgb(0 0 0 / 0.3);
+          --accent: #9b85ff;
           color-scheme: dark;
         }
       }
@@ -44,7 +53,7 @@
         place-items: center;
         background: var(--page);
         color: var(--text);
-        font: 13px / 1.35 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        font: 15px / 1.35 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
         overflow: hidden;
         user-select: none;
         -webkit-font-smoothing: antialiased;
@@ -59,39 +68,100 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 28px;
-        padding-bottom: 6vh;
+        width: min(720px, 100%);
+        padding: 0 24px 6vh;
       }
 
-      .mark {
-        color: var(--mark);
-        transition: color 120ms ease-out;
+      form {
+        width: 100%;
       }
 
-      .mark:hover {
+      .prompt {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        caret-color: var(--accent);
+        font: inherit;
+        font-size: clamp(40px, 6.4vw, 80px);
+        font-weight: 500;
+        letter-spacing: -0.035em;
+        line-height: 1.1;
+        text-align: center;
+      }
+
+      .prompt::placeholder {
+        color: var(--hint);
+        opacity: 1;
+      }
+
+      .prompt:focus {
+        outline: none;
+      }
+
+      .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 36px;
+      }
+
+      .pill {
+        display: flex;
+        cursor: text;
+        align-items: center;
+        gap: 10px;
+        height: 44px;
+        padding: 0 14px;
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .pill.square {
+        justify-content: center;
+        width: 44px;
+        padding: 0;
+      }
+
+      .blank {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: var(--well);
+      }
+
+      .pill svg {
         color: var(--muted);
       }
 
+      h2 {
+        margin: 22px 0 12px;
+        font-size: 15px;
+        font-weight: 500;
+      }
+
       .recent {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        width: 220px;
+        width: 260px;
         margin: 0;
-        padding: 0;
+        padding: 6px;
+        border-radius: 16px;
+        background: var(--well);
         list-style: none;
       }
 
       .recent li {
         display: flex;
         align-items: center;
-        height: 30px;
-        border-radius: 999px;
+        height: 48px;
+        border-radius: 11px;
         color: var(--muted);
       }
 
       .recent li:hover {
-        background: var(--hover);
+        background: var(--surface);
+        box-shadow: var(--shadow);
         color: var(--text);
       }
 
@@ -99,10 +169,25 @@
         display: flex;
         flex: 1;
         align-items: center;
-        gap: 9px;
+        gap: 12px;
         min-width: 0;
         height: 100%;
-        padding: 0 12px;
+        padding: 0 14px;
+      }
+
+      .forget {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        margin-right: 10px;
+        border-radius: 7px;
+        color: var(--text);
+      }
+
+      .forget:hover {
+        background: var(--hover);
       }
 
       .recent span:last-child {
@@ -114,49 +199,46 @@
       .recent img,
       .dot {
         flex: none;
-        width: 14px;
-        height: 14px;
-        border-radius: 4px;
-      }
-
-      .recent li:not(:hover) img {
-        opacity: 0.6;
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
       }
 
       .dot {
-        background: var(--hover);
-      }
-
-      .forget {
-        display: grid;
-        flex: none;
-        place-items: center;
-        width: 22px;
-        height: 22px;
-        margin-right: 4px;
-        border-radius: 50%;
-        visibility: hidden;
-      }
-
-      .recent li:hover .forget {
-        visibility: visible;
-      }
-
-      .forget:hover {
-        background: var(--hover);
+        background: var(--surface);
+        box-shadow: var(--shadow);
       }
     </style>
   </head>
   <body>
     <main>
-      <a class="mark" href="yalqen://newtab/search" aria-label="Ara veya adres yaz">
-        <svg viewBox="274 254 482 622" width="34" height="44" aria-hidden="true">
-          <g fill="none" stroke="currentColor" stroke-width="110" stroke-linecap="round">
-            <path d="M330 310 L450 470" />
-            <path d="M700 310 L470 770 Q445 820 385 820" />
-          </g>
-        </svg>
-      </a>
+      <form action="yalqen://newtab/search" method="get" role="search">
+        <input
+          id="q"
+          class="prompt"
+          name="q"
+          type="text"
+          placeholder="Aramak için yaz…"
+          aria-label="Ara veya adres yaz"
+          autocomplete="off"
+          spellcheck="false"
+          autofocus
+        />
+      </form>
+      <div class="actions">
+        <label class="pill" for="q">
+          <span class="blank"></span>
+          <span>Yeni sekme</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+            <path d="M2.5 4.5h8M2.5 8h8M2.5 11.5h5M12 10v4M10 12h4" />
+          </svg>
+        </label>
+        <label class="pill square" for="q" aria-label="Ara veya adres yaz">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+        </label>
+      </div>
       <!-- recent -->
     </main>
   </body>

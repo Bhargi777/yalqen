@@ -7,7 +7,7 @@ import type { RecentPage } from './tabs.js';
 const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
 const RECENT_MARKER = '<!-- recent -->';
 const FORGET_ICON =
-  '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6"/></svg>';
+  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 
 /** Must run before the app is ready. */
 export function registerInternalScheme(): void {
@@ -34,7 +34,7 @@ export function renderRecent(pages: RecentPage[]): string {
   const items = pages
     .map((page) => {
       const icon = page.faviconUrl?.startsWith('https:')
-        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="14" height="14" />`
+        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="18" height="18" />`
         : '<span class="dot"></span>';
       const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
       return (
@@ -43,7 +43,7 @@ export function renderRecent(pages: RecentPage[]): string {
       );
     })
     .join('');
-  return `<ul class="recent" aria-label="Son kapatılanlar">${items}</ul>`;
+  return `<h2>Son kapatılanlar</h2><ul class="recent">${items}</ul>`;
 }
 
 /** Serves yalqen://newtab/ from a static file, with the recently closed pages filled in. */
