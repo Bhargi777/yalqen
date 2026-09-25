@@ -28,8 +28,9 @@ import { resolveInput } from './url.js';
 const DAILY_PARTITION = 'persist:daily';
 const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
-// Offset of the traffic lights from the top-left corner, level with the back and forward capsule.
-const WINDOW_CONTROLS_INSET = { x: 16, y: 21 };
+// Offset of the traffic lights from the top-left corner. Their 14pt buttons then
+// share the 22px center line of the back and forward capsule.
+const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 // Corner that keeps hover-revealed traffic lights visible, and how often it is checked.
 const WINDOW_CONTROLS_ZONE = { minWidth: 76, maxWidth: 240, height: 44 };
 // Lets the UI move its buttons out of the way before the controls appear.
@@ -155,6 +156,12 @@ function createBrowser(): void {
     },
   });
 
+  // Showing the traffic lights again puts them back in their default place, so the
+  // position is set each time they appear.
+  const setWindowControls = (visible: boolean) => {
+    window.setWindowButtonVisibility(visible);
+    if (visible) window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
+  };
   const applyLayout = () => {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
@@ -168,11 +175,7 @@ function createBrowser(): void {
     });
     tabs.setPageRadius(layout.pageRadius);
     if (process.platform === 'darwin') {
-      window.setWindowButtonVisibility(layout.windowControls || controlsRevealed);
-      window.setWindowButtonPosition({
-        x: WINDOW_CONTROLS_INSET.x,
-        y: WINDOW_CONTROLS_INSET.y,
-      });
+      setWindowControls(layout.windowControls || controlsRevealed);
     }
   };
   // Hidden traffic lights appear while the pointer is over their corner. The
@@ -189,7 +192,7 @@ function createBrowser(): void {
     );
     controlsRevealed = true;
     notifyUi({ type: 'window-controls', visible: true });
-    controlsDelay = setTimeout(() => window.setWindowButtonVisibility(true), WINDOW_CONTROLS_DELAY_MS);
+    controlsDelay = setTimeout(() => setWindowControls(true), WINDOW_CONTROLS_DELAY_MS);
     controlsTimer = setInterval(() => {
       const cursor = screen.getCursorScreenPoint();
       const bounds = window.getContentBounds();
@@ -200,7 +203,7 @@ function createBrowser(): void {
         cursor.y < bounds.y + WINDOW_CONTROLS_ZONE.height;
       if (inside) return;
       hideWindowControls();
-      window.setWindowButtonVisibility(layout.windowControls);
+      setWindowControls(layout.windowControls);
       notifyUi({ type: 'window-controls', visible: false });
     }, WINDOW_CONTROLS_POLL_MS);
   };
