@@ -51,7 +51,16 @@ export function renderRecent(pages: RecentPage[]): string {
 }
 
 function renderWelcome(): string {
-  return '<p class="welcome">Merhaba, hoş geldin. İlk araman için hazırsın.</p>';
+  return `<section class="welcome" aria-labelledby="welcome-title">
+    <p class="eyebrow">YALQEN</p>
+    <h1 id="welcome-title">Merhaba, hoş geldin.</h1>
+    <p class="welcome-copy">İnternette kendi yolunu aç. Aramak ya da bir adres yazmak için başlayabilirsin.</p>
+    <ul class="tips">
+      <li><span class="tip-icon">↔</span><span><strong>Sekmelerin elinin altında</strong><small>Açık sayfalarını soldaki panelde düzenle.</small></span></li>
+      <li><span class="tip-icon">⌑</span><span><strong>Sık kullandıklarını sabitle</strong><small>Bir sekmeyi canlı tutmak için iğne simgesine bas.</small></span></li>
+      <li><span class="tip-icon">◈</span><span><strong>Daha az reklam</strong><small>Reklam engelleme varsayılan olarak açık.</small></span></li>
+    </ul>
+  </section>`;
 }
 
 export function renderHistory(entries: HistoryEntry[], query: string): string {
