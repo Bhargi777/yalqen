@@ -44,3 +44,13 @@ test('normal browsing keeps browser chrome spacing even at full screen window di
     radius: 16,
   });
 });
+
+test('hidden menus leave a top strip for the sidebar button and no sidebar width', () => {
+  assert.deepEqual(pageFrame(1280, 820, { ...layout, panelWidth: 8 }, false), {
+    x: 8,
+    y: 44,
+    width: 1264,
+    height: 768,
+    radius: 16,
+  });
+});

@@ -16,6 +16,8 @@ const DEFAULTS: Settings = {
   startupBehavior: 'restore',
   panelCollapsed: false,
   panelSide: 'left',
+  sidebarVisible: true,
+  toolbarVisible: true,
   freezeBackgroundTabs: true,
   adBlocking: true,
   httpsOnly: false,
@@ -43,6 +45,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     startupBehavior,
     panelCollapsed,
     panelSide,
+    sidebarVisible,
+    toolbarVisible,
     freezeBackgroundTabs,
     adBlocking,
     httpsOnly,
@@ -71,6 +75,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
     panelSide:
       typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
+    sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
+    toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     freezeBackgroundTabs:
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,

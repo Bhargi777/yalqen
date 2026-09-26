@@ -81,6 +81,8 @@ export interface BrowserState {
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;
+  sidebarVisible: boolean;
+  toolbarVisible: boolean;
   material: WindowMaterial;
   /** Set while the active tab is shown as a device. */
   device: DeviceFrame | null;
@@ -135,6 +137,7 @@ export type UiAction =
   | { type: 'toggle-bookmark' }
   | { type: 'open-bookmarks-menu' }
   | { type: 'toggle-panel' }
+  | { type: 'toggle-sidebar' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
   | { type: 'open-downloads' }
@@ -237,6 +240,8 @@ export interface SettingsValues {
   startupBehavior: 'restore' | 'new-tab';
   panelCollapsed: boolean;
   panelSide: PanelSide;
+  sidebarVisible: boolean;
+  toolbarVisible: boolean;
   /** Freeze background tabs' pages when switching away from them. */
   freezeBackgroundTabs: boolean;
   /** Block ads on web pages. */

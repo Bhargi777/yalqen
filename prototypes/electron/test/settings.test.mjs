@@ -16,6 +16,8 @@ test('unknown or mistyped fields fall back', () => {
       startupBehavior: 'close-all',
       panelCollapsed: 'yes',
       panelSide: 'top',
+      sidebarVisible: 'no',
+      toolbarVisible: 0,
       freezeBackgroundTabs: 1,
       adBlocking: 'no',
       httpsOnly: 'yes',
@@ -33,6 +35,8 @@ test('unknown or mistyped fields fall back', () => {
       startupBehavior: 'restore',
       panelCollapsed: false,
       panelSide: 'left',
+      sidebarVisible: true,
+      toolbarVisible: true,
       freezeBackgroundTabs: true,
       adBlocking: true,
       httpsOnly: false,
@@ -58,6 +62,8 @@ test('updates keep valid fields and persist', () => {
       startupBehavior: 'new-tab',
       panelCollapsed: true,
       panelSide: 'right',
+      sidebarVisible: false,
+      toolbarVisible: false,
       freezeBackgroundTabs: false,
       adBlocking: false,
       httpsOnly: true,
@@ -76,6 +82,8 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.startupBehavior, 'new-tab');
     assert.equal(reloaded.panelCollapsed, true);
     assert.equal(reloaded.panelSide, 'right');
+    assert.equal(reloaded.sidebarVisible, false);
+    assert.equal(reloaded.toolbarVisible, false);
     assert.equal(reloaded.freezeBackgroundTabs, false);
     assert.equal(reloaded.adBlocking, false);
     assert.equal(reloaded.httpsOnly, true);

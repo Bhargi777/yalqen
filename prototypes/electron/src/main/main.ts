@@ -541,6 +541,8 @@ function startBrowser(): void {
       reload: () => current?.tabs.reload(),
       zoom: (direction) => current?.tabs.zoom(direction),
       togglePanel: () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed }),
+      toggleSidebar: () => updateSettings({ sidebarVisible: !settings.get().sidebarVisible }),
+      toggleToolbar: () => updateSettings({ toolbarVisible: !settings.get().toolbarVisible }),
       toggleDevTools: () => current?.tabs.toggleDevTools(),
       toggleDeviceView: () => current?.tabs.toggleEmulation(deviceId),
       rotateDevice: () => current?.tabs.rotateDevice(),

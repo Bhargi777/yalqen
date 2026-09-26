@@ -347,6 +347,8 @@ export class YalqenWindow {
       addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
+      sidebarVisible: this.app.settings.get().sidebarVisible,
+      toolbarVisible: this.app.settings.get().toolbarVisible,
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: downloadsSummary(this.app.downloads.list()),
@@ -500,6 +502,9 @@ export class YalqenWindow {
       case 'toggle-panel':
         app.updateSettings({ panelCollapsed: !app.settings.get().panelCollapsed });
         break;
+      case 'toggle-sidebar':
+        app.updateSettings({ sidebarVisible: !app.settings.get().sidebarVisible });
+        break;
       case 'open-address':
         this.openAddress();
         break;
@@ -597,7 +602,10 @@ export class YalqenWindow {
     if (this.isPageFullScreen()) {
       this.commandBar.close();
       this.endFind();
-      this.hideWindowControls();
+      if (this.controlsRevealed) {
+        this.hideWindowControls();
+        this.notifyUi({ type: 'window-controls', visible: false });
+      }
     }
     this.applyLayout();
     this.pushState();

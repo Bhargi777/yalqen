@@ -26,6 +26,8 @@ export interface MenuActions {
   reload(): void;
   zoom(direction: 1 | -1 | 0): void;
   togglePanel(): void;
+  toggleSidebar(): void;
+  toggleToolbar(): void;
   toggleDevTools(): void;
   toggleDeviceView(): void;
   rotateDevice(): void;
@@ -150,6 +152,8 @@ export function buildMenu(actions: MenuActions): Menu {
         },
         { label: 'Uzaklaştır', accelerator: 'CmdOrCtrl+-', click: () => actions.zoom(-1) },
         { label: 'Sekme panelini daralt/genişlet', accelerator: 'CmdOrCtrl+S', click: actions.togglePanel },
+        { label: 'Yan menüyü göster/gizle', accelerator: 'CmdOrCtrl+Shift+B', click: actions.toggleSidebar },
+        { label: 'Üst menüyü göster/gizle', accelerator: 'CmdOrCtrl+Shift+U', click: actions.toggleToolbar },
         { type: 'separator' },
         { label: 'Sayfa kaynağı', accelerator: 'Alt+CmdOrCtrl+U', click: actions.viewSource },
         { label: 'Sayfa DevTools', accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },

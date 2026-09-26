@@ -16,6 +16,10 @@
     { value: true, label: 'Açık' },
     { value: false, label: 'Kapalı' },
   ] as const;
+  const visibilityOptions = [
+    { value: true, label: 'Görünür' },
+    { value: false, label: 'Gizli' },
+  ] as const;
   const themeOptions = [
     { value: 'system', label: 'Sistem' },
     { value: 'light', label: 'Açık' },
@@ -176,6 +180,31 @@
           <option value={option.value}>{option.label}</option>
         {/each}
       </select>
+    </div>
+
+    <h2>Menüler</h2>
+    <div class="row">
+      <span class="label">Yan menü</span>
+      <div class="segmented" role="group" aria-label="Yan menü görünürlüğü">
+        {#each visibilityOptions as option (option.value)}
+          <button aria-pressed={values.sidebarVisible === option.value} onclick={() => update({ sidebarVisible: option.value })}>
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">
+        <span>Üst menü</span>
+        <span class="hint">İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Üst menü görünürlüğü">
+        {#each visibilityOptions as option (option.value)}
+          <button aria-pressed={values.toolbarVisible === option.value} onclick={() => update({ toolbarVisible: option.value })}>
+            {option.label}
+          </button>
+        {/each}
+      </div>
     </div>
 
     <h2>Sekme paneli</h2>

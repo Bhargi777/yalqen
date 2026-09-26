@@ -10,6 +10,7 @@
     width = $bindable(),
     minWidth,
     maxWidth,
+    topInset,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
@@ -19,6 +20,7 @@
     width: number;
     minWidth: number;
     maxWidth: number;
+    topInset: number;
   } = $props();
 
   let dragId: TabId | null = $state(null);
@@ -110,7 +112,7 @@
     ></div>
   {/if}
 
-  <div class="top"></div>
+  <div class="top" style:height="{topInset}px"></div>
 
   {#if favorites.length > 0}
     <ul class="favorites" aria-label="Favoriler">

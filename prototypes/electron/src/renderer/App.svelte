@@ -4,6 +4,7 @@
   import { isNewTab } from './format';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
+  import Icon from './components/Icon.svelte';
 
   const COLLAPSED_WIDTH = 44;
   const MIN_WIDTH = 180;
@@ -13,8 +14,9 @@
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
   const PAGE_RADIUS = 16;
-  /** Space kept for macOS traffic lights at the top-left edge. */
-  const WINDOW_CONTROLS_END = 88;
+  /** Keep the shifted sidebar button clear of the toolbar controls. */
+  const WINDOW_CONTROLS_HOVER_END = 160;
+  const SIDEBAR_BUTTON_END = 52;
   // Versioned so the wider sidebar of earlier designs is not restored.
   const PREFS_KEY = 'yalqen:panel:2';
   const DEVICE_BEZEL = 10;
@@ -26,6 +28,8 @@
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     panelSide: 'left',
+    sidebarVisible: true,
+    toolbarVisible: true,
     material: 'opaque',
     device: null,
     zoom: 1,
@@ -46,11 +50,14 @@
 
   // Traffic lights are drawn by macOS only.
   const windowControls = navigator.userAgent.includes('Macintosh');
+  const leftControlClearance = windowControls ? WINDOW_CONTROLS_HOVER_END : SIDEBAR_BUTTON_END;
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
   // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
-  const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
+  const panelWidth = $derived(browser.sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : width) : PAGE_INSET);
   const side = $derived(browser.panelSide);
+  // The top strip keeps the sidebar button available when the toolbar is hidden.
+  const topInset = CHROME_HEIGHT;
   // The new tab page is an empty board: no card, the page blends into the window.
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
@@ -63,7 +70,7 @@
       panelSide: side,
       // On macOS the traffic lights stay hidden until the pointer reaches their corner.
       windowControls: !windowControls,
-      chromeHeight: CHROME_HEIGHT,
+      chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
     });
@@ -92,40 +99,58 @@
   class:right={side === 'right'}
   class:fullscreen={browser.pageFullScreen}
   style:grid-template-columns={browser.pageFullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
-  style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${CHROME_HEIGHT}px minmax(0, 1fr)`}
+  style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !browser.pageFullScreen}
-  <TabPanel
-    tabs={browser.tabs}
-    activeTabId={browser.activeTabId}
-    {collapsed}
-    {side}
-    bind:width
-    minWidth={MIN_WIDTH}
-    maxWidth={MAX_WIDTH}
-  />
-  <Toolbar
-    tabs={browser.tabs}
-    activeTabId={browser.activeTabId}
-    zoom={browser.zoom}
-    defaultZoom={browser.defaultZoom}
-    downloads={browser.downloads}
-    leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : WINDOW_CONTROLS_END : 0}
-    trailingInset={PAGE_INSET}
-  />
-  {#if windowControls}
-    <!--
-      Reveals the traffic lights. They stay while the pointer is over them or the
-      moved buttons; the main process hides them once it leaves.
-    -->
-    <div
-      class="controls-zone"
-      class:shown={controlsShown}
-      aria-hidden="true"
-      onpointerenter={() =>
-        window.yalqen.send({ type: 'reveal-window-controls', width: WINDOW_CONTROLS_END })}
-    ></div>
-  {/if}
+    {#if browser.sidebarVisible}
+      <TabPanel
+        tabs={browser.tabs}
+        activeTabId={browser.activeTabId}
+        {collapsed}
+        {side}
+        bind:width
+        minWidth={MIN_WIDTH}
+        maxWidth={MAX_WIDTH}
+        {topInset}
+      />
+    {/if}
+    {#if browser.toolbarVisible}
+      <Toolbar
+        tabs={browser.tabs}
+        activeTabId={browser.activeTabId}
+        zoom={browser.zoom}
+        defaultZoom={browser.defaultZoom}
+        downloads={browser.downloads}
+        leadingInset={side === 'left' ? Math.max(0, leftControlClearance - panelWidth) : leftControlClearance}
+        trailingInset={PAGE_INSET}
+      />
+    {:else}
+      <div class="titlebar-drag" aria-hidden="true"></div>
+    {/if}
+    <button
+      class="sidebar-toggle"
+      class:mac={windowControls}
+      class:shifted={controlsShown}
+      title={browser.sidebarVisible ? 'Yan menüyü gizle (⌘⇧B)' : 'Yan menüyü göster (⌘⇧B)'}
+      aria-label={browser.sidebarVisible ? 'Yan menüyü gizle' : 'Yan menüyü göster'}
+      aria-pressed={browser.sidebarVisible}
+      onclick={() => window.yalqen.send({ type: 'toggle-sidebar' })}
+    >
+      <Icon name={side === 'left' ? (browser.sidebarVisible ? 'panel-close' : 'sidebar-left') : (browser.sidebarVisible ? 'panel-close-right' : 'sidebar')} size={16} />
+    </button>
+    {#if windowControls}
+      <!--
+        Reveals the traffic lights. They stay while the pointer is over them or the
+        moved buttons; the main process hides them once it leaves.
+      -->
+      <div
+        class="controls-zone"
+        class:shown={controlsShown}
+        aria-hidden="true"
+        onpointerenter={() =>
+          window.yalqen.send({ type: 'reveal-window-controls', width: WINDOW_CONTROLS_HOVER_END })}
+      ></div>
+    {/if}
   {/if}
   <section
     class="page"
@@ -176,6 +201,58 @@
 
   .shell.fullscreen .page {
     box-shadow: none;
+  }
+
+  .titlebar-drag {
+    grid-area: bar;
+    -webkit-app-region: drag;
+  }
+
+  .sidebar-toggle {
+    position: fixed;
+    top: 6px;
+    left: 16px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 180ms ease, background var(--transition), color var(--transition);
+    -webkit-app-region: no-drag;
+  }
+
+  .sidebar-toggle.mac {
+    left: 84px;
+  }
+
+  .sidebar-toggle.mac.shifted {
+    transform: translateX(28px);
+  }
+
+  .sidebar-toggle:hover {
+    background: var(--surface-active);
+  }
+
+  :global([data-material='glass']) .sidebar-toggle {
+    box-shadow: var(--shadow), var(--rim);
+  }
+
+  .sidebar-toggle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-toggle {
+      transition: none;
+    }
   }
 
   /* Over the buttons while the traffic lights are hidden, so reaching them reveals the lights. */
