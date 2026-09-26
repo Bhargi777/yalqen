@@ -9,6 +9,7 @@ export interface DeviceMenuItem {
 
 export interface MenuActions {
   newTab(): void;
+  newPrivateTab(): void;
   closeTab(): void;
   reopenClosedTab(): void;
   selectNextTab(): void;
@@ -65,6 +66,7 @@ export function buildMenu(actions: MenuActions): Menu {
       label: 'Dosya',
       submenu: [
         { label: 'Yeni sekme', accelerator: 'CmdOrCtrl+T', click: actions.newTab },
+        { label: 'Yeni gizli sekme', accelerator: 'CmdOrCtrl+Shift+N', click: actions.newPrivateTab },
         { label: 'Sekmeyi kapat', accelerator: 'CmdOrCtrl+W', click: actions.closeTab },
         {
           label: 'Kapatılan sekmeyi aç',

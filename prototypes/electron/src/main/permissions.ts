@@ -62,15 +62,15 @@ interface SavedPermissions {
 
 /**
  * Per-site decisions. "Allow" and "block" are saved; a one-time grant lasts
- * until the app quits.
+ * until the app quits. Without a directory nothing is saved, as for private tabs.
  */
 export class PermissionStore {
-  readonly file: string;
+  readonly file: string | null;
   private readonly sites = new Map<string, Map<SitePermission, Decision>>();
   private readonly once = new Set<string>();
 
-  constructor(directory: string) {
-    this.file = path.join(directory, 'permissions.json');
+  constructor(directory: string | null) {
+    this.file = directory === null ? null : path.join(directory, 'permissions.json');
     this.load();
   }
 
@@ -116,6 +116,7 @@ export class PermissionStore {
   }
 
   private load(): void {
+    if (this.file === null) return;
     try {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedPermissions;
       if (data.version !== 1 || typeof data.sites !== 'object' || data.sites === null) return;
@@ -134,6 +135,7 @@ export class PermissionStore {
   }
 
   private save(): void {
+    if (this.file === null) return;
     const data: SavedPermissions = {
       version: 1,
       sites: Object.fromEntries([...this.sites].map(([origin, site]) => [origin, Object.fromEntries(site)])),

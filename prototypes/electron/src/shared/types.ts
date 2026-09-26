@@ -29,6 +29,8 @@ export interface TabSnapshot {
   loading: boolean;
   keepAlive: boolean;
   security: SecurityState;
+  /** Private tab: in-memory session, no history, not restored. */
+  isPrivate: boolean;
   bookmarked: boolean;
   /** New windows the page tried to open without a click or key press. */
   blockedPopups: number;

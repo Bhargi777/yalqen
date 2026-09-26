@@ -29,6 +29,11 @@ interface Tab {
   keepAlive: boolean;
   /** Kept while the tab is discarded, so a reloaded page stays muted. Not persisted. */
   muted: boolean;
+  /**
+   * Uses the in-memory private session. Private tabs record no history and are
+   * left out of the saved session and the recently closed list.
+   */
+  isPrivate: boolean;
   /** The page failed to load and shows an error page instead. */
   failed: boolean;
   /** Time of the last click or key press in the page; 0 once used to open a window. */
@@ -48,6 +53,10 @@ interface Tab {
 export interface TabManagerOptions {
   window: BaseWindow;
   session: Session;
+  /** In-memory session of private tabs. */
+  privateSession: Session;
+  /** The last private tab was closed. */
+  onPrivateEnded: () => void;
   /** Whether background pages are frozen; read each time a tab could be frozen. */
   freezeBackground: () => boolean;
   /** A visible change may also require the saved session to be updated. */
@@ -63,9 +72,9 @@ export interface TabManagerOptions {
   /** Match counts of a search in the active tab. */
   onFindResult: (result: FindResult) => void;
   /** Remembered zoom factor for a page address. */
-  zoomFor: (url: string) => number;
+  zoomFor: (url: string, isPrivate: boolean) => number;
   /** The user zoomed the page at `url`. */
-  onZoom: (url: string, factor: number) => void;
+  onZoom: (url: string, factor: number, isPrivate: boolean) => void;
   /** Whether the user trusted an invalid certificate for `url`'s site. */
   hasCertificateException: (url: string) => boolean;
   /** Token that lets the warning page for `url` proceed with its rejected certificate. */
@@ -73,7 +82,7 @@ export interface TabManagerOptions {
   /** The warning page for `url` asked to proceed; returns whether the certificate is now trusted. */
   onCertificateProceed: (token: string, url: string) => boolean;
   /** Whether the site of the page at `url` may open windows without a click. */
-  popupsAllowed: (url: string) => boolean;
+  popupsAllowed: (url: string, isPrivate: boolean) => boolean;
   /** A command link or form on the downloads or bookmarks page, such as `open` with an id. */
   onPageCommand: (page: CommandPage, command: string, params: URLSearchParams) => void;
   isBookmarked: (url: string) => boolean;
@@ -204,8 +213,8 @@ export class TabManager {
     }
   }
 
-  open(url = NEW_TAB_URL, { activate = true } = {}): TabId {
-    const tab = this.createRecord({ url });
+  open(url = NEW_TAB_URL, { activate = true, isPrivate = false } = {}): TabId {
+    const tab = this.createRecord({ url }, isPrivate);
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
     if (activate) {
@@ -267,9 +276,12 @@ export class TabManager {
     if (index < 0) return;
     const [tab] = this.tabs.splice(index, 1);
 
-    this.closed.push(this.toSaved(tab));
-    if (this.closed.length > MAX_CLOSED_TABS) this.closed.shift();
+    if (!tab.isPrivate) {
+      this.closed.push(this.toSaved(tab));
+      if (this.closed.length > MAX_CLOSED_TABS) this.closed.shift();
+    }
     this.destroyView(tab);
+    if (tab.isPrivate && !this.tabs.some((item) => item.isPrivate)) this.options.onPrivateEnded();
 
     if (this.activeId === id) {
       this.activeId = null;
@@ -339,7 +351,7 @@ export class TabManager {
     const tab = this.active();
     if (!tab) return;
     tab.blockedPopups = tab.blockedPopups.filter((item) => item !== url);
-    this.open(url);
+    this.open(url, { isPrivate: tab.isPrivate });
   }
 
   clearBlockedPopups(): void {
@@ -429,7 +441,7 @@ export class TabManager {
   /** Zooms the active page one step in (1) or out (-1), or back to actual size (0). */
   zoom(direction: 1 | -1 | 0): void {
     const tab = this.active();
-    if (tab?.view) this.zoomView(tab.view, direction);
+    if (tab?.view) this.zoomView(tab, tab.view, direction);
   }
 
   /** Searches the active page; `next` moves within the current matches instead of starting over. */
@@ -489,19 +501,30 @@ export class TabManager {
     }
   }
 
+  /** Tabs to restore next time; private tabs are left out. */
   toSession(): SavedSession {
+    const kept = this.tabs.filter((tab) => !tab.isPrivate);
     return {
       version: 1,
-      activeTabId: this.activeId,
-      tabs: this.tabs.map((tab) => this.toSaved(tab)),
+      activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
+      tabs: kept.map((tab) => this.toSaved(tab)),
     };
+  }
+
+  get activeIsPrivate(): boolean {
+    return this.active()?.isPrivate ?? false;
+  }
+
+  /** Whether `contents` is the page of a private tab. */
+  isPrivateContents(contents: WebContents): boolean {
+    return this.tabs.some((tab) => tab.isPrivate && tab.view?.webContents === contents);
   }
 
   destroyAll(): void {
     for (const tab of this.tabs) this.destroyView(tab);
   }
 
-  private createRecord(saved: Partial<SavedTab> & { url: string }): Tab {
+  private createRecord(saved: Partial<SavedTab> & { url: string }, isPrivate = false): Tab {
     return {
       id: saved.id ?? randomUUID(),
       view: null,
@@ -510,6 +533,7 @@ export class TabManager {
       faviconUrl: saved.faviconUrl ?? null,
       keepAlive: saved.keepAlive ?? false,
       muted: false,
+      isPrivate,
       failed: false,
       activatedAt: 0,
       blockedPopups: [],
@@ -526,7 +550,7 @@ export class TabManager {
 
     const view = new WebContentsView({
       webPreferences: {
-        session: this.options.session,
+        session: tab.isPrivate ? this.options.privateSession : this.options.session,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
@@ -571,12 +595,12 @@ export class TabManager {
     }
   }
 
-  private zoomView(view: WebContentsView, direction: 1 | -1 | 0): void {
+  private zoomView(tab: Tab, view: WebContentsView, direction: 1 | -1 | 0): void {
     const contents = view.webContents;
     const factor = direction === 0 ? 1 : stepZoom(contents.getZoomFactor(), direction);
     // Chromium applies the factor to every page of the same host in this session.
     contents.setZoomFactor(factor);
-    this.options.onZoom(contents.getURL(), factor);
+    this.options.onZoom(contents.getURL(), factor, tab.isPrivate);
     this.changed();
   }
 
@@ -676,10 +700,10 @@ export class TabManager {
     });
 
     // Ctrl + wheel or trackpad pinch; Electron leaves zooming to the app.
-    contents.on('zoom-changed', (_event, direction) => this.zoomView(view, direction === 'in' ? 1 : -1));
+    contents.on('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
     contents.on('did-navigate', (_event, url) => {
       // Chromium forgets zoom levels on restart; apply the remembered one.
-      const factor = this.options.zoomFor(url);
+      const factor = this.options.zoomFor(url, tab.isPrivate);
       if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
     });
 
@@ -742,9 +766,9 @@ export class TabManager {
     });
     contents.setWindowOpenHandler(({ url }) => {
       // Like Chromium's pop-up blocker: a click or key press lets the page open one window.
-      if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL()))) {
+      if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
         tab.activatedAt = 0;
-        this.open(url);
+        this.open(url, { isPrivate: tab.isPrivate });
       } else {
         tab.blockedPopups = recordBlocked(tab.blockedPopups, url);
         this.changed();
@@ -787,7 +811,7 @@ export class TabManager {
     const updateUrl = () => {
       tab.url = contents.getURL();
       tab.failed = false;
-      tab.visitId = this.options.onVisit(tab.url, tab.url);
+      tab.visitId = tab.isPrivate ? null : this.options.onVisit(tab.url, tab.url);
       // Navigation history can change even when the URL stays the same.
       this.changed(true);
     };
@@ -911,8 +935,9 @@ export class TabManager {
       frozen: tab.frozen,
       loading: tab.loading,
       keepAlive: tab.keepAlive,
-      // An error page is not the site: it gets no connection state, not even a lock.
+      isPrivate: tab.isPrivate,
       bookmarked: this.options.isBookmarked(tab.url),
+      // An error page is not the site: it gets no connection state, not even a lock.
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       blockedPopups: tab.blockedPopups.length,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),

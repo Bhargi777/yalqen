@@ -92,7 +92,12 @@
           </button>
         {/if}
         {#if active}
-          <button class="address" class:after-site={tab.security !== 'local'} title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
+          {#if tab.isPrivate}
+            <span class="private-badge" title="Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir">
+              <Icon name="private" size={14} />
+            </span>
+          {/if}
+          <button class="address" class:after-site={tab.security !== 'local' || tab.isPrivate} title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
           </button>
@@ -126,7 +131,8 @@
         {:else}
           <button
             class="select"
-            title={tab.title}
+            class:private={tab.isPrivate}
+            title={tab.isPrivate ? `${tab.title} (gizli)` : tab.title}
             onclick={() => send({ type: 'activate-tab', id: tab.id })}
             onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
           >
@@ -357,6 +363,22 @@
     padding-left: 28px;
     color: var(--text);
     font-weight: 500;
+  }
+
+  .private-badge {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--surface);
+  }
+
+  .select.private {
+    font-style: italic;
   }
 
   .site {

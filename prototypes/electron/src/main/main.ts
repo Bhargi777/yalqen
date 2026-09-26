@@ -56,6 +56,8 @@ import { ZoomStore } from './zoom.js';
 import { resolveInput } from './url.js';
 
 const DAILY_PARTITION = 'persist:daily';
+// Without the "persist:" prefix the partition lives in memory only.
+const PRIVATE_PARTITION = 'private';
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 // Offset of the traffic lights from the top-left corner. Their 14pt buttons then
 // share the 22px center line of the back and forward capsule.
@@ -103,11 +105,17 @@ function createBrowser(): void {
   window.contentView.addChildView(ui);
 
   const daily = session.fromPartition(DAILY_PARTITION);
+  const privateBrowsing = session.fromPartition(PRIVATE_PARTITION);
   const permissions = new PermissionStore(app.getPath('userData'));
+  // Private tabs keep their decisions and zoom levels in memory until the last one closes.
+  let privatePermissions = new PermissionStore(null);
+  let privateZoom = new ZoomStore(null);
+  const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
   // One question at a time; a queued request may be settled by an earlier answer.
   let permissionPrompts: Promise<unknown> = Promise.resolve();
-  const askPermission = (origin: string, kinds: SitePermission[]): Promise<boolean> => {
+  const askPermission = (isPrivate: boolean, origin: string, kinds: SitePermission[]): Promise<boolean> => {
     const answer = permissionPrompts.then(async () => {
+      const permissions = permissionsFor(isPrivate);
       const decided = permissions.decide(origin, kinds);
       if (decided !== 'ask') return decided === 'allow';
       const { response } = await dialog.showMessageBox(window, {
@@ -127,33 +135,35 @@ function createBrowser(): void {
     permissionPrompts = answer.catch(() => {});
     return answer;
   };
-  daily.setPermissionRequestHandler((contents, permission, callback, details) => {
-    if (ALLOWED_PERMISSIONS.has(permission)) {
-      callback(true);
-      return;
-    }
-    const kinds = requestedPermissions(permission, 'mediaTypes' in details ? details.mediaTypes : []);
-    const origin = permissionOrigin(details.requestingUrl);
-    // Only the page's own site is asked about; embedded frames of other sites are refused.
-    if (!kinds || !origin || origin !== permissionOrigin(contents.getURL())) {
-      callback(false);
-      return;
-    }
-    const decided = permissions.decide(origin, kinds);
-    if (decided !== 'ask') {
-      callback(decided === 'allow');
-      return;
-    }
-    askPermission(origin, kinds).then(callback, () => callback(false));
-  });
-  daily.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
-    if (ALLOWED_PERMISSIONS.has(permission)) return true;
-    const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
-    const origin = permissionOrigin(requestingOrigin);
-    if (!kinds || !origin) return false;
-    if (details.embeddingOrigin && permissionOrigin(details.embeddingOrigin) !== origin) return false;
-    return permissions.decide(origin, kinds) === 'allow';
-  });
+  for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
+    browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
+      if (ALLOWED_PERMISSIONS.has(permission)) {
+        callback(true);
+        return;
+      }
+      const kinds = requestedPermissions(permission, 'mediaTypes' in details ? details.mediaTypes : []);
+      const origin = permissionOrigin(details.requestingUrl);
+      // Only the page's own site is asked about; embedded frames of other sites are refused.
+      if (!kinds || !origin || origin !== permissionOrigin(contents.getURL())) {
+        callback(false);
+        return;
+      }
+      const decided = permissionsFor(isPrivate).decide(origin, kinds);
+      if (decided !== 'ask') {
+        callback(decided === 'allow');
+        return;
+      }
+      askPermission(isPrivate, origin, kinds).then(callback, () => callback(false));
+    });
+    browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+      if (ALLOWED_PERMISSIONS.has(permission)) return true;
+      const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
+      const origin = permissionOrigin(requestingOrigin);
+      if (!kinds || !origin) return false;
+      if (details.embeddingOrigin && permissionOrigin(details.embeddingOrigin) !== origin) return false;
+      return permissionsFor(isPrivate).decide(origin, kinds) === 'allow';
+    });
+  }
   const history = new HistoryStore(app.getPath('userData'));
   const downloads = new DownloadStore(app.getPath('userData'));
   const bookmarks = new BookmarkStore(app.getPath('userData'));
@@ -249,7 +259,7 @@ function createBrowser(): void {
           return;
         }
         downloads.remove(id);
-        daily.downloadURL(entry.url);
+        (entry.private ? privateBrowsing : daily).downloadURL(entry.url);
       }),
     remove: (id) =>
       withDownload(id, (entry) => {
@@ -263,7 +273,7 @@ function createBrowser(): void {
     },
   };
   // Files are saved to the downloads folder without asking, like other browsers.
-  daily.on('will-download', (_event, item) => {
+  const onWillDownload = (isPrivate: boolean) => (_event: Electron.Event, item: Electron.DownloadItem) => {
     const savePath = uniquePath(
       app.getPath('downloads'),
       item.getFilename(),
@@ -282,6 +292,7 @@ function createBrowser(): void {
       receivedBytes: 0,
       totalBytes: item.getTotalBytes(),
       startedAt: Date.now(),
+      ...(isPrivate ? { private: true } : {}),
     });
     item.on('updated', (_event, state) => {
       downloads.update(id, {
@@ -302,7 +313,9 @@ function createBrowser(): void {
       downloadsChanged();
     });
     downloadsChanged();
-  });
+  };
+  daily.on('will-download', onWillDownload(false));
+  privateBrowsing.on('will-download', onWillDownload(true));
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
   const zoom = new ZoomStore(app.getPath('userData'));
@@ -318,20 +331,23 @@ function createBrowser(): void {
     callback: (trust: boolean) => void,
     isMainFrame: boolean,
   ) => {
-    if (contents.session === daily && certificates.allows(url, certificate.fingerprint)) {
+    const browsing = contents.session === daily || contents.session === privateBrowsing;
+    if (browsing && certificates.allows(url, certificate.fingerprint)) {
       event.preventDefault();
       callback(true);
       return;
     }
-    if (contents.session === daily && isMainFrame) certificates.reject(url, certificate.fingerprint);
+    if (browsing && isMainFrame) certificates.reject(url, certificate.fingerprint);
     callback(false);
   };
   app.on('certificate-error', onCertificateError);
-  const adBlocker = new AdBlocker(daily, path.join(app.getPath('userData'), 'adblock-engine.bin'));
+  const adBlocker = new AdBlocker([daily, privateBrowsing], path.join(app.getPath('userData'), 'adblock-engine.bin'));
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () =>
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
-  const preconnector = new Preconnector((origin) => daily.preconnect({ url: origin }));
+  const preconnector = new Preconnector((origin) =>
+    (tabs.activeIsPrivate ? privateBrowsing : daily).preconnect({ url: origin }),
+  );
   const settingsWindow = new SettingsWindow({
     preload: path.join(__dirname, '../preload/settings-preload.js'),
     page: path.join(__dirname, '../renderer/settings.html'),
@@ -435,6 +451,18 @@ function createBrowser(): void {
   const tabs: TabManager = new TabManager({
     window,
     session: daily,
+    privateSession: privateBrowsing,
+    onPrivateEnded: () => {
+      // Nothing of private browsing outlives its last tab.
+      privatePermissions = new PermissionStore(null);
+      privateZoom = new ZoomStore(null);
+      downloads.removePrivate();
+      downloadsChanged();
+      void privateBrowsing.clearStorageData();
+      void privateBrowsing.clearCache();
+      void privateBrowsing.clearAuthCache();
+      void privateBrowsing.closeAllConnections();
+    },
     freezeBackground: () => settings.get().freezeBackgroundTabs,
     onChange: (persist) => {
       if (htmlFullScreenTabId && htmlFullScreenTabId !== tabs.activeTabId) {
@@ -482,14 +510,14 @@ function createBrowser(): void {
       }
     },
     onFindResult: (result) => findBar.showResult(result),
-    zoomFor: (url) => zoom.get(url),
-    onZoom: (url, factor) => zoom.set(url, factor),
+    zoomFor: (url, isPrivate) => (isPrivate ? privateZoom : zoom).get(url),
+    onZoom: (url, factor, isPrivate) => (isPrivate ? privateZoom : zoom).set(url, factor),
     hasCertificateException: (url) => certificates.hasException(url),
     certificateToken: (url) => certificates.tokenFor(url),
     onCertificateProceed: (token, url) => certificates.proceed(token, url),
-    popupsAllowed: (url) => {
+    popupsAllowed: (url, isPrivate) => {
       const origin = permissionOrigin(url);
-      return origin !== null && permissions.get(origin, 'popups') === 'allow';
+      return origin !== null && permissionsFor(isPrivate).get(origin, 'popups') === 'allow';
     },
     onContextMenu: (contents, params) => {
       const history = contents.navigationHistory;
@@ -497,11 +525,11 @@ function createBrowser(): void {
         canGoBack: history.canGoBack(),
         canGoForward: history.canGoForward(),
         // Like other browsers, links open next to the page without leaving it.
-        openInNewTab: (url) => tabs.open(url, { activate: false }),
+        openInNewTab: (url) => tabs.open(url, { activate: false, isPrivate: tabs.isPrivateContents(contents) }),
         copyText: (text) => clipboard.writeText(text),
         copyImage: () => contents.copyImageAt(params.x, params.y),
         download: (url) => contents.downloadURL(url),
-        search: (text) => tabs.open(buildSearchUrl(searchEngine(), text)),
+        search: (text) => tabs.open(buildSearchUrl(searchEngine(), text), { isPrivate: tabs.isPrivateContents(contents) }),
         goBack: () => history.goBack(),
         goForward: () => history.goForward(),
         reload: () => contents.reload(),
@@ -511,8 +539,8 @@ function createBrowser(): void {
     },
   });
 
-  serveInternalPages(
-    daily,
+  for (const browsing of [daily, privateBrowsing]) serveInternalPages(
+    browsing,
     path.join(__dirname, '../renderer/newtab.html'),
     path.join(__dirname, '../renderer/history.html'),
     path.join(__dirname, '../renderer/downloads.html'),
@@ -640,6 +668,7 @@ function createBrowser(): void {
   Menu.setApplicationMenu(
     buildMenu({
       newTab: () => tabs.open(),
+      newPrivateTab: () => tabs.open(NEW_TAB_URL, { isPrivate: true }),
       closeTab: () => {
         // The shortcut is app-wide; in the settings window it closes that window.
         if (settingsWindow.isFocused()) settingsWindow.close();
@@ -763,7 +792,7 @@ function createBrowser(): void {
         const template = blockedPopupsTemplate(new URL(origin).host, blocked, {
           open: (url) => tabs.openBlockedPopup(url),
           allowSite: () => {
-            permissions.set(origin, ['popups'], 'allow');
+            permissionsFor(tabs.activeIsPrivate).set(origin, ['popups'], 'allow');
             tabs.clearBlockedPopups();
           },
         });
@@ -774,11 +803,12 @@ function createBrowser(): void {
         const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
         if (!tab) break;
         const origin = permissionOrigin(tab.url);
+        const store = permissionsFor(tab.isPrivate);
         const template = siteInfoTemplate(
-          { url: tab.url, security: tab.security, permissions: origin ? permissions.list(origin) : [] },
+          { url: tab.url, security: tab.security, permissions: origin ? store.list(origin) : [] },
           {
             setPermission: (kind, decision) => {
-              if (origin) permissions.set(origin, [kind], decision);
+              if (origin) store.set(origin, [kind], decision);
             },
             revokeCertificateException: () => {
               certificates.revoke(tab.url);
@@ -800,6 +830,7 @@ function createBrowser(): void {
         Menu.buildFromTemplate([
           { label: 'Yalqen profili', enabled: false },
           { type: 'separator' },
+          { label: 'Yeni gizli sekme', accelerator: 'CmdOrCtrl+Shift+N', click: () => tabs.open(NEW_TAB_URL, { isPrivate: true }) },
           { label: 'Ayarlar…', click: () => settingsWindow.open() },
         ]).popup({ window });
         break;

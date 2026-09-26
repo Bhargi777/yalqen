@@ -113,3 +113,15 @@ test('the downloads page escapes names and links to its commands', () => {
   assert.ok(html.includes('yalqen://downloads/clear'));
   assert.match(renderDownloads([]), /Henüz indirilen bir dosya yok/);
 });
+
+test('downloads of private tabs are listed but never saved', () => {
+  withDir((dir) => {
+    const store = new DownloadStore(dir);
+    store.add(entry({ id: 'normal' }));
+    store.add(entry({ id: 'secret', private: true }));
+    assert.deepEqual(store.list().map((item) => item.id), ['secret', 'normal']);
+    assert.deepEqual(new DownloadStore(dir).list().map((item) => item.id), ['normal']);
+    store.removePrivate();
+    assert.deepEqual(store.list().map((item) => item.id), ['normal']);
+  });
+});

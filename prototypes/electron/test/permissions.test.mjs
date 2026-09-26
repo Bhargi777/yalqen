@@ -91,3 +91,10 @@ test('invalid saved entries are ignored', () => {
     assert.deepEqual(store.list('yalqen://newtab'), []);
   });
 });
+
+test('a store without a directory saves nothing', () => {
+  const store = new PermissionStore(null);
+  store.set(SITE, ['camera'], 'allow');
+  assert.equal(store.decide(SITE, ['camera']), 'allow');
+  assert.equal(store.file, null);
+});

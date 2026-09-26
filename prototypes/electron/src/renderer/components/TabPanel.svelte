@@ -34,6 +34,7 @@
   function label(tab: TabSnapshot): string {
     const states = [
       tab.id === activeTabId ? 'aktif' : null,
+      tab.isPrivate ? 'gizli' : null,
       tab.live ? null : 'bellekten çıkarılmış',
       tab.frozen ? 'dondurulmuş' : null,
       tab.keepAlive ? 'canlı tutuluyor' : null,
@@ -144,6 +145,7 @@
       {#each listed as tab, index (tab.id)}
         <li
           class="tab"
+          class:private={tab.isPrivate}
           class:active={tab.id === activeTabId}
           class:discarded={!tab.live}
           class:drop-before={dropIndex === index}
@@ -164,6 +166,7 @@
             {@render favicon(tab, 16)}
             {#if !collapsed}
               <span class="title">{tab.title}</span>
+              {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
             {/if}
           </button>
 
@@ -501,6 +504,18 @@
   .action:hover {
     background: var(--surface-hover);
     color: var(--text);
+  }
+
+  .private-mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    margin-left: auto;
+    color: var(--text-muted);
+  }
+
+  .tab.private .title {
+    font-style: italic;
   }
 
   /* Stays visible while the other actions are hidden. */

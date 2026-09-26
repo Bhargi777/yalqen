@@ -28,13 +28,16 @@ interface SavedZoom {
   sites: Record<string, number>;
 }
 
-/** Zoom factors people chose for sites; sites at actual size are not stored. */
+/**
+ * Zoom factors people chose for sites; sites at actual size are not stored.
+ * Without a directory the factors are kept in memory only, as for private tabs.
+ */
 export class ZoomStore {
-  readonly file: string;
+  readonly file: string | null;
   private readonly sites = new Map<string, number>();
 
-  constructor(directory: string) {
-    this.file = path.join(directory, 'zoom.json');
+  constructor(directory: string | null) {
+    this.file = directory === null ? null : path.join(directory, 'zoom.json');
     this.load();
   }
 
@@ -58,6 +61,7 @@ export class ZoomStore {
   }
 
   private load(): void {
+    if (this.file === null) return;
     try {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedZoom;
       if (data.version !== 1 || typeof data.sites !== 'object' || data.sites === null) return;
@@ -72,6 +76,7 @@ export class ZoomStore {
   }
 
   private save(): void {
+    if (this.file === null) return;
     const data: SavedZoom = { version: 1, sites: Object.fromEntries(this.sites) };
     const temp = `${this.file}.tmp`;
     try {

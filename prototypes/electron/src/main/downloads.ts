@@ -15,6 +15,8 @@ export interface DownloadEntry {
   /** 0 when the server did not send a size. */
   totalBytes: number;
   startedAt: number;
+  /** Started in a private tab: listed until private browsing ends, never saved. */
+  private?: boolean;
 }
 
 const MAX_ENTRIES = 200;
@@ -145,6 +147,11 @@ export class DownloadStore {
     this.save();
   }
 
+  /** Forgets finished downloads of private tabs. */
+  removePrivate(): void {
+    this.entries = this.entries.filter((entry) => !entry.private || isActive(entry));
+  }
+
   /** Removes every download that is not running; files stay on disk. */
   clearFinished(): void {
     this.entries = this.entries.filter(isActive);
@@ -159,7 +166,7 @@ export class DownloadStore {
     const temp = `${this.file}.tmp`;
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(temp, JSON.stringify(this.entries));
+      fs.writeFileSync(temp, JSON.stringify(this.entries.filter((entry) => !entry.private)));
       fs.renameSync(temp, this.file);
     } catch (error) {
       console.warn('[downloads] could not save the download list:', error);

@@ -64,3 +64,10 @@ test('invalid saved levels are ignored', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('a store without a directory keeps levels in memory only', () => {
+  const store = new ZoomStore(null);
+  store.set('https://example.com/', 1.5);
+  assert.equal(store.get('https://example.com/'), 1.5);
+  assert.equal(store.file, null);
+});
