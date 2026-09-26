@@ -19,6 +19,9 @@ export interface TabSnapshot {
   frozen: boolean;
   loading: boolean;
   keepAlive: boolean;
+  /** The page is playing sound, muted or not. */
+  audible: boolean;
+  muted: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
 }
@@ -90,6 +93,7 @@ export type UiAction =
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-keep-alive'; id: TabId }
+  | { type: 'toggle-mute'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }
   | { type: 'go-back' }

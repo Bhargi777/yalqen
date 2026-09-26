@@ -37,6 +37,7 @@
       tab.live ? null : 'bellekten çıkarılmış',
       tab.frozen ? 'dondurulmuş' : null,
       tab.keepAlive ? 'canlı tutuluyor' : null,
+      tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
@@ -166,6 +167,17 @@
             {/if}
           </button>
 
+          {#if !collapsed && (tab.audible || tab.muted)}
+            <button
+              class="action audio"
+              title={tab.muted ? 'Sesi aç' : 'Sessize al'}
+              aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+              aria-pressed={tab.muted}
+              onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+            >
+              <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
+            </button>
+          {/if}
           {#if !collapsed}
             <span class="actions">
               <button
@@ -489,6 +501,15 @@
   .action:hover {
     background: var(--surface-hover);
     color: var(--text);
+  }
+
+  /* Stays visible while the other actions are hidden. */
+  .audio {
+    flex: none;
+  }
+
+  .tab:not(.active, :hover, :focus-within) .audio {
+    margin-right: 4px;
   }
 
   .new-tab {

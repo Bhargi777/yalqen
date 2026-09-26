@@ -430,6 +430,9 @@ function createBrowser(): void {
       case 'toggle-keep-alive':
         tabs.toggleKeepAlive(action.id);
         break;
+      case 'toggle-mute':
+        tabs.toggleMute(action.id);
+        break;
       case 'move-tab':
         tabs.move(action.id, action.toIndex);
         break;

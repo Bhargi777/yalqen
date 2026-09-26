@@ -97,6 +97,17 @@
             <span class="label">{siteLabel(tab)}</span>
           </button>
         {/if}
+        {#if tab.audible || tab.muted}
+          <button
+            class="icon small"
+            title={tab.muted ? 'Sesi aç' : 'Sessize al'}
+            aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+            aria-pressed={tab.muted}
+            onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+          >
+            <Icon name={tab.muted ? 'muted' : 'sound'} size={12} />
+          </button>
+        {/if}
         <button class="icon small close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
           <Icon name="close" size={12} />
         </button>

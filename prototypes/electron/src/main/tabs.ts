@@ -23,6 +23,8 @@ interface Tab {
   title: string;
   faviconUrl: string | null;
   keepAlive: boolean;
+  /** Kept while the tab is discarded, so a reloaded page stays muted. Not persisted. */
+  muted: boolean;
   loading: boolean;
   /** Live page frozen in the background: no JS, timers or rendering until selected again. */
   frozen: boolean;
@@ -287,6 +289,14 @@ export class TabManager {
     this.changed(true);
   }
 
+  toggleMute(id: TabId): void {
+    const tab = this.find(id);
+    if (!tab) return;
+    tab.muted = !tab.muted;
+    tab.view?.webContents.setAudioMuted(tab.muted);
+    this.changed();
+  }
+
   navigate(url: string): void {
     const tab = this.active();
     if (!tab) return;
@@ -407,6 +417,7 @@ export class TabManager {
       title: saved.title ?? NEW_TAB_TITLE,
       faviconUrl: saved.faviconUrl ?? null,
       keepAlive: saved.keepAlive ?? false,
+      muted: false,
       loading: false,
       frozen: false,
       history: saved.history ?? null,
@@ -429,6 +440,7 @@ export class TabManager {
     // Only Yalqen's own new tab is transparent. External pages retain a solid
     // view background, including while they are loading or render no body color.
     view.setBackgroundColor(tab.url === NEW_TAB_URL ? '#00000000' : '#ffffff');
+    if (tab.muted) view.webContents.setAudioMuted(true);
     tab.view = view;
     // Background tabs get real bounds too, so they lay out like visible pages.
     this.attachListeners(tab, view);
@@ -643,6 +655,7 @@ export class TabManager {
     });
     contents.on('audio-state-changed', ({ audible }) => {
       if (!audible) this.maybeFreeze(tab);
+      this.changed();
     });
     contents.on('devtools-closed', () => this.maybeFreeze(tab));
     const updateUrl = () => {
@@ -752,6 +765,8 @@ export class TabManager {
       frozen: tab.frozen,
       loading: tab.loading,
       keepAlive: tab.keepAlive,
+      audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
+      muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,
       canGoForward: history?.canGoForward() ?? false,
     };
