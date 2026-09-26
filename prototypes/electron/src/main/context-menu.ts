@@ -4,12 +4,23 @@ const SNIPPET_LENGTH = 30;
 
 export type PageContext = Pick<
   ContextMenuParams,
-  'linkURL' | 'srcURL' | 'mediaType' | 'selectionText' | 'isEditable' | 'editFlags'
+  | 'linkURL'
+  | 'srcURL'
+  | 'mediaType'
+  | 'selectionText'
+  | 'isEditable'
+  | 'editFlags'
+  | 'misspelledWord'
+  | 'dictionarySuggestions'
 >;
+
+const MAX_SPELLING_SUGGESTIONS = 5;
 
 export interface ContextMenuActions {
   canGoBack: boolean;
   canGoForward: boolean;
+  /** The page's source can be shown; false for the source view and internal pages. */
+  canViewSource: boolean;
   openInNewTab(url: string): void;
   copyText(text: string): void;
   copyImage(): void;
@@ -19,6 +30,10 @@ export interface ContextMenuActions {
   goForward(): void;
   reload(): void;
   inspect(): void;
+  print(): void;
+  viewSource(): void;
+  replaceMisspelling(word: string): void;
+  addToDictionary(word: string): void;
 }
 
 /** Selected text shortened to one line for a menu label. */
@@ -65,6 +80,16 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
       { label: 'Resim adresini kopyala', click: () => actions.copyText(image) },
     ]);
   }
+  if (context.isEditable && context.misspelledWord) {
+    const word = context.misspelledWord;
+    const suggestions = context.dictionarySuggestions.slice(0, MAX_SPELLING_SUGGESTIONS);
+    groups.push([
+      ...(suggestions.length > 0
+        ? suggestions.map((suggestion) => ({ label: suggestion, click: () => actions.replaceMisspelling(suggestion) }))
+        : [{ label: 'Yazım önerisi yok', enabled: false }]),
+      { label: `“${snippet(word)}” sözlüğe ekle`, click: () => actions.addToDictionary(word) },
+    ]);
+  }
   if (context.isEditable) {
     const flags = context.editFlags;
     groups.push(
@@ -90,6 +115,10 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
       { label: 'Geri', enabled: actions.canGoBack, click: actions.goBack },
       { label: 'İleri', enabled: actions.canGoForward, click: actions.goForward },
       { label: 'Yenile', click: actions.reload },
+    ]);
+    groups.push([
+      { label: 'Yazdır…', click: actions.print },
+      ...(actions.canViewSource ? [{ label: 'Sayfa kaynağını görüntüle', click: actions.viewSource }] : []),
     ]);
   }
   groups.push([{ label: 'İncele', click: actions.inspect }]);

@@ -30,6 +30,9 @@ export interface MenuActions {
   openSettings(): void;
   toggleBookmark(): void;
   showBookmarks(): void;
+  print(): void;
+  savePdf(): void;
+  viewSource(): void;
 }
 
 /** Shortcuts live in the app menu so they work while a page has focus. */
@@ -75,6 +78,9 @@ export function buildMenu(actions: MenuActions): Menu {
         },
         { type: 'separator' },
         { label: 'Adres çubuğu', accelerator: 'CmdOrCtrl+L', click: actions.focusAddress },
+        { type: 'separator' },
+        { label: 'PDF olarak kaydet…', accelerator: 'CmdOrCtrl+Shift+S', click: actions.savePdf },
+        { label: 'Yazdır…', accelerator: 'CmdOrCtrl+P', click: actions.print },
         ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],
     },
@@ -136,6 +142,7 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Uzaklaştır', accelerator: 'CmdOrCtrl+-', click: () => actions.zoom(-1) },
         { label: 'Sekme panelini daralt/genişlet', accelerator: 'CmdOrCtrl+S', click: actions.togglePanel },
         { type: 'separator' },
+        { label: 'Sayfa kaynağı', accelerator: 'Alt+CmdOrCtrl+U', click: actions.viewSource },
         { label: 'Sayfa DevTools', accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },
         { label: 'Telefon görünümü', accelerator: 'Alt+CmdOrCtrl+M', click: actions.toggleDeviceView },
         {

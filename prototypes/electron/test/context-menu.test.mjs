@@ -13,6 +13,8 @@ const context = (overrides = {}) => ({
   selectionText: '',
   isEditable: false,
   editFlags: FLAGS,
+  misspelledWord: '',
+  dictionarySuggestions: [],
   ...overrides,
 });
 
@@ -23,6 +25,7 @@ function actions() {
     calls,
     canGoBack: true,
     canGoForward: false,
+    canViewSource: true,
     openInNewTab: record('open'),
     copyText: record('copy'),
     copyImage: record('copyImage'),
@@ -32,20 +35,43 @@ function actions() {
     goForward: record('forward'),
     reload: record('reload'),
     inspect: record('inspect'),
+    print: record('print'),
+    viewSource: record('viewSource'),
+    replaceMisspelling: record('replace'),
+    addToDictionary: record('addWord'),
   };
 }
 
 const labels = (items) => items.map((item) => (item.type === 'separator' ? '-' : item.label));
 const item = (items, label) => items.find((entry) => entry.label === label);
 
-test('a plain page offers navigation and inspect', () => {
+test('a plain page offers navigation, printing, its source and inspect', () => {
   const a = actions();
   const items = contextMenuTemplate(context(), a);
-  assert.deepEqual(labels(items), ['Geri', 'İleri', 'Yenile', '-', 'İncele']);
+  assert.deepEqual(labels(items), ['Geri', 'İleri', 'Yenile', '-', 'Yazdır…', 'Sayfa kaynağını görüntüle', '-', 'İncele']);
   assert.equal(item(items, 'Geri').enabled, true);
   assert.equal(item(items, 'İleri').enabled, false);
+  item(items, 'Yazdır…').click();
+  item(items, 'Sayfa kaynağını görüntüle').click();
   item(items, 'İncele').click();
-  assert.deepEqual(a.calls, [['inspect']]);
+  assert.deepEqual(a.calls, [['print'], ['viewSource'], ['inspect']]);
+  const internal = contextMenuTemplate(context(), { ...a, canViewSource: false });
+  assert.equal(item(internal, 'Sayfa kaynağını görüntüle'), undefined);
+});
+
+test('misspelled words get suggestions and can be added to the dictionary', () => {
+  const a = actions();
+  const items = contextMenuTemplate(
+    context({ isEditable: true, misspelledWord: 'merhba', dictionarySuggestions: ['merhaba', 'a', 'b', 'c', 'd', 'e'] }),
+    a,
+  );
+  assert.deepEqual(labels(items).slice(0, 7), ['merhaba', 'a', 'b', 'c', 'd', '“merhba” sözlüğe ekle', '-']);
+  item(items, 'merhaba').click();
+  item(items, '“merhba” sözlüğe ekle').click();
+  assert.deepEqual(a.calls, [['replace', 'merhaba'], ['addWord', 'merhba']]);
+  const none = contextMenuTemplate(context({ isEditable: true, misspelledWord: 'qwxz' }), a);
+  assert.equal(none[0].label, 'Yazım önerisi yok');
+  assert.equal(none[0].enabled, false);
 });
 
 test('links can be opened in a new tab and copied', () => {

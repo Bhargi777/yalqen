@@ -5,6 +5,7 @@ import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDev
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
+import { canViewSource } from './page-export.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
@@ -392,6 +393,18 @@ export class TabManager {
 
   openBookmarks(): void {
     this.openSingle(BOOKMARKS_URL);
+  }
+
+  /** The active page, when it is loaded. */
+  activeContents(): WebContents | null {
+    const contents = this.active()?.view?.webContents;
+    return contents && !contents.isDestroyed() ? contents : null;
+  }
+
+  /** Opens the source of the active page next to it. */
+  viewSource(): void {
+    const tab = this.active();
+    if (tab && canViewSource(tab.url)) this.open(`view-source:${tab.url}`, { isPrivate: tab.isPrivate });
   }
 
   /** Address and title of the active page. */
@@ -811,6 +824,10 @@ export class TabManager {
     const updateUrl = () => {
       tab.url = contents.getURL();
       tab.failed = false;
+      // A page without a title must not keep the previous page's; Chromium then
+      // reports the address. Pages with a title update it again when it is parsed.
+      const title = contents.getTitle();
+      if (title && title !== tab.title) tab.title = title;
       tab.visitId = tab.isPrivate ? null : this.options.onVisit(tab.url, tab.url);
       // Navigation history can change even when the URL stays the same.
       this.changed(true);

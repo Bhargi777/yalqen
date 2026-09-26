@@ -47,6 +47,7 @@ import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { blockedPopupsTemplate } from './popups.js';
+import { canViewSource, pdfFileName } from './page-export.js';
 import { SettingsStore } from './settings.js';
 import { suggest } from './suggestions.js';
 import { siteInfoTemplate } from './site-info.js';
@@ -135,6 +136,10 @@ function createBrowser(): void {
     permissionPrompts = answer.catch(() => {});
     return answer;
   };
+  for (const browsing of [daily, privateBrowsing]) {
+    // Turkish first, then English; macOS uses the system spell checker instead.
+    if (process.platform !== 'darwin') browsing.setSpellCheckerLanguages(['tr', 'en-US']);
+  }
   for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
     browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) {
@@ -524,6 +529,7 @@ function createBrowser(): void {
       const template = contextMenuTemplate(params, {
         canGoBack: history.canGoBack(),
         canGoForward: history.canGoForward(),
+        canViewSource: canViewSource(contents.getURL()),
         // Like other browsers, links open next to the page without leaving it.
         openInNewTab: (url) => tabs.open(url, { activate: false, isPrivate: tabs.isPrivateContents(contents) }),
         copyText: (text) => clipboard.writeText(text),
@@ -534,6 +540,14 @@ function createBrowser(): void {
         goForward: () => history.goForward(),
         reload: () => contents.reload(),
         inspect: () => contents.inspectElement(params.x, params.y),
+        print: () => printPage(contents),
+        viewSource: () => {
+          if (canViewSource(contents.getURL())) {
+            tabs.open(`view-source:${contents.getURL()}`, { isPrivate: tabs.isPrivateContents(contents) });
+          }
+        },
+        replaceMisspelling: (word) => contents.replaceMisspelling(word),
+        addToDictionary: (word) => contents.session.addWordToSpellCheckerDictionary(word),
       });
       Menu.buildFromTemplate(template).popup({ window });
     },
@@ -654,6 +668,30 @@ function createBrowser(): void {
   };
   const togglePanel = () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed });
 
+  const printPage = (contents: Electron.WebContents) => {
+    contents.print({}, (success, reason) => {
+      if (!success && reason !== 'Print job canceled' && reason !== 'cancelled') {
+        console.warn(`[print] could not print: ${reason}`);
+      }
+    });
+  };
+  const savePageAsPdf = async () => {
+    const contents = tabs.activeContents();
+    if (!contents) return;
+    const { canceled, filePath } = await dialog.showSaveDialog(window, {
+      title: 'PDF olarak kaydet',
+      defaultPath: path.join(app.getPath('downloads'), pdfFileName(contents.getTitle(), contents.getURL())),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (canceled || !filePath || contents.isDestroyed()) return;
+    try {
+      await fs.promises.writeFile(filePath, await contents.printToPDF({ printBackground: true }));
+    } catch (error) {
+      console.warn('[print] could not save the page as PDF:', error);
+      void dialog.showMessageBox(window, { type: 'error', message: 'Sayfa PDF olarak kaydedilemedi.', detail: String(error) });
+    }
+  };
+
   const openCenteredAddress = () => {
     const url = tabs.activeUrl;
     if (url === NEW_TAB_URL && tabs.focusNewTabSearch()) return;
@@ -699,6 +737,12 @@ function createBrowser(): void {
       openSettings: () => settingsWindow.open(),
       toggleBookmark,
       showBookmarks: () => tabs.openBookmarks(),
+      print: () => {
+        const contents = tabs.activeContents();
+        if (contents) printPage(contents);
+      },
+      savePdf: () => void savePageAsPdf(),
+      viewSource: () => tabs.viewSource(),
     }),
   );
 
