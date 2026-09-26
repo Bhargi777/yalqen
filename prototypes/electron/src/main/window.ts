@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, nativeTheme, screen, type Session } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, nativeTheme, type Session } from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -8,7 +8,6 @@ import {
   type ChromeLayout,
   type DeviceId,
   type UiAction,
-  type UiCommand,
   type WindowMaterial,
 } from '../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
@@ -39,11 +38,6 @@ import type { ZoomStore } from './zoom.js';
 // Offset of the traffic lights from the top-left corner. Their 14pt buttons then
 // share the 22px center line of the back and forward capsule.
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
-// Corner that keeps hover-revealed traffic lights visible, and how often it is checked.
-const WINDOW_CONTROLS_ZONE = { minWidth: 76, maxWidth: 240, height: 44 };
-// Lets the UI move its buttons out of the way before the controls appear.
-const WINDOW_CONTROLS_DELAY_MS = 120;
-const WINDOW_CONTROLS_POLL_MS = 150;
 // A new window opens this far from the one it came from.
 const CASCADE_OFFSET = 24;
 
@@ -109,7 +103,6 @@ export class YalqenWindow {
   private layout: ChromeLayout = {
     panelWidth: 220,
     panelSide: 'left',
-    windowControls: true,
     chromeHeight: 44,
     pageInset: 8,
     pageRadius: 16,
@@ -119,12 +112,7 @@ export class YalqenWindow {
   private htmlFullScreenTabId: string | null = null;
   // Tab and address (without fragment) the find bar searches; it closes when either changes.
   private findTarget: { tabId: string; url: string } | null = null;
-  // Hidden traffic lights appear while the pointer is over their corner. The
-  // UI reports entering it; leaving is polled, since the pointer over the native
-  // buttons is not seen by the page.
-  private controlsRevealed = false;
-  private controlsTimer: NodeJS.Timeout | null = null;
-  private controlsDelay: NodeJS.Timeout | null = null;
+  private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
   constructor(
     private readonly app: AppContext,
@@ -205,6 +193,7 @@ export class YalqenWindow {
 
     this.tabs = new TabManager({
       window: this.window,
+      gesturePreload: path.join(__dirname, '../preload/page-gesture.js'),
       closed: app.closedTabs,
       privateWindow: this.isPrivate,
       session: app.daily,
@@ -225,6 +214,7 @@ export class YalqenWindow {
         this.pushState();
         app.onWindowChange(persist);
       },
+      onPageSwipe: (direction) => this.navigateByGesture(direction, 'page'),
       onNewTabSearch: (query) => {
         if (query.trim() === '') this.openAddress();
         else this.tabs.navigate(resolveInput(query, app.searchEngine()));
@@ -281,15 +271,14 @@ export class YalqenWindow {
     });
 
     this.window.on('focus', () => app.onWindowFocus(this));
+    if (process.platform === 'darwin') {
+      this.window.on('swipe', (_event, direction) => {
+        if (direction === 'right') this.navigateByGesture('back', 'native');
+        else if (direction === 'left') this.navigateByGesture('forward', 'native');
+      });
+    }
     this.window.on('resize', () => this.applyLayout());
-    this.window.on('enter-full-screen', () => {
-      // A reveal in progress is dropped: the title bar takes over.
-      if (this.controlsRevealed) {
-        this.hideWindowControls();
-        this.notifyUi({ type: 'window-controls', visible: false });
-      }
-      this.applyLayout();
-    });
+    this.window.on('enter-full-screen', () => this.applyLayout());
     this.window.on('leave-full-screen', () => this.applyLayout());
     this.applyLayout();
 
@@ -302,7 +291,6 @@ export class YalqenWindow {
 
     this.window.on('close', () => {
       app.onWindowClosing(this);
-      this.hideWindowControls();
       nativeTheme.off('updated', this.pushState);
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
@@ -319,6 +307,18 @@ export class YalqenWindow {
 
     void this.ui.webContents.loadFile(path.join(__dirname, '../renderer/index.html'));
     app.onWindowFocus(this);
+  }
+
+  private navigateByGesture(direction: 'back' | 'forward', source: 'native' | 'page'): void {
+    if (process.platform !== 'darwin') return;
+    // Some macOS settings deliver both the native swipe and horizontal wheel
+    // stream for one movement. Let only the first source navigate it.
+    const now = Date.now();
+    const last = this.lastNavigationGesture;
+    if (last && last.source !== source && last.direction === direction && now - last.at < 650) return;
+    this.lastNavigationGesture = { source, direction, at: now };
+    if (direction === 'back') this.tabs.goBack();
+    else this.tabs.goForward();
   }
 
   /** The toolbar and sidebar page of this window. */
@@ -538,9 +538,6 @@ export class YalqenWindow {
       case 'open-history':
         tabs.openHistory();
         break;
-      case 'reveal-window-controls':
-        this.revealWindowControls(action.width);
-        break;
       case 'open-settings':
         app.settingsWindow.open();
         break;
@@ -588,10 +585,6 @@ export class YalqenWindow {
     return this.htmlFullScreenTabId !== null && this.htmlFullScreenTabId === this.tabs.activeTabId;
   }
 
-  private notifyUi(command: UiCommand): void {
-    if (!this.ui.webContents.isDestroyed()) this.ui.webContents.send(IpcChannel.command, command);
-  }
-
   private endFind(): void {
     if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
     this.findTarget = null;
@@ -602,22 +595,15 @@ export class YalqenWindow {
     if (this.isPageFullScreen()) {
       this.commandBar.close();
       this.endFind();
-      if (this.controlsRevealed) {
-        this.hideWindowControls();
-        this.notifyUi({ type: 'window-controls', visible: false });
-      }
     }
     this.applyLayout();
     this.pushState();
   }
 
-  // Showing the traffic lights again puts them back in their default place, so the
-  // position is set each time they appear. In full screen macOS shows them in the
-  // title bar that slides down from the top edge, so they stay on and in place there.
-  private setWindowControls(visible: boolean): void {
-    const fullScreen = this.window.isFullScreen();
-    this.window.setWindowButtonVisibility(visible || fullScreen);
-    if (visible && !fullScreen) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
+  // macOS moves the controls into its own title bar in full screen.
+  private showWindowControls(): void {
+    this.window.setWindowButtonVisibility(true);
+    if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   }
 
   private applyLayout(): void {
@@ -629,40 +615,8 @@ export class YalqenWindow {
     this.tabs.setPageRadius(radius);
     this.findBar.setArea(bounds);
     if (process.platform === 'darwin') {
-      this.setWindowControls(this.layout.windowControls || this.controlsRevealed);
+      this.showWindowControls();
     }
-  }
-
-  private revealWindowControls(zoneWidth: number): void {
-    if (process.platform !== 'darwin' || this.controlsRevealed || this.window.isFullScreen()) return;
-    const width = Math.min(
-      WINDOW_CONTROLS_ZONE.maxWidth,
-      Math.max(WINDOW_CONTROLS_ZONE.minWidth, Number(zoneWidth) || 0),
-    );
-    this.controlsRevealed = true;
-    this.notifyUi({ type: 'window-controls', visible: true });
-    this.controlsDelay = setTimeout(() => this.setWindowControls(true), WINDOW_CONTROLS_DELAY_MS);
-    this.controlsTimer = setInterval(() => {
-      const cursor = screen.getCursorScreenPoint();
-      const bounds = this.window.getContentBounds();
-      const inside =
-        cursor.x >= bounds.x &&
-        cursor.x < bounds.x + width &&
-        cursor.y >= bounds.y &&
-        cursor.y < bounds.y + WINDOW_CONTROLS_ZONE.height;
-      if (inside) return;
-      this.hideWindowControls();
-      this.setWindowControls(this.layout.windowControls);
-      this.notifyUi({ type: 'window-controls', visible: false });
-    }, WINDOW_CONTROLS_POLL_MS);
-  }
-
-  private hideWindowControls(): void {
-    if (this.controlsTimer) clearInterval(this.controlsTimer);
-    if (this.controlsDelay) clearTimeout(this.controlsDelay);
-    this.controlsTimer = null;
-    this.controlsDelay = null;
-    this.controlsRevealed = false;
   }
 }
 

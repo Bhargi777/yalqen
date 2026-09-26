@@ -59,6 +59,8 @@ interface Tab {
 
 export interface TabManagerOptions {
   window: BaseWindow;
+  /** Sandboxed page preload that recognizes horizontal navigation gestures. */
+  gesturePreload: string;
   /** Recently closed tabs, shared by every window. */
   closed: SavedTab[];
   /** Private window: every tab it opens is private. */
@@ -72,6 +74,8 @@ export interface TabManagerOptions {
   freezeBackground: () => boolean;
   /** A visible change may also require the saved session to be updated. */
   onChange: (persist: boolean) => void;
+  /** A horizontal gesture in the active page requested history navigation. */
+  onPageSwipe: (direction: 'back' | 'forward') => void;
   /** The new tab page asked for the address bar. */
   /** A search typed on the new tab page, or empty when it asked for the address bar. */
   onNewTabSearch: (query: string) => void;
@@ -635,6 +639,7 @@ export class TabManager {
     const view = new WebContentsView({
       webPreferences: {
         ...this.options.pagePreferences(),
+        preload: this.options.gesturePreload,
         session: tab.isPrivate ? this.options.privateSession : this.options.session,
         sandbox: true,
         contextIsolation: true,
@@ -792,6 +797,11 @@ export class TabManager {
       // Esc stops a loading page. It still reaches the page, which may use it too.
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
+    });
+
+    listen('ipc-message', (event, channel, direction) => {
+      if (channel !== 'yalqen:page-swipe' || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
+      if (direction === 'back' || direction === 'forward') this.options.onPageSwipe(direction);
     });
 
     // Ctrl + wheel or trackpad pinch; Electron leaves zooming to the app.

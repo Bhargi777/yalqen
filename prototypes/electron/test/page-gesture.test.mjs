@@ -1,0 +1,62 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import vm from 'node:vm';
+
+function gesturePage() {
+  const sent = [];
+  let onWheel;
+  let now = 0;
+  class Element {
+    constructor(overflowX = 'visible', scrollWidth = 100, clientWidth = 100) {
+      Object.assign(this, { overflowX, scrollWidth, clientWidth });
+    }
+  }
+  const context = {
+    exports: {},
+    require: () => ({ ipcRenderer: { send: (...args) => sent.push(args) } }),
+    window: { addEventListener: (_name, callback) => { onWheel = callback; } },
+    document: { scrollingElement: new Element() },
+    Element,
+    WheelEvent: { DOM_DELTA_PIXEL: 0 },
+    getComputedStyle: (element) => ({ overflowX: element.overflowX }),
+    performance: { now: () => now },
+  };
+  const code = readFileSync(path.join(import.meta.dirname, '../dist/preload/page-gesture.js'), 'utf8');
+  vm.runInNewContext(code, context);
+  return {
+    sent,
+    Element,
+    wheel(deltaX, at, target = new Element(), isTrusted = true) {
+      now = at;
+      onWheel({
+        deltaX, deltaY: 0, deltaMode: 0, isTrusted,
+        ctrlKey: false, metaKey: false, altKey: false, shiftKey: false,
+        composedPath: () => [target],
+      });
+    },
+  };
+}
+
+test('a horizontal swipe navigates once in each direction', () => {
+  const page = gesturePage();
+  page.wheel(-35, 1000);
+  page.wheel(-35, 1020);
+  page.wheel(-35, 1040);
+  page.wheel(-100, 1060);
+  assert.deepEqual(page.sent, [['yalqen:page-swipe', 'back']]);
+
+  page.wheel(100, 1800);
+  assert.deepEqual(page.sent, [
+    ['yalqen:page-swipe', 'back'],
+    ['yalqen:page-swipe', 'forward'],
+  ]);
+});
+
+test('horizontal content and synthetic wheel events never navigate', () => {
+  const page = gesturePage();
+  page.wheel(120, 1000, new page.Element('auto', 200, 100));
+  page.wheel(120, 1800, new page.Element(), false);
+  assert.deepEqual(page.sent, []);
+});

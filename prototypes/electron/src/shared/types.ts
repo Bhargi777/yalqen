@@ -104,8 +104,6 @@ export interface ChromeLayout {
   /** Width of the sidebar, including its gap to the page card. */
   panelWidth: number;
   panelSide: PanelSide;
-  /** Whether the macOS window controls are always shown; otherwise they appear while the pointer is over their corner. */
-  windowControls: boolean;
   /** Height of the top bar above the page card. */
   chromeHeight: number;
   /** Gap between the page card and the right and bottom window edges. */
@@ -113,9 +111,6 @@ export interface ChromeLayout {
   /** Corner radius of the page card. */
   pageRadius: number;
 }
-
-/** The macOS window controls were revealed or hidden again. */
-export type UiCommand = { type: 'window-controls'; visible: boolean };
 
 /** Requests the UI sends to the main process. */
 export type UiAction =
@@ -142,14 +137,11 @@ export type UiAction =
   | { type: 'open-profile-menu' }
   | { type: 'open-downloads' }
   | { type: 'open-history' }
-  /** Shows the window controls while the pointer stays within `width` of the window's top-left corner. */
-  | { type: 'reveal-window-controls'; width: number }
   | { type: 'open-settings' };
 
 export const IpcChannel = {
   getState: 'yalqen:get-state',
   state: 'yalqen:state',
-  command: 'yalqen:command',
   setLayout: 'yalqen:set-layout',
   action: 'yalqen:action',
 } as const;
@@ -158,7 +150,6 @@ export const IpcChannel = {
 export interface YalqenApi {
   getState(): Promise<BrowserState>;
   onState(listener: (state: BrowserState) => void): () => void;
-  onCommand(listener: (command: UiCommand) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
 }

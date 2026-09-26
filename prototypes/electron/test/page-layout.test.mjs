@@ -5,7 +5,6 @@ import { pageFrame } from '../dist/main/page-layout.js';
 const layout = {
   panelWidth: 220,
   panelSide: 'left',
-  windowControls: false,
   chromeHeight: 44,
   pageInset: 8,
   pageRadius: 16,

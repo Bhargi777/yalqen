@@ -35,7 +35,6 @@
     downloads: { active: 0, progress: null },
   });
   let width = $state(DEFAULT_WIDTH);
-  let controlsShown = $state(false);
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
@@ -65,8 +64,6 @@
     window.yalqen.setLayout({
       panelWidth,
       panelSide: side,
-      // On macOS the traffic lights stay hidden until the pointer reaches their corner.
-      windowControls: !windowControls,
       chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
@@ -81,12 +78,8 @@
   onMount(() => {
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
-    const offCommand = window.yalqen.onCommand((command) => {
-      if (command.type === 'window-controls') controlsShown = command.visible;
-    });
     return () => {
       offState();
-      offCommand();
     };
   });
 </script>
@@ -123,19 +116,6 @@
       />
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
-    {/if}
-    {#if windowControls}
-      <!--
-        Reveals the traffic lights. They stay while the pointer is over them or the
-        moved buttons; the main process hides them once it leaves.
-      -->
-      <div
-        class="controls-zone"
-        class:shown={controlsShown}
-        aria-hidden="true"
-        onpointerenter={() =>
-          window.yalqen.send({ type: 'reveal-window-controls', width: WINDOW_CONTROLS_END })}
-      ></div>
     {/if}
   {/if}
   <section
@@ -192,21 +172,6 @@
   .titlebar-drag {
     grid-area: bar;
     -webkit-app-region: drag;
-  }
-
-  /* Over the buttons while the traffic lights are hidden, so reaching them reveals the lights. */
-  .controls-zone {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 2;
-    width: 76px;
-    height: 44px;
-    -webkit-app-region: no-drag;
-  }
-
-  .controls-zone.shown {
-    pointer-events: none;
   }
 
   .page {
