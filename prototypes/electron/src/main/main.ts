@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, ipcMain, nativeTheme, screen, session, shell } from 'electron';
 import {
+  BOOKMARKS_URL,
   DOWNLOADS_URL,
   NEW_TAB_URL,
   IpcChannel,
@@ -15,6 +16,7 @@ import {
   type WindowMaterial,
 } from '../shared/types.js';
 import { AdBlocker } from './adblock.js';
+import { BookmarkStore, bookmarksMenuTemplate } from './bookmarks.js';
 import { CertificateExceptions } from './certificates.js';
 import { CommandBar } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
@@ -151,6 +153,46 @@ function createBrowser(): void {
   });
   const history = new HistoryStore(app.getPath('userData'));
   const downloads = new DownloadStore(app.getPath('userData'));
+  const bookmarks = new BookmarkStore(app.getPath('userData'));
+  const bookmarksChanged = () => {
+    pushState();
+    tabs.reloadPages(BOOKMARKS_URL);
+  };
+  const toggleBookmark = () => {
+    const page = tabs.activePage();
+    if (!page) return;
+    const existing = bookmarks.find(page.url);
+    if (existing) bookmarks.remove(existing.id);
+    else bookmarks.add(page.url, page.title);
+    bookmarksChanged();
+  };
+  const runBookmarksCommand = (command: string, params: URLSearchParams) => {
+    const id = params.get('id') ?? '';
+    const title = params.get('title') ?? '';
+    switch (command) {
+      case 'new-folder':
+        bookmarks.addFolder(title);
+        break;
+      case 'rename':
+        bookmarks.rename(id, title);
+        break;
+      case 'move':
+        bookmarks.move(id, params.get('folder') || null);
+        break;
+      case 'remove':
+        bookmarks.remove(id);
+        break;
+      case 'rename-folder':
+        bookmarks.renameFolder(id, title);
+        break;
+      case 'remove-folder':
+        bookmarks.removeFolder(id);
+        break;
+      default:
+        return;
+    }
+    bookmarksChanged();
+  };
   const downloadItems = new Map<string, Electron.DownloadItem>();
   // Paths given to running downloads, which may not exist on disk yet.
   const reservedPaths = new Set<string>();
@@ -410,7 +452,13 @@ function createBrowser(): void {
     onVisitTitle: (id, title) => history.setTitle(id, title),
     onHistoryDelete: (id) => history.remove(id),
     onHistoryClear: () => history.clear(),
-    onDownloadsCommand: (command, id) => {
+    isBookmarked: (url) => bookmarks.find(url) !== undefined,
+    onPageCommand: (page, command, params) => {
+      if (page === 'bookmarks') {
+        runBookmarksCommand(command, params);
+        return;
+      }
+      const id = params.get('id') ?? '';
       if (command === 'clear') {
         downloads.clearFinished();
         downloadsChanged();
@@ -453,9 +501,11 @@ function createBrowser(): void {
     path.join(__dirname, '../renderer/newtab.html'),
     path.join(__dirname, '../renderer/history.html'),
     path.join(__dirname, '../renderer/downloads.html'),
+    path.join(__dirname, '../renderer/bookmarks.html'),
     () => tabs.recentlyClosed(),
     (query) => history.list(query),
     () => downloads.list(),
+    (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
     () => {
       const showWelcome = !settings.get().welcomeCompleted;
       if (showWelcome) settings.update({ welcomeCompleted: true });
@@ -603,6 +653,8 @@ function createBrowser(): void {
         tabs.selectDevice(id);
       },
       openSettings: () => settingsWindow.open(),
+      toggleBookmark,
+      showBookmarks: () => tabs.openBookmarks(),
     }),
   );
 
@@ -716,6 +768,17 @@ function createBrowser(): void {
           { label: 'Ayarlar…', click: () => settingsWindow.open() },
         ]).popup({ window });
         break;
+      case 'toggle-bookmark':
+        toggleBookmark();
+        break;
+      case 'open-bookmarks-menu': {
+        const template = bookmarksMenuTemplate(bookmarks.folders(), bookmarks.bookmarks(), {
+          open: (url) => tabs.navigate(url),
+          showAll: () => tabs.openBookmarks(),
+        });
+        Menu.buildFromTemplate(template).popup({ window });
+        break;
+      }
       case 'open-downloads':
         Menu.buildFromTemplate(downloadsMenuTemplate(downloads.list(), downloadActions)).popup({ window });
         break;

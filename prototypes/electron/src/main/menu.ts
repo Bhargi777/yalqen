@@ -27,6 +27,8 @@ export interface MenuActions {
   devices: DeviceMenuItem[];
   selectDevice(id: DeviceId): void;
   openSettings(): void;
+  toggleBookmark(): void;
+  showBookmarks(): void;
 }
 
 /** Shortcuts live in the app menu so they work while a page has focus. */
@@ -90,6 +92,13 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Bul…', accelerator: 'CmdOrCtrl+F', click: actions.find },
         { label: 'Sonrakini bul', accelerator: 'CmdOrCtrl+G', click: () => actions.findNext(true) },
         { label: 'Öncekini bul', accelerator: 'CmdOrCtrl+Shift+G', click: () => actions.findNext(false) },
+      ],
+    },
+    {
+      label: 'Yer imleri',
+      submenu: [
+        { label: 'Bu sayfayı yer imlerine ekle/kaldır', accelerator: 'CmdOrCtrl+D', click: actions.toggleBookmark },
+        { label: 'Tüm yer imleri', accelerator: 'CmdOrCtrl+Alt+B', click: actions.showBookmarks },
       ],
     },
     {

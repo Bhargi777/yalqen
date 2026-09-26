@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
-import { DOWNLOADS_URL, HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
+import { BOOKMARKS_URL, DOWNLOADS_URL, HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, type CommandPage, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
@@ -74,8 +74,9 @@ export interface TabManagerOptions {
   onCertificateProceed: (token: string, url: string) => boolean;
   /** Whether the site of the page at `url` may open windows without a click. */
   popupsAllowed: (url: string) => boolean;
-  /** A command link on the downloads page, such as `open` with a download id. */
-  onDownloadsCommand: (command: string, id: string) => void;
+  /** A command link or form on the downloads or bookmarks page, such as `open` with an id. */
+  onPageCommand: (page: CommandPage, command: string, params: URLSearchParams) => void;
+  isBookmarked: (url: string) => boolean;
   /** A page was right-clicked. */
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
 }
@@ -84,6 +85,20 @@ export interface RecentPage {
   url: string;
   title: string;
   faviconUrl: string | null;
+}
+
+const COMMAND_PAGES = new Set<string>(['downloads', 'bookmarks'] satisfies CommandPage[]);
+
+/** A command addressed to an internal page, such as yalqen://bookmarks/rename?id=…; the page itself is not one. */
+function pageCommand(url: string): { page: CommandPage; name: string; params: URLSearchParams } | null {
+  if (!url.startsWith(`${INTERNAL_SCHEME}://`)) return null;
+  try {
+    const parsed = new URL(url);
+    if (!COMMAND_PAGES.has(parsed.host) || parsed.pathname === '/') return null;
+    return { page: parsed.host as CommandPage, name: parsed.pathname.slice(1), params: parsed.searchParams };
+  } catch {
+    return null;
+  }
 }
 
 /** Owns tab records and their page views. Only the active tab's view is attached to the window. */
@@ -358,12 +373,27 @@ export class TabManager {
     this.openSingle(DOWNLOADS_URL);
   }
 
-  /** Reloads open pages whose address starts with `prefix`, such as the downloads list. */
+  openBookmarks(): void {
+    this.openSingle(BOOKMARKS_URL);
+  }
+
+  /** Address and title of the active page. */
+  activePage(): { url: string; title: string } | null {
+    const tab = this.active();
+    return tab ? { url: tab.url, title: tab.title } : null;
+  }
+
+  /**
+   * Reloads open pages whose address starts with `prefix`, such as the downloads
+   * list. Deferred, so a command link the page just used has finished being cancelled.
+   */
   reloadPages(prefix: string): void {
-    for (const tab of this.tabs) {
-      const contents = tab.view?.webContents;
-      if (contents && !contents.isDestroyed() && tab.url.startsWith(prefix) && !tab.loading) contents.reload();
-    }
+    setImmediate(() => {
+      for (const tab of this.tabs) {
+        const contents = tab.view?.webContents;
+        if (contents && !contents.isDestroyed() && tab.url.startsWith(prefix)) contents.reload();
+      }
+    });
   }
 
   /** Selects the tab showing `url`, or opens one. */
@@ -669,12 +699,12 @@ export class TabManager {
       }
       const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
       const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
-      if (event.url.startsWith(DOWNLOADS_URL) && event.url !== DOWNLOADS_URL) {
+      const command = pageCommand(event.url);
+      if (command) {
         event.preventDefault();
-        // Only the downloads page itself may use its command links.
-        if (!contents.getURL().startsWith(DOWNLOADS_URL)) return;
-        const command = new URL(event.url);
-        this.options.onDownloadsCommand(command.pathname.slice(1), command.searchParams.get('id') ?? '');
+        // Only the page itself may use its commands.
+        if (!contents.getURL().startsWith(`${INTERNAL_SCHEME}://${command.page}/`)) return;
+        this.options.onPageCommand(command.page, command.name, command.params);
         return;
       }
       const historyDelete = event.url.startsWith(`${HISTORY_URL}delete?`);
@@ -877,6 +907,7 @@ export class TabManager {
       loading: tab.loading,
       keepAlive: tab.keepAlive,
       // An error page is not the site: it gets no connection state, not even a lock.
+      bookmarked: this.options.isBookmarked(tab.url),
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       blockedPopups: tab.blockedPopups.length,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),

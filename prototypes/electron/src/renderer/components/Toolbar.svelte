@@ -96,6 +96,18 @@
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
           </button>
+          {#if tab.url.startsWith('http') || tab.url.startsWith('file:')}
+            <button
+              class="star"
+              class:on={tab.bookmarked}
+              title={tab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
+              aria-label={tab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
+              aria-pressed={tab.bookmarked}
+              onclick={() => send({ type: 'toggle-bookmark' })}
+            >
+              <Icon name="star" size={13} />
+            </button>
+          {/if}
           {#if tab.blockedPopups > 0}
             <button
               class="popups"
@@ -149,6 +161,9 @@
 
   <div class="side trailing">
     <div class="capsule">
+      <button class="icon" title="Yer imleri" aria-label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })}>
+        <Icon name="bookmarks" />
+      </button>
       <button class="icon" title="Geçmiş (⌘Y)" aria-label="Geçmiş" onclick={() => send({ type: 'open-history' })}>
         <Icon name="history" />
       </button>
@@ -422,6 +437,32 @@
     .ring.indeterminate {
       animation: none;
     }
+  }
+
+  .star {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .star:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .star.on {
+    color: var(--accent);
+  }
+
+  .star.on :global(path) {
+    fill: currentColor;
   }
 
   .popups {

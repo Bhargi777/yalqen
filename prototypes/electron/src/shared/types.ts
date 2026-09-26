@@ -5,6 +5,9 @@ export const INTERNAL_SCHEME = 'yalqen';
 export const NEW_TAB_URL = 'yalqen://newtab/';
 export const HISTORY_URL = 'yalqen://history/';
 export const DOWNLOADS_URL = 'yalqen://downloads/';
+export const BOOKMARKS_URL = 'yalqen://bookmarks/';
+/** Internal pages whose links and forms are commands handled by the browser. */
+export type CommandPage = 'downloads' | 'bookmarks';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
@@ -26,6 +29,7 @@ export interface TabSnapshot {
   loading: boolean;
   keepAlive: boolean;
   security: SecurityState;
+  bookmarked: boolean;
   /** New windows the page tried to open without a click or key press. */
   blockedPopups: number;
   /** The page is playing sound, muted or not. */
@@ -119,6 +123,8 @@ export type UiAction =
   | { type: 'reset-zoom' }
   | { type: 'open-site-info' }
   | { type: 'open-blocked-popups' }
+  | { type: 'toggle-bookmark' }
+  | { type: 'open-bookmarks-menu' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
