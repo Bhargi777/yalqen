@@ -158,21 +158,38 @@ export interface CommandBarOpen {
   value?: string;
 }
 
+/** A page offered below the address bar; `tabId` is set for an open tab to switch to. */
+export interface AddressSuggestion {
+  kind: 'tab' | 'bookmark' | 'history';
+  title: string;
+  url: string;
+  tabId?: TabId;
+}
+
+/** Suggestions for the text they were computed for. */
+export interface CommandBarSuggestions {
+  input: string;
+  suggestions: AddressSuggestion[];
+}
+
 /** Requests the command bar sends to the main process. */
 export type CommandBarAction =
   | { type: 'submit'; input: string }
+  | { type: 'switch-tab'; id: TabId }
   | { type: 'dismiss' }
   /** The text changed; the bar stays open. */
   | { type: 'input'; input: string };
 
 export const CommandBarChannel = {
   open: 'yalqen-command:open',
+  suggestions: 'yalqen-command:suggestions',
   action: 'yalqen-command:action',
 } as const;
 
 /** API exposed to the command bar overlay by its preload script. */
 export interface CommandBarApi {
   onOpen(listener: (open: CommandBarOpen) => void): () => void;
+  onSuggestions(listener: (suggestions: CommandBarSuggestions) => void): () => void;
   send(action: CommandBarAction): void;
 }
 

@@ -46,6 +46,7 @@ import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { blockedPopupsTemplate } from './popups.js';
 import { SettingsStore } from './settings.js';
+import { suggest } from './suggestions.js';
 import { siteInfoTemplate } from './site-info.js';
 import { SettingsWindow } from './settings-window.js';
 import { TabManager } from './tabs.js';
@@ -386,7 +387,19 @@ function createBrowser(): void {
       preconnector.cancel();
       if (!tabs.focusActive()) ui.webContents.focus();
     },
-    onInput: (input) => preconnector.typed(input, searchEngine()),
+    onInput: (input) => {
+      preconnector.typed(input, searchEngine());
+      const open = tabs.state();
+      commandBar.showSuggestions(
+        input,
+        suggest(input, {
+          tabs: open.tabs.filter((tab) => tab.id !== open.activeTabId),
+          bookmarks: bookmarks.bookmarks(),
+          history: history.list(),
+        }),
+      );
+    },
+    onSwitchTab: (id) => tabs.activate(id),
   });
 
   // Tab and address (without fragment) the find bar searches; it closes when either changes.

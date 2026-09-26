@@ -1,5 +1,11 @@
 import { WebContentsView, ipcMain, type BaseWindow, type IpcMainEvent } from 'electron';
-import { CommandBarChannel, type CommandBarAction, type CommandBarOpen } from '../shared/types.js';
+import {
+  CommandBarChannel,
+  type AddressSuggestion,
+  type CommandBarAction,
+  type CommandBarOpen,
+  type TabId,
+} from '../shared/types.js';
 
 export interface CommandBarOptions {
   window: BaseWindow;
@@ -11,6 +17,8 @@ export interface CommandBarOptions {
   onDismiss: () => void;
   /** Called with the current text each time the user edits it. */
   onInput: (input: string) => void;
+  /** An open tab was picked from the suggestions; the bar is already closed. */
+  onSwitchTab: (id: TabId) => void;
 }
 
 /**
@@ -58,6 +66,11 @@ export class CommandBar {
     this.view.webContents.send(CommandBarChannel.open, open);
   }
 
+  /** Shows suggestions for `input`; the bar ignores them once the text has changed. */
+  showSuggestions(input: string, suggestions: AddressSuggestion[]): void {
+    if (this.opened) this.view.webContents.send(CommandBarChannel.suggestions, { input, suggestions });
+  }
+
   close(): void {
     if (!this.opened) return;
     this.opened = false;
@@ -91,7 +104,9 @@ export class CommandBar {
       return;
     }
     this.close();
-    if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
+    if (action.type === 'switch-tab' && typeof action.id === 'string') {
+      this.options.onSwitchTab(action.id);
+    } else if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
       this.options.onSubmit(action.input, this.mode);
     } else {
       this.options.onDismiss();

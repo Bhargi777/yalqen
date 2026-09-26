@@ -1,43 +1,86 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { AddressSuggestion, CommandBarAction } from '../shared/types';
   import Icon from './components/Icon.svelte';
+
+  const KIND_ICON = { tab: 'sidebar', bookmark: 'star', history: 'history' } as const;
 
   let input: HTMLInputElement | undefined = $state();
   let value = $state('');
   let placeholder = $state('Ara veya adres yaz');
+  let suggestions: AddressSuggestion[] = $state([]);
+  /** Highlighted suggestion; -1 submits the typed text. */
+  let selected = $state(-1);
 
   // The box stays rendered while the view is detached, so it shows on the first
   // frame after the main process attaches the view again.
-  function finish(action: { type: 'submit'; input: string } | { type: 'dismiss' }): void {
+  function finish(action: CommandBarAction): void {
     value = '';
+    suggestions = [];
+    selected = -1;
     window.yalqenCommand.send(action);
+  }
+
+  function pick(suggestion: AddressSuggestion): void {
+    finish(suggestion.tabId ? { type: 'switch-tab', id: suggestion.tabId } : { type: 'submit', input: suggestion.url });
   }
 
   function submit(event: SubmitEvent): void {
     event.preventDefault();
+    if (selected >= 0 && suggestions[selected]) {
+      pick(suggestions[selected]);
+      return;
+    }
     if (value.trim() === '') return;
     finish({ type: 'submit', input: value });
   }
 
   function onInput(): void {
+    selected = -1;
+    if (value.trim() === '') suggestions = [];
     window.yalqenCommand.send({ type: 'input', input: value });
+  }
+
+  function hostOf(url: string): string {
+    try {
+      return new URL(url).host.replace(/^www\./, '') || url;
+    } catch {
+      return url;
+    }
   }
 
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
       finish({ type: 'dismiss' });
+    } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && suggestions.length > 0) {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      // Wraps through the typed text (-1) and every suggestion.
+      selected = ((selected + 1 + step + suggestions.length + 1) % (suggestions.length + 1)) - 1;
     }
   }
 
-  onMount(() =>
-    window.yalqenCommand.onOpen((open) => {
+  onMount(() => {
+    const offOpen = window.yalqenCommand.onOpen((open) => {
       placeholder = open.placeholder;
       value = open.value ?? '';
+      suggestions = [];
+      selected = -1;
       input?.focus();
       input?.select();
-    }),
-  );
+    });
+    const offSuggestions = window.yalqenCommand.onSuggestions((next) => {
+      // Late answers for text that has changed since are dropped.
+      if (next.input !== value) return;
+      suggestions = next.suggestions;
+      selected = -1;
+    });
+    return () => {
+      offOpen();
+      offSuggestions();
+    };
+  });
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -49,19 +92,45 @@
     if (event.target === event.currentTarget) finish({ type: 'dismiss' });
   }}
 >
-  <form class="bar" role="search" onsubmit={submit}>
-    <span class="icon"><Icon name="search" size={18} /></span>
-    <input
-      bind:this={input}
-      bind:value
-      oninput={onInput}
-      type="text"
-      spellcheck="false"
-      autocomplete="off"
-      {placeholder}
-      aria-label="Ara veya adres yaz"
-    />
-  </form>
+  <div class="box">
+    <form class="bar" role="search" onsubmit={submit}>
+      <span class="icon"><Icon name="search" size={18} /></span>
+      <input
+        bind:this={input}
+        bind:value
+        oninput={onInput}
+        type="text"
+        spellcheck="false"
+        autocomplete="off"
+        {placeholder}
+        aria-label="Ara veya adres yaz"
+        role="combobox"
+        aria-expanded={suggestions.length > 0}
+        aria-controls="suggestions"
+        aria-activedescendant={selected >= 0 ? `suggestion-${selected}` : undefined}
+      />
+    </form>
+    {#if suggestions.length > 0}
+      <ul class="suggestions" id="suggestions" role="listbox" aria-label="Öneriler">
+        {#each suggestions as suggestion, index (suggestion.url)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <li
+            id="suggestion-{index}"
+            role="option"
+            aria-selected={index === selected}
+            class:selected={index === selected}
+            onmousedown={(event) => event.preventDefault()}
+            onclick={() => pick(suggestion)}
+            onmousemove={() => (selected = index)}
+          >
+            <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>
+            <span class="title">{suggestion.title || hostOf(suggestion.url)}</span>
+            <span class="url">{suggestion.kind === 'tab' ? 'Sekmeye geç' : hostOf(suggestion.url)}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -77,11 +146,16 @@
     background: rgb(0 0 0 / 0.18);
   }
 
+  .box {
+    position: relative;
+    width: min(640px, 100%);
+  }
+
   .bar {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: min(640px, 100%);
+    width: 100%;
     height: 52px;
     padding: 0 16px;
     border-radius: 999px;
@@ -97,6 +171,60 @@
     display: grid;
     place-items: center;
     color: var(--text-muted);
+  }
+
+  .suggestions {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    margin: 0;
+    padding: 6px;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow:
+      0 0 0 0.5px rgb(0 0 0 / 0.12),
+      0 12px 40px rgb(0 0 0 / 0.22);
+    list-style: none;
+  }
+
+  .suggestions li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .suggestions li.selected {
+    background: var(--surface-hover);
+  }
+
+  .kind {
+    display: grid;
+    flex: none;
+    place-items: center;
+    color: var(--text-muted);
+  }
+
+  .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .url {
+    flex: none;
+    max-width: 40%;
+    margin-left: auto;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   input {

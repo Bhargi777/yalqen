@@ -4,12 +4,14 @@ import type {
   CommandBarApi,
   CommandBarChannel,
   CommandBarOpen,
+  CommandBarSuggestions,
 } from '../shared/types.js';
 
 // Sandboxed preloads cannot require local modules, so channel names are
 // repeated here and checked against the shared definition at compile time.
 const channel: typeof CommandBarChannel = {
   open: 'yalqen-command:open',
+  suggestions: 'yalqen-command:suggestions',
   action: 'yalqen-command:action',
 };
 
@@ -18,6 +20,11 @@ const api: CommandBarApi = {
     const handler = (_event: IpcRendererEvent, open: CommandBarOpen) => listener(open);
     ipcRenderer.on(channel.open, handler);
     return () => ipcRenderer.off(channel.open, handler);
+  },
+  onSuggestions: (listener) => {
+    const handler = (_event: IpcRendererEvent, suggestions: CommandBarSuggestions) => listener(suggestions);
+    ipcRenderer.on(channel.suggestions, handler);
+    return () => ipcRenderer.off(channel.suggestions, handler);
   },
   send: (action: CommandBarAction) => ipcRenderer.send(channel.action, action),
 };
