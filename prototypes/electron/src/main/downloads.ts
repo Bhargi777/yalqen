@@ -1,0 +1,253 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import type { MenuItemConstructorOptions } from 'electron';
+import { DOWNLOADS_URL, type DownloadsSummary } from '../shared/types.js';
+
+export type DownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted';
+
+export interface DownloadEntry {
+  id: string;
+  url: string;
+  filename: string;
+  savePath: string;
+  state: DownloadState;
+  receivedBytes: number;
+  /** 0 when the server did not send a size. */
+  totalBytes: number;
+  startedAt: number;
+  /** Started in a private tab: listed until private browsing ends, never saved. */
+  private?: boolean;
+}
+
+const MAX_ENTRIES = 200;
+/** Downloads listed in the toolbar menu. */
+const MENU_ENTRIES = 8;
+const STATES = new Set<string>(['progressing', 'paused', 'completed', 'cancelled', 'interrupted']);
+
+/** `filename` in `directory`, numbered like "name (1).ext" when the name is taken. */
+export function uniquePath(directory: string, filename: string, taken: (file: string) => boolean): string {
+  const name = path.basename(filename).replace(/^\.+/, '') || 'indirme';
+  const ext = path.extname(name);
+  const stem = name.slice(0, name.length - ext.length);
+  let candidate = path.join(directory, name);
+  for (let i = 1; taken(candidate); i++) candidate = path.join(directory, `${stem} (${i})${ext}`);
+  return candidate;
+}
+
+const number = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
+export function formatBytes(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = Math.max(0, bytes);
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${number.format(unit === 0 ? value : Math.round(value * 10) / 10)} ${units[unit]}`;
+}
+
+/** One line describing where a download stands. */
+export function downloadStatus(entry: DownloadEntry): string {
+  const size = entry.totalBytes > 0
+    ? `${formatBytes(entry.receivedBytes)} / ${formatBytes(entry.totalBytes)}`
+    : formatBytes(entry.receivedBytes);
+  switch (entry.state) {
+    case 'progressing':
+      return entry.totalBytes > 0 ? `%${Math.floor((entry.receivedBytes / entry.totalBytes) * 100)} · ${size}` : size;
+    case 'paused':
+      return `Duraklatıldı · ${size}`;
+    case 'completed':
+      return `Tamamlandı · ${formatBytes(entry.totalBytes || entry.receivedBytes)}`;
+    case 'cancelled':
+      return 'İptal edildi';
+    case 'interrupted':
+      return 'Başarısız';
+  }
+}
+
+export function isActive(entry: DownloadEntry): boolean {
+  return entry.state === 'progressing' || entry.state === 'paused';
+}
+
+/** Toolbar indicator: running downloads and their overall progress when every size is known. */
+export function downloadsSummary(entries: readonly DownloadEntry[]): DownloadsSummary {
+  const active = entries.filter(isActive);
+  const known = active.every((entry) => entry.totalBytes > 0);
+  const total = active.reduce((sum, entry) => sum + entry.totalBytes, 0);
+  const received = active.reduce((sum, entry) => sum + entry.receivedBytes, 0);
+  return { active: active.length, progress: active.length > 0 && known && total > 0 ? received / total : null };
+}
+
+function isEntry(value: unknown): value is DownloadEntry {
+  const entry = value as DownloadEntry;
+  return (
+    typeof entry === 'object' && entry !== null &&
+    typeof entry.id === 'string' && typeof entry.url === 'string' &&
+    typeof entry.filename === 'string' && typeof entry.savePath === 'string' &&
+    STATES.has(entry.state) && Number.isFinite(entry.receivedBytes) &&
+    Number.isFinite(entry.totalBytes) && Number.isFinite(entry.startedAt)
+  );
+}
+
+/** Downloads of this and earlier sessions, newest first. */
+export class DownloadStore {
+  readonly file: string;
+  private entries: DownloadEntry[] = [];
+
+  constructor(directory: string) {
+    this.file = path.join(directory, 'downloads.json');
+    try {
+      const data: unknown = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+      if (Array.isArray(data)) {
+        // Downloads still running when the app quit were stopped with it.
+        this.entries = data
+          .filter(isEntry)
+          .slice(0, MAX_ENTRIES)
+          .map((entry) => (isActive(entry) ? { ...entry, state: 'interrupted' } : entry));
+      }
+    } catch {
+      // No list yet, or a damaged file.
+    }
+  }
+
+  list(): DownloadEntry[] {
+    return this.entries.map((entry) => ({ ...entry }));
+  }
+
+  get(id: string): DownloadEntry | undefined {
+    const entry = this.entries.find((item) => item.id === id);
+    return entry && { ...entry };
+  }
+
+  add(entry: DownloadEntry): void {
+    this.entries.unshift({ ...entry });
+    if (this.entries.length > MAX_ENTRIES) this.entries.length = MAX_ENTRIES;
+    this.save();
+  }
+
+  /** Progress alone is not written to disk; a state change is. */
+  update(id: string, patch: Partial<Omit<DownloadEntry, 'id'>>): void {
+    const entry = this.entries.find((item) => item.id === id);
+    if (!entry) return;
+    const stateChanged = patch.state !== undefined && patch.state !== entry.state;
+    Object.assign(entry, patch);
+    if (stateChanged) this.save();
+  }
+
+  remove(id: string): void {
+    const before = this.entries.length;
+    this.entries = this.entries.filter((entry) => entry.id !== id);
+    if (this.entries.length !== before) this.save();
+  }
+
+  /** Removes finished downloads started at or after `since`; files stay on disk. */
+  removeSince(since: number): void {
+    this.entries = this.entries.filter((entry) => isActive(entry) || entry.startedAt < since);
+    this.save();
+  }
+
+  /** Forgets finished downloads of private tabs. */
+  removePrivate(): void {
+    this.entries = this.entries.filter((entry) => !entry.private || isActive(entry));
+  }
+
+  /** Removes every download that is not running; files stay on disk. */
+  clearFinished(): void {
+    this.entries = this.entries.filter(isActive);
+    this.save();
+  }
+
+  saveNow(): void {
+    this.save();
+  }
+
+  private save(): void {
+    const temp = `${this.file}.tmp`;
+    try {
+      fs.mkdirSync(path.dirname(this.file), { recursive: true });
+      fs.writeFileSync(temp, JSON.stringify(this.entries.filter((entry) => !entry.private)));
+      fs.renameSync(temp, this.file);
+    } catch (error) {
+      console.warn('[downloads] could not save the download list:', error);
+    }
+  }
+}
+
+export interface DownloadActions {
+  open(id: string): void;
+  show(id: string): void;
+  pause(id: string): void;
+  resume(id: string): void;
+  cancel(id: string): void;
+  retry(id: string): void;
+  remove(id: string): void;
+  showAll(): void;
+  openFolder(): void;
+}
+
+/** Commands for one download, as [action, label] pairs. */
+export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions & string, string][] {
+  switch (entry.state) {
+    case 'progressing':
+      return [['pause', 'Duraklat'], ['cancel', 'İptal et']];
+    case 'paused':
+      return [['resume', 'Devam et'], ['cancel', 'İptal et']];
+    case 'completed':
+      return [['open', 'Aç'], ['show', 'Klasörde göster'], ['remove', 'Listeden kaldır']];
+    case 'cancelled':
+    case 'interrupted':
+      return [['retry', 'Yeniden dene'], ['remove', 'Listeden kaldır']];
+  }
+}
+
+/** Menu of the toolbar's downloads button. */
+export function downloadsMenuTemplate(entries: readonly DownloadEntry[], actions: DownloadActions): MenuItemConstructorOptions[] {
+  const recent = entries.slice(0, MENU_ENTRIES);
+  return [
+    ...(recent.length === 0
+      ? [{ label: 'Henüz indirme yok', enabled: false }]
+      : recent.map((entry) => ({
+          label: `${entry.filename} — ${downloadStatus(entry)}`,
+          submenu: downloadCommands(entry).map(([action, label]) => ({
+            label,
+            click: () => (actions[action] as (id: string) => void)(entry.id),
+          })),
+        }))),
+    { type: 'separator' },
+    { label: 'Tüm indirilenler', click: actions.showAll },
+    { label: 'İndirilenler klasörünü aç', click: actions.openFolder },
+  ];
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host || url;
+  } catch {
+    return url;
+  }
+}
+
+/** Content of the downloads page; its links are handled by the tab, not loaded. */
+export function renderDownloads(entries: readonly DownloadEntry[]): string {
+  if (entries.length === 0) return '<p class="empty">Henüz indirilen bir dosya yok.</p>';
+  const rows = entries
+    .map((entry) => {
+      const commands = downloadCommands(entry)
+        .map(([action, label]) => `<a href="${DOWNLOADS_URL}${action}?id=${encodeURIComponent(entry.id)}">${label}</a>`)
+        .join('');
+      return (
+        `<li class="${entry.state}"><div class="file"><strong>${escapeHtml(entry.filename)}</strong>` +
+        `<span>${escapeHtml(downloadStatus(entry))} · ${escapeHtml(hostOf(entry.url))}</span></div>` +
+        `<div class="commands">${commands}</div></li>`
+      );
+    })
+    .join('');
+  const finished = entries.some((entry) => !isActive(entry));
+  const clear = finished ? `<a class="clear" href="${DOWNLOADS_URL}clear">Listeyi temizle</a>` : '';
+  return `<div class="summary"><span>${entries.length} indirme</span>${clear}</div><ol>${rows}</ol>`;
+}

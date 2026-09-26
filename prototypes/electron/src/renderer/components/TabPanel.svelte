@@ -34,9 +34,11 @@
   function label(tab: TabSnapshot): string {
     const states = [
       tab.id === activeTabId ? 'aktif' : null,
+      tab.isPrivate ? 'gizli' : null,
       tab.live ? null : 'bellekten çıkarılmış',
       tab.frozen ? 'dondurulmuş' : null,
       tab.keepAlive ? 'canlı tutuluyor' : null,
+      tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
@@ -143,6 +145,7 @@
       {#each listed as tab, index (tab.id)}
         <li
           class="tab"
+          class:private={tab.isPrivate}
           class:active={tab.id === activeTabId}
           class:discarded={!tab.live}
           class:drop-before={dropIndex === index}
@@ -163,9 +166,21 @@
             {@render favicon(tab, 16)}
             {#if !collapsed}
               <span class="title">{tab.title}</span>
+              {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
             {/if}
           </button>
 
+          {#if !collapsed && (tab.audible || tab.muted)}
+            <button
+              class="action audio"
+              title={tab.muted ? 'Sesi aç' : 'Sessize al'}
+              aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+              aria-pressed={tab.muted}
+              onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+            >
+              <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
+            </button>
+          {/if}
           {#if !collapsed}
             <span class="actions">
               <button
@@ -489,6 +504,27 @@
   .action:hover {
     background: var(--surface-hover);
     color: var(--text);
+  }
+
+  .private-mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    margin-left: auto;
+    color: var(--text-muted);
+  }
+
+  .tab.private .title {
+    font-style: italic;
+  }
+
+  /* Stays visible while the other actions are hidden. */
+  .audio {
+    flex: none;
+  }
+
+  .tab:not(.active, :hover, :focus-within) .audio {
+    margin-right: 4px;
   }
 
   .new-tab {

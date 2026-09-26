@@ -12,7 +12,7 @@ const MIN_IDLE_SECONDS = 10;
 const COSMETIC_FILTERS_CHANNEL = '@ghostery/adblocker/inject-cosmetic-filters';
 const MUTATION_OBSERVER_CHANNEL = '@ghostery/adblocker/is-mutation-observer-enabled';
 
-/** Blocks ads in one session. The engine is loaded the first time blocking is enabled. */
+/** Blocks ads in the given sessions. The engine is loaded the first time blocking is enabled. */
 export class AdBlocker {
   private blocker: ElectronBlocker | null = null;
   private loading: Promise<void> | null = null;
@@ -23,7 +23,7 @@ export class AdBlocker {
   private destroyed = false;
 
   constructor(
-    private readonly session: Session,
+    private readonly sessions: readonly Session[],
     private readonly cacheFile: string,
   ) {}
 
@@ -79,8 +79,8 @@ export class AdBlocker {
     try {
       const next = await fetchEngine(this.cacheFile);
       if (this.destroyed) return;
-      if (this.blocker?.isBlockingEnabled(this.session)) {
-        this.blocker.disableBlockingInSession(this.session);
+      for (const session of this.sessions) {
+        if (this.blocker?.isBlockingEnabled(session)) this.blocker.disableBlockingInSession(session);
       }
       this.blocker = next;
       this.stale = false;
@@ -92,18 +92,27 @@ export class AdBlocker {
     }
   }
 
+  /** Sessions are always switched together, so one set of IPC handlers serves them all. */
   private apply(blocker: ElectronBlocker): void {
-    if (this.wanted === blocker.isBlockingEnabled(this.session)) return;
-    if (this.wanted) {
-      // Ghostery registers these handlers when blocking starts. Remove the
-      // placeholders left for pages that were already running when it stopped.
-      ipcMain.removeHandler(COSMETIC_FILTERS_CHANNEL);
-      ipcMain.removeHandler(MUTATION_OBSERVER_CHANNEL);
-      blocker.enableBlockingInSession(this.session);
-    } else {
-      blocker.disableBlockingInSession(this.session);
+    const changing = this.sessions.filter((session) => blocker.isBlockingEnabled(session) !== this.wanted);
+    if (changing.length === 0) return;
+    for (const session of changing) {
+      if (this.wanted) {
+        // Ghostery registers these handlers for each session it starts in; they
+        // only use the shared engine. Remove the previous session's handlers, or
+        // the placeholders left for pages that were already running when it stopped.
+        ipcMain.removeHandler(COSMETIC_FILTERS_CHANNEL);
+        ipcMain.removeHandler(MUTATION_OBSERVER_CHANNEL);
+        blocker.enableBlockingInSession(session);
+      } else {
+        blocker.disableBlockingInSession(session);
+      }
+    }
+    if (!this.wanted) {
       // Existing frames retain Ghostery's preload after it is unregistered.
       // Their later IPC calls must still get a harmless response.
+      ipcMain.removeHandler(COSMETIC_FILTERS_CHANNEL);
+      ipcMain.removeHandler(MUTATION_OBSERVER_CHANNEL);
       ipcMain.handle(COSMETIC_FILTERS_CHANNEL, () => undefined);
       ipcMain.handle(MUTATION_OBSERVER_CHANNEL, () => false);
     }

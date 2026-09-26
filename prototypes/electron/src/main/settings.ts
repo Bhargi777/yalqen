@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PanelSide, SettingsValues, ThemeSource } from '../shared/types.js';
+import type { FontSizeSetting, PageLanguage, PanelSide, SecureDnsSetting, SettingsValues, ThemeSource } from '../shared/types.js';
+import { DEFAULT_ZOOM_FACTORS, FONT_SIZES } from './page-preferences.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from './search.js';
 
 export interface Settings extends SettingsValues {
@@ -17,12 +18,18 @@ const DEFAULTS: Settings = {
   panelSide: 'left',
   freezeBackgroundTabs: true,
   adBlocking: true,
+  httpsOnly: false,
+  secureDns: 'automatic',
+  fontSize: 'medium',
+  defaultZoom: 1,
+  pageLanguage: 'tr',
   welcomeCompleted: false,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
 const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
+const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
 
 /** Keeps known, well-typed fields and takes the rest from `base`. */
@@ -37,6 +44,11 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     panelSide,
     freezeBackgroundTabs,
     adBlocking,
+    httpsOnly,
+    secureDns,
+    fontSize,
+    defaultZoom,
+    pageLanguage,
     welcomeCompleted,
   } = input;
   return {
@@ -60,6 +72,15 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs:
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
+    httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
+    secureDns:
+      typeof secureDns === 'string' && SECURE_DNS.has(secureDns) ? (secureDns as SecureDnsSetting) : base.secureDns,
+    fontSize: typeof fontSize === 'string' && fontSize in FONT_SIZES ? (fontSize as FontSizeSetting) : base.fontSize,
+    defaultZoom:
+      typeof defaultZoom === 'number' && (DEFAULT_ZOOM_FACTORS as readonly number[]).includes(defaultZoom)
+        ? defaultZoom
+        : base.defaultZoom,
+    pageLanguage: pageLanguage === 'tr' || pageLanguage === 'en' ? (pageLanguage as PageLanguage) : base.pageLanguage,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
   };
 }

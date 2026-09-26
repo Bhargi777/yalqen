@@ -28,6 +28,9 @@
     panelSide: 'left',
     material: 'opaque',
     device: null,
+    zoom: 1,
+    defaultZoom: 1,
+    downloads: { active: 0, progress: null },
   });
   let width = $state(DEFAULT_WIDTH);
   let controlsShown = $state(false);
@@ -104,6 +107,9 @@
   <Toolbar
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
+    zoom={browser.zoom}
+    defaultZoom={browser.defaultZoom}
+    downloads={browser.downloads}
     leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : WINDOW_CONTROLS_END : 0}
     trailingInset={PAGE_INSET}
   />

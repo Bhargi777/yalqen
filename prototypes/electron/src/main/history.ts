@@ -66,6 +66,12 @@ export class HistoryStore {
     this.saveNow();
   }
 
+  /** Removes visits made at or after `since`; 0 removes all. */
+  clearSince(since: number): void {
+    this.entries = since > 0 ? this.entries.filter((entry) => entry.visitedAt < since) : [];
+    this.saveNow();
+  }
+
   saveNow(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;

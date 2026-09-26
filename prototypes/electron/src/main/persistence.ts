@@ -17,10 +17,20 @@ export interface SavedTab {
   history: SavedHistory | null;
 }
 
-export interface SavedSession {
-  version: 1;
+export interface SavedWindow {
   activeTabId: TabId | null;
   tabs: SavedTab[];
+}
+
+/** Open windows and their tabs. Version 1 files held a single window. */
+export interface SavedSession {
+  version: 2;
+  windows: SavedWindow[];
+}
+
+function isSavedWindow(value: unknown): value is SavedWindow {
+  const window = value as SavedWindow;
+  return typeof window === 'object' && window !== null && Array.isArray(window.tabs);
 }
 
 export class SessionStore {
@@ -35,8 +45,15 @@ export class SessionStore {
 
   load(): SavedSession | null {
     try {
-      const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedSession;
-      return data.version === 1 && Array.isArray(data.tabs) ? data : null;
+      const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as
+        | SavedSession
+        | ({ version: 1 } & SavedWindow);
+      if (data.version === 1) {
+        return isSavedWindow(data) ? { version: 2, windows: [{ activeTabId: data.activeTabId ?? null, tabs: data.tabs }] } : null;
+      }
+      return data.version === 2 && Array.isArray(data.windows)
+        ? { version: 2, windows: data.windows.filter(isSavedWindow) }
+        : null;
     } catch {
       return null;
     }

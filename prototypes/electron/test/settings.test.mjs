@@ -18,6 +18,11 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'top',
       freezeBackgroundTabs: 1,
       adBlocking: 'no',
+      httpsOnly: 'yes',
+      secureDns: 'opendns',
+      fontSize: 'huge',
+      defaultZoom: 1.3,
+      pageLanguage: 'de',
     }),
     {
       version: 1,
@@ -29,6 +34,11 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'left',
       freezeBackgroundTabs: true,
       adBlocking: true,
+      httpsOnly: false,
+      secureDns: 'automatic',
+      fontSize: 'medium',
+      defaultZoom: 1,
+      pageLanguage: 'tr',
       welcomeCompleted: false,
     },
   );
@@ -48,6 +58,11 @@ test('updates keep valid fields and persist', () => {
       panelSide: 'right',
       freezeBackgroundTabs: false,
       adBlocking: false,
+      httpsOnly: true,
+      secureDns: 'quad9',
+      fontSize: 'large',
+      defaultZoom: 1.25,
+      pageLanguage: 'en',
     });
     store.update({ searchEngine: 'nope', theme: 7 });
     assert.equal(store.get().searchEngine, 'yandex');
@@ -60,6 +75,11 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.panelSide, 'right');
     assert.equal(reloaded.freezeBackgroundTabs, false);
     assert.equal(reloaded.adBlocking, false);
+    assert.equal(reloaded.httpsOnly, true);
+    assert.equal(reloaded.secureDns, 'quad9');
+    assert.equal(reloaded.fontSize, 'large');
+    assert.equal(reloaded.defaultZoom, 1.25);
+    assert.equal(reloaded.pageLanguage, 'en');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

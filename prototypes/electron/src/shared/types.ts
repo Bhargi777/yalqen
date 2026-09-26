@@ -4,9 +4,23 @@ export type TabId = string;
 export const INTERNAL_SCHEME = 'yalqen';
 export const NEW_TAB_URL = 'yalqen://newtab/';
 export const HISTORY_URL = 'yalqen://history/';
+export const DOWNLOADS_URL = 'yalqen://downloads/';
+export const BOOKMARKS_URL = 'yalqen://bookmarks/';
+/** Internal pages whose links and forms are commands handled by the browser. */
+export type CommandPage = 'downloads' | 'bookmarks';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
+/** DNS over HTTPS: off, the system resolver's provider when it has one, or a fixed provider. */
+export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
+export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
+/** Language sites are asked for first, then the other one. */
+export type PageLanguage = 'tr' | 'en';
+/**
+ * `dangerous`: https with a certificate the user chose to trust after a warning.
+ * `local`: the browser's own pages, files and data, which have no connection to show.
+ */
+export type SecurityState = 'secure' | 'insecure' | 'dangerous' | 'local';
 
 /** Tab data exposed to the UI. A tab can exist without a live page. */
 export interface TabSnapshot {
@@ -19,6 +33,15 @@ export interface TabSnapshot {
   frozen: boolean;
   loading: boolean;
   keepAlive: boolean;
+  security: SecurityState;
+  /** Private tab: in-memory session, no history, not restored. */
+  isPrivate: boolean;
+  bookmarked: boolean;
+  /** New windows the page tried to open without a click or key press. */
+  blockedPopups: number;
+  /** The page is playing sound, muted or not. */
+  audible: boolean;
+  muted: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
 }
@@ -61,6 +84,17 @@ export interface BrowserState {
   material: WindowMaterial;
   /** Set while the active tab is shown as a device. */
   device: DeviceFrame | null;
+  /** Zoom factor of the active page; 1 is actual size. */
+  zoom: number;
+  /** Zoom of pages without a level of their own; the address bar shows other levels. */
+  defaultZoom: number;
+  downloads: DownloadsSummary;
+}
+
+/** Running downloads for the toolbar; `progress` is 0–1, or null when a size is unknown. */
+export interface DownloadsSummary {
+  active: number;
+  progress: number | null;
 }
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
@@ -88,11 +122,18 @@ export type UiAction =
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-keep-alive'; id: TabId }
+  | { type: 'toggle-mute'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }
   | { type: 'go-back' }
   | { type: 'go-forward' }
   | { type: 'reload' }
+  | { type: 'stop' }
+  | { type: 'reset-zoom' }
+  | { type: 'open-site-info' }
+  | { type: 'open-blocked-popups' }
+  | { type: 'toggle-bookmark' }
+  | { type: 'open-bookmarks-menu' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
@@ -126,22 +167,64 @@ export interface CommandBarOpen {
   value?: string;
 }
 
+/** A page offered below the address bar; `tabId` is set for an open tab to switch to. */
+export interface AddressSuggestion {
+  kind: 'tab' | 'bookmark' | 'history';
+  title: string;
+  url: string;
+  tabId?: TabId;
+}
+
+/** Suggestions for the text they were computed for. */
+export interface CommandBarSuggestions {
+  input: string;
+  suggestions: AddressSuggestion[];
+}
+
 /** Requests the command bar sends to the main process. */
 export type CommandBarAction =
   | { type: 'submit'; input: string }
+  | { type: 'switch-tab'; id: TabId }
   | { type: 'dismiss' }
   /** The text changed; the bar stays open. */
   | { type: 'input'; input: string };
 
 export const CommandBarChannel = {
   open: 'yalqen-command:open',
+  suggestions: 'yalqen-command:suggestions',
   action: 'yalqen-command:action',
 } as const;
 
 /** API exposed to the command bar overlay by its preload script. */
 export interface CommandBarApi {
   onOpen(listener: (open: CommandBarOpen) => void): () => void;
+  onSuggestions(listener: (suggestions: CommandBarSuggestions) => void): () => void;
   send(action: CommandBarAction): void;
+}
+
+/** Match counts for the find bar; `active` is 0 when nothing matches. */
+export interface FindResult {
+  active: number;
+  matches: number;
+}
+
+/** Requests the find bar sends to the main process. */
+export type FindBarAction =
+  /** `next` moves within the current matches instead of starting a new search. */
+  | { type: 'find'; text: string; forward: boolean; next: boolean }
+  | { type: 'close' };
+
+export const FindBarChannel = {
+  open: 'yalqen-find:open',
+  result: 'yalqen-find:result',
+  action: 'yalqen-find:action',
+} as const;
+
+/** API exposed to the find bar overlay by its preload script. */
+export interface FindBarApi {
+  onOpen(listener: () => void): () => void;
+  onResult(listener: (result: FindResult) => void): () => void;
+  send(action: FindBarAction): void;
 }
 
 /** User settings the settings window can change. */
@@ -158,20 +241,43 @@ export interface SettingsValues {
   freezeBackgroundTabs: boolean;
   /** Block ads on web pages. */
   adBlocking: boolean;
+  /** Load http pages over https, asking before falling back to http. */
+  httpsOnly: boolean;
+  secureDns: SecureDnsSetting;
+  /** Default font size of new pages. */
+  fontSize: FontSizeSetting;
+  /** Zoom of pages without a level of their own. */
+  defaultZoom: number;
+  pageLanguage: PageLanguage;
   /** Whether the one-time first launch welcome has been dismissed. */
   welcomeCompleted: boolean;
 }
 
 export interface SettingsView {
   values: SettingsValues;
+  /** Whether web links from other apps open in this browser. */
+  defaultBrowser: boolean;
   engines: { id: SearchEngineId; label: string }[];
   customTemplateValid: boolean;
+}
+
+export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
+
+/** What to clear from the settings window. Site data and the cache are always cleared entirely. */
+export interface ClearDataRequest {
+  range: ClearDataRange;
+  history: boolean;
+  downloads: boolean;
+  siteData: boolean;
+  cache: boolean;
 }
 
 export const SettingsChannel = {
   get: 'yalqen-settings:get',
   update: 'yalqen-settings:update',
   changed: 'yalqen-settings:changed',
+  clearData: 'yalqen-settings:clear-data',
+  makeDefault: 'yalqen-settings:make-default',
 } as const;
 
 /** API exposed to the settings window by its preload script. */
@@ -179,4 +285,8 @@ export interface SettingsApi {
   get(): Promise<SettingsView>;
   update(patch: Partial<SettingsValues>): Promise<SettingsView>;
   onChange(listener: (view: SettingsView) => void): () => void;
+  /** Resolves once the data is cleared. */
+  clearData(request: ClearDataRequest): Promise<void>;
+  /** Asks the system to open web links in this browser. */
+  makeDefault(): Promise<SettingsView>;
 }
