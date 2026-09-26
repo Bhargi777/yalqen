@@ -26,6 +26,7 @@ function actions() {
     openInNewTab: record('open'),
     copyText: record('copy'),
     copyImage: record('copyImage'),
+    download: record('download'),
     search: record('search'),
     goBack: record('back'),
     goForward: record('forward'),
@@ -50,10 +51,21 @@ test('a plain page offers navigation and inspect', () => {
 test('links can be opened in a new tab and copied', () => {
   const a = actions();
   const items = contextMenuTemplate(context({ linkURL: 'https://example.com/a' }), a);
-  assert.deepEqual(labels(items), ['Bağlantıyı yeni sekmede aç', 'Bağlantı adresini kopyala', '-', 'İncele']);
+  assert.deepEqual(labels(items), [
+    'Bağlantıyı yeni sekmede aç',
+    'Bağlantıyı indir',
+    'Bağlantı adresini kopyala',
+    '-',
+    'İncele',
+  ]);
   item(items, 'Bağlantıyı yeni sekmede aç').click();
+  item(items, 'Bağlantıyı indir').click();
   item(items, 'Bağlantı adresini kopyala').click();
-  assert.deepEqual(a.calls, [['open', 'https://example.com/a'], ['copy', 'https://example.com/a']]);
+  assert.deepEqual(a.calls, [
+    ['open', 'https://example.com/a'],
+    ['download', 'https://example.com/a'],
+    ['copy', 'https://example.com/a'],
+  ]);
 });
 
 test('script, local, internal and HTML document links are not opened', () => {
@@ -71,9 +83,11 @@ test('images inside links get both groups', () => {
   );
   assert.deepEqual(labels(items), [
     'Bağlantıyı yeni sekmede aç',
+    'Bağlantıyı indir',
     'Bağlantı adresini kopyala',
     '-',
     'Resmi yeni sekmede aç',
+    'Resmi indir',
     'Resmi kopyala',
     'Resim adresini kopyala',
     '-',

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TabId, TabSnapshot } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
 
@@ -7,6 +7,7 @@
     tabs,
     activeTabId,
     zoom,
+    downloads,
     leadingInset,
     trailingInset,
   }: {
@@ -14,6 +15,7 @@
     activeTabId: TabId | null;
     /** Zoom factor of the active page. */
     zoom: number;
+    downloads: DownloadsSummary;
     /** Space kept for macOS window controls when the sidebar is narrow. */
     leadingInset: number;
     /** Gap between settings and the window edge or sidebar. */
@@ -156,8 +158,19 @@
       <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
         <Icon name="settings" />
       </button>
-      <button class="icon" title="İndirilenler klasörünü aç" aria-label="İndirilenler klasörünü aç" onclick={() => send({ type: 'open-downloads' })}>
+      <button
+        class="icon downloads"
+        class:active={downloads.active > 0}
+        title="İndirilenler"
+        aria-label={downloads.active > 0 ? `İndirilenler, ${downloads.active} indirme sürüyor` : 'İndirilenler'}
+        onclick={() => send({ type: 'open-downloads' })}
+      >
         <Icon name="download" />
+        {#if downloads.active > 0}
+          <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">
+            <circle cx="14" cy="14" r="12.5" pathLength="100" stroke-dasharray="{downloads.progress === null ? 25 : Math.max(2, downloads.progress * 100)} 100" />
+          </svg>
+        {/if}
       </button>
     </div>
   </div>
@@ -365,6 +378,50 @@
   /* The site button on the left takes the place of the centering padding. */
   .address.after-site {
     padding-left: 6px;
+  }
+
+  .downloads {
+    position: relative;
+  }
+
+  .downloads.active {
+    color: var(--accent);
+  }
+
+  .ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+
+  .ring circle {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.25s linear;
+  }
+
+  .ring.indeterminate {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ring.indeterminate {
+      animation: none;
+    }
   }
 
   .popups {

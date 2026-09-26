@@ -4,6 +4,7 @@ export type TabId = string;
 export const INTERNAL_SCHEME = 'yalqen';
 export const NEW_TAB_URL = 'yalqen://newtab/';
 export const HISTORY_URL = 'yalqen://history/';
+export const DOWNLOADS_URL = 'yalqen://downloads/';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
@@ -74,6 +75,13 @@ export interface BrowserState {
   device: DeviceFrame | null;
   /** Zoom factor of the active page; 1 is actual size. */
   zoom: number;
+  downloads: DownloadsSummary;
+}
+
+/** Running downloads for the toolbar; `progress` is 0–1, or null when a size is unknown. */
+export interface DownloadsSummary {
+  active: number;
+  progress: number | null;
 }
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */

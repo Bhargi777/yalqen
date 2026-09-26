@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { protocol, type Session } from 'electron';
 import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
+import { renderDownloads, type DownloadEntry } from './downloads.js';
 import type { HistoryEntry } from './history.js';
 import type { RecentPage } from './tabs.js';
 
@@ -10,6 +11,7 @@ const RECENT_MARKER = '<!-- recent -->';
 const WELCOME_MARKER = '<!-- welcome -->';
 const WELCOME_ACTION_MARKER = '<!-- welcome-action -->';
 const HISTORY_MARKER = '<!-- visits -->';
+const DOWNLOADS_MARKER = '<!-- downloads -->';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 
@@ -89,15 +91,29 @@ export function serveInternalPages(
   session: Session,
   newTabFile: string,
   historyFile: string,
+  downloadsFile: string,
   recent: () => RecentPage[],
   visits: (query: string) => HistoryEntry[],
+  downloads: () => DownloadEntry[],
   showWelcome: () => boolean,
 ): void {
   const page = fs.readFileSync(newTabFile, 'utf8');
   const historyPage = fs.readFileSync(historyFile, 'utf8');
+  const downloadsPage = fs.readFileSync(downloadsFile, 'utf8');
 
   session.protocol.handle(INTERNAL_SCHEME, (request) => {
     const url = new URL(request.url);
+    if (url.host === 'downloads') {
+      // Commands are links the tab handles; only the list itself is served.
+      if (url.pathname !== '/') return new Response('Not found', { status: 404 });
+      return new Response(downloadsPage.replace(DOWNLOADS_MARKER, renderDownloads(downloads())), {
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'content-security-policy': NEW_TAB_CSP,
+          'cache-control': 'no-store',
+        },
+      });
+    }
     if (url.host === 'history') {
       let content: string;
       if (url.pathname === '/') {

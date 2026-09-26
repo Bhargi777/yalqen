@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, ipcMain, nativeTheme, screen, session, shell } from 'electron';
 import {
+  DOWNLOADS_URL,
   NEW_TAB_URL,
   IpcChannel,
   SettingsChannel,
@@ -16,6 +19,13 @@ import { CertificateExceptions } from './certificates.js';
 import { CommandBar } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
+import {
+  DownloadStore,
+  downloadsMenuTemplate,
+  downloadsSummary,
+  uniquePath,
+  type DownloadActions,
+} from './downloads.js';
 import { FindBar } from './find-bar.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -140,6 +150,114 @@ function createBrowser(): void {
     return permissions.decide(origin, kinds) === 'allow';
   });
   const history = new HistoryStore(app.getPath('userData'));
+  const downloads = new DownloadStore(app.getPath('userData'));
+  const downloadItems = new Map<string, Electron.DownloadItem>();
+  // Paths given to running downloads, which may not exist on disk yet.
+  const reservedPaths = new Set<string>();
+  // Progress events are frequent: the toolbar is updated at most 4 times a
+  // second and an open downloads page reloaded at most once a second.
+  let downloadsStateTimer: NodeJS.Timeout | null = null;
+  let downloadsPageTimer: NodeJS.Timeout | null = null;
+  const downloadsChanged = () => {
+    downloadsStateTimer ??= setTimeout(() => {
+      downloadsStateTimer = null;
+      pushState();
+    }, 250);
+    downloadsPageTimer ??= setTimeout(() => {
+      downloadsPageTimer = null;
+      tabs.reloadPages(DOWNLOADS_URL);
+    }, 1000);
+  };
+  const withDownload = (id: string, run: (entry: NonNullable<ReturnType<DownloadStore['get']>>) => void) => {
+    const entry = downloads.get(id);
+    if (entry) run(entry);
+    downloadsChanged();
+  };
+  const downloadActions: DownloadActions = {
+    open: (id) =>
+      withDownload(id, (entry) => {
+        if (entry.state !== 'completed') return;
+        void shell.openPath(entry.savePath).then((error) => {
+          if (error) console.warn(`[downloads] could not open ${entry.filename}: ${error}`);
+        });
+      }),
+    show: (id) => withDownload(id, (entry) => shell.showItemInFolder(entry.savePath)),
+    pause: (id) =>
+      withDownload(id, () => {
+        downloadItems.get(id)?.pause();
+        if (downloadItems.get(id)?.isPaused()) downloads.update(id, { state: 'paused' });
+      }),
+    resume: (id) =>
+      withDownload(id, () => {
+        const item = downloadItems.get(id);
+        if (!item?.canResume()) return;
+        item.resume();
+        downloads.update(id, { state: 'progressing' });
+      }),
+    cancel: (id) => withDownload(id, () => downloadItems.get(id)?.cancel()),
+    retry: (id) =>
+      withDownload(id, (entry) => {
+        if (entry.state !== 'cancelled' && entry.state !== 'interrupted') return;
+        const item = downloadItems.get(id);
+        if (item?.canResume()) {
+          item.resume();
+          return;
+        }
+        downloads.remove(id);
+        daily.downloadURL(entry.url);
+      }),
+    remove: (id) =>
+      withDownload(id, (entry) => {
+        if (entry.state !== 'progressing' && entry.state !== 'paused') downloads.remove(id);
+      }),
+    showAll: () => tabs.openDownloads(),
+    openFolder: () => {
+      void shell.openPath(app.getPath('downloads')).then((error) => {
+        if (error) console.warn(`[downloads] could not open folder: ${error}`);
+      });
+    },
+  };
+  // Files are saved to the downloads folder without asking, like other browsers.
+  daily.on('will-download', (_event, item) => {
+    const savePath = uniquePath(
+      app.getPath('downloads'),
+      item.getFilename(),
+      (file) => reservedPaths.has(file) || fs.existsSync(file),
+    );
+    item.setSavePath(savePath);
+    reservedPaths.add(savePath);
+    const id = randomUUID();
+    downloadItems.set(id, item);
+    downloads.add({
+      id,
+      url: item.getURL(),
+      filename: path.basename(savePath),
+      savePath,
+      state: 'progressing',
+      receivedBytes: 0,
+      totalBytes: item.getTotalBytes(),
+      startedAt: Date.now(),
+    });
+    item.on('updated', (_event, state) => {
+      downloads.update(id, {
+        state: state === 'interrupted' ? 'interrupted' : item.isPaused() ? 'paused' : 'progressing',
+        receivedBytes: item.getReceivedBytes(),
+        totalBytes: item.getTotalBytes(),
+      });
+      downloadsChanged();
+    });
+    item.once('done', (_event, state) => {
+      downloadItems.delete(id);
+      reservedPaths.delete(savePath);
+      downloads.update(id, {
+        state: state === 'completed' ? 'completed' : state === 'cancelled' ? 'cancelled' : 'interrupted',
+        receivedBytes: item.getReceivedBytes(),
+        totalBytes: item.getTotalBytes(),
+      });
+      downloadsChanged();
+    });
+    downloadsChanged();
+  });
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
   const zoom = new ZoomStore(app.getPath('userData'));
@@ -201,6 +319,7 @@ function createBrowser(): void {
     panelCollapsed: settings.get().panelCollapsed,
     panelSide: settings.get().panelSide,
     material: material(),
+    downloads: downloadsSummary(downloads.list()),
   });
   const pushState = () => {
     if (!ui.webContents.isDestroyed()) {
@@ -291,6 +410,14 @@ function createBrowser(): void {
     onVisitTitle: (id, title) => history.setTitle(id, title),
     onHistoryDelete: (id) => history.remove(id),
     onHistoryClear: () => history.clear(),
+    onDownloadsCommand: (command, id) => {
+      if (command === 'clear') {
+        downloads.clearFinished();
+        downloadsChanged();
+      } else if (command in downloadActions && command !== 'showAll' && command !== 'openFolder') {
+        (downloadActions[command as keyof DownloadActions] as (id: string) => void)(id);
+      }
+    },
     onFindResult: (result) => findBar.showResult(result),
     zoomFor: (url) => zoom.get(url),
     onZoom: (url, factor) => zoom.set(url, factor),
@@ -310,6 +437,7 @@ function createBrowser(): void {
         openInNewTab: (url) => tabs.open(url, { activate: false }),
         copyText: (text) => clipboard.writeText(text),
         copyImage: () => contents.copyImageAt(params.x, params.y),
+        download: (url) => contents.downloadURL(url),
         search: (text) => tabs.open(buildSearchUrl(searchEngine(), text)),
         goBack: () => history.goBack(),
         goForward: () => history.goForward(),
@@ -324,8 +452,10 @@ function createBrowser(): void {
     daily,
     path.join(__dirname, '../renderer/newtab.html'),
     path.join(__dirname, '../renderer/history.html'),
+    path.join(__dirname, '../renderer/downloads.html'),
     () => tabs.recentlyClosed(),
     (query) => history.list(query),
+    () => downloads.list(),
     () => {
       const showWelcome = !settings.get().welcomeCompleted;
       if (showWelcome) settings.update({ welcomeCompleted: true });
@@ -587,9 +717,7 @@ function createBrowser(): void {
         ]).popup({ window });
         break;
       case 'open-downloads':
-        void shell.openPath(app.getPath('downloads')).then((error) => {
-          if (error) console.warn(`[downloads] could not open folder: ${error}`);
-        });
+        Menu.buildFromTemplate(downloadsMenuTemplate(downloads.list(), downloadActions)).popup({ window });
         break;
       case 'open-history':
         tabs.openHistory();
@@ -622,6 +750,7 @@ function createBrowser(): void {
         : { version: 1, activeTabId: null, tabs: [] },
     );
     history.saveNow();
+    downloads.saveNow();
     tabs.destroyAll();
     commandBar.destroy();
     findBar.destroy();

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
-import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
+import { DOWNLOADS_URL, HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
@@ -74,6 +74,8 @@ export interface TabManagerOptions {
   onCertificateProceed: (token: string, url: string) => boolean;
   /** Whether the site of the page at `url` may open windows without a click. */
   popupsAllowed: (url: string) => boolean;
+  /** A command link on the downloads page, such as `open` with a download id. */
+  onDownloadsCommand: (command: string, id: string) => void;
   /** A page was right-clicked. */
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
 }
@@ -349,9 +351,26 @@ export class TabManager {
   }
 
   openHistory(): void {
-    const existing = this.tabs.find((tab) => tab.url.startsWith(HISTORY_URL));
+    this.openSingle(HISTORY_URL);
+  }
+
+  openDownloads(): void {
+    this.openSingle(DOWNLOADS_URL);
+  }
+
+  /** Reloads open pages whose address starts with `prefix`, such as the downloads list. */
+  reloadPages(prefix: string): void {
+    for (const tab of this.tabs) {
+      const contents = tab.view?.webContents;
+      if (contents && !contents.isDestroyed() && tab.url.startsWith(prefix) && !tab.loading) contents.reload();
+    }
+  }
+
+  /** Selects the tab showing `url`, or opens one. */
+  private openSingle(url: string): void {
+    const existing = this.tabs.find((tab) => tab.url.startsWith(url));
     if (existing) this.activate(existing.id);
-    else this.open(HISTORY_URL);
+    else this.open(url);
   }
 
   goBack(): void {
@@ -650,6 +669,14 @@ export class TabManager {
       }
       const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
       const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
+      if (event.url.startsWith(DOWNLOADS_URL) && event.url !== DOWNLOADS_URL) {
+        event.preventDefault();
+        // Only the downloads page itself may use its command links.
+        if (!contents.getURL().startsWith(DOWNLOADS_URL)) return;
+        const command = new URL(event.url);
+        this.options.onDownloadsCommand(command.pathname.slice(1), command.searchParams.get('id') ?? '');
+        return;
+      }
       const historyDelete = event.url.startsWith(`${HISTORY_URL}delete?`);
       const historyClear = event.url === `${HISTORY_URL}clear`;
       if (historyDelete || historyClear) {

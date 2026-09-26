@@ -13,6 +13,7 @@ export interface ContextMenuActions {
   openInNewTab(url: string): void;
   copyText(text: string): void;
   copyImage(): void;
+  download(url: string): void;
   search(text: string): void;
   goBack(): void;
   goForward(): void;
@@ -43,13 +44,23 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
 
   if (link) {
     groups.push([
-      ...(canOpen(link) ? [{ label: 'Bağlantıyı yeni sekmede aç', click: () => actions.openInNewTab(link) }] : []),
+      ...(canOpen(link)
+        ? [
+            { label: 'Bağlantıyı yeni sekmede aç', click: () => actions.openInNewTab(link) },
+            { label: 'Bağlantıyı indir', click: () => actions.download(link) },
+          ]
+        : []),
       { label: 'Bağlantı adresini kopyala', click: () => actions.copyText(link) },
     ]);
   }
   if (image) {
     groups.push([
-      ...(canOpen(image) ? [{ label: 'Resmi yeni sekmede aç', click: () => actions.openInNewTab(image) }] : []),
+      ...(canOpen(image)
+        ? [
+            { label: 'Resmi yeni sekmede aç', click: () => actions.openInNewTab(image) },
+            { label: 'Resmi indir', click: () => actions.download(image) },
+          ]
+        : []),
       { label: 'Resmi kopyala', click: actions.copyImage },
       { label: 'Resim adresini kopyala', click: () => actions.copyText(image) },
     ]);
