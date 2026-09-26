@@ -80,12 +80,13 @@
           <button
             class="site"
             class:insecure={tab.security === 'insecure'}
+            class:dangerous={tab.security === 'dangerous'}
             title="Site bilgisi"
             aria-label={tab.security === 'secure' ? 'Bağlantı güvenli, site bilgisi' : 'Güvenli değil, site bilgisi'}
             onclick={() => send({ type: 'open-site-info' })}
           >
-            <Icon name={tab.security === 'secure' ? 'lock' : 'info'} size={13} />
-            {#if tab.security === 'insecure'}<span>Güvenli değil</span>{/if}
+            <Icon name={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'} size={13} />
+            {#if tab.security === 'insecure' || tab.security === 'dangerous'}<span>Güvenli değil</span>{/if}
           </button>
         {/if}
         {#if active}
@@ -344,6 +345,11 @@
 
   .site.insecure {
     color: var(--warn);
+  }
+
+  .site.dangerous {
+    color: #d93025;
+    font-weight: 600;
   }
 
   /* The site button on the left takes the place of the centering padding. */

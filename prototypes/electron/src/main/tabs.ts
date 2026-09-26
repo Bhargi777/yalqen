@@ -3,7 +3,8 @@ import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangl
 import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
-import { ERR_ABORTED, errorPageScript } from './error-page.js';
+import { PROCEED_URL } from './certificates.js';
+import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
 import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
 
@@ -27,6 +28,8 @@ interface Tab {
   keepAlive: boolean;
   /** Kept while the tab is discarded, so a reloaded page stays muted. Not persisted. */
   muted: boolean;
+  /** The page failed to load and shows an error page instead. */
+  failed: boolean;
   loading: boolean;
   /** Live page frozen in the background: no JS, timers or rendering until selected again. */
   frozen: boolean;
@@ -58,6 +61,12 @@ export interface TabManagerOptions {
   zoomFor: (url: string) => number;
   /** The user zoomed the page at `url`. */
   onZoom: (url: string, factor: number) => void;
+  /** Whether the user trusted an invalid certificate for `url`'s site. */
+  hasCertificateException: (url: string) => boolean;
+  /** Token that lets the warning page for `url` proceed with its rejected certificate. */
+  certificateToken: (url: string) => string | null;
+  /** The warning page for `url` asked to proceed; returns whether the certificate is now trusted. */
+  onCertificateProceed: (token: string, url: string) => boolean;
   /** A page was right-clicked. */
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
 }
@@ -420,6 +429,7 @@ export class TabManager {
       faviconUrl: saved.faviconUrl ?? null,
       keepAlive: saved.keepAlive ?? false,
       muted: false,
+      failed: false,
       loading: false,
       frozen: false,
       history: saved.history ?? null,
@@ -601,6 +611,14 @@ export class TabManager {
     contents.on('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
 
     contents.on('will-navigate', (event) => {
+      if (event.url.startsWith(PROCEED_URL)) {
+        event.preventDefault();
+        // The token only works on the warning page it was issued for.
+        if (this.options.onCertificateProceed(event.url.slice(PROCEED_URL.length), contents.getURL())) {
+          contents.reload();
+        }
+        return;
+      }
       const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
       const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
       const historyDelete = event.url.startsWith(`${HISTORY_URL}delete?`);
@@ -662,6 +680,7 @@ export class TabManager {
     contents.on('devtools-closed', () => this.maybeFreeze(tab));
     const updateUrl = () => {
       tab.url = contents.getURL();
+      tab.failed = false;
       tab.visitId = this.options.onVisit(tab.url, tab.url);
       // Navigation history can change even when the URL stays the same.
       this.changed(true);
@@ -680,8 +699,10 @@ export class TabManager {
     let failure: string | null = null;
     contents.on('did-fail-load', (_event, code, name, url, isMainFrame) => {
       if (!isMainFrame || code === ERR_ABORTED) return;
-      failure = errorPageScript(code, name, url);
+      const token = isCertificateError(code) ? this.options.certificateToken(url) : null;
+      failure = errorPageScript(code, name, url, token ? `${PROCEED_URL}${token}` : null);
       tab.url = url;
+      tab.failed = true;
       // Nothing was visited; later title changes must not rename the previous page's visit.
       tab.visitId = null;
       this.changed(true);
@@ -784,7 +805,8 @@ export class TabManager {
       frozen: tab.frozen,
       loading: tab.loading,
       keepAlive: tab.keepAlive,
-      security: securityState(tab.url),
+      // An error page is not the site: it gets no connection state, not even a lock.
+      security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,

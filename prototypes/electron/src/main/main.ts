@@ -12,6 +12,7 @@ import {
   type WindowMaterial,
 } from '../shared/types.js';
 import { AdBlocker } from './adblock.js';
+import { CertificateExceptions } from './certificates.js';
 import { CommandBar } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
@@ -87,6 +88,27 @@ function createBrowser(): void {
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
   const zoom = new ZoomStore(app.getPath('userData'));
+  const certificates = new CertificateExceptions();
+  // Chromium rejects invalid certificates unless this trusts them. Main-frame
+  // rejections are recorded so the warning page can offer to proceed.
+  const onCertificateError = (
+    event: Electron.Event,
+    contents: Electron.WebContents,
+    url: string,
+    _error: string,
+    certificate: Electron.Certificate,
+    callback: (trust: boolean) => void,
+    isMainFrame: boolean,
+  ) => {
+    if (contents.session === daily && certificates.allows(url, certificate.fingerprint)) {
+      event.preventDefault();
+      callback(true);
+      return;
+    }
+    if (contents.session === daily && isMainFrame) certificates.reject(url, certificate.fingerprint);
+    callback(false);
+  };
+  app.on('certificate-error', onCertificateError);
   const adBlocker = new AdBlocker(daily, path.join(app.getPath('userData'), 'adblock-engine.bin'));
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () =>
@@ -217,6 +239,9 @@ function createBrowser(): void {
     onFindResult: (result) => findBar.showResult(result),
     zoomFor: (url) => zoom.get(url),
     onZoom: (url, factor) => zoom.set(url, factor),
+    hasCertificateException: (url) => certificates.hasException(url),
+    certificateToken: (url) => certificates.tokenFor(url),
+    onCertificateProceed: (token, url) => certificates.proceed(token, url),
     onContextMenu: (contents, params) => {
       const history = contents.navigationHistory;
       const template = contextMenuTemplate(params, {
@@ -457,7 +482,18 @@ function createBrowser(): void {
         break;
       case 'open-site-info': {
         const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
-        if (tab) Menu.buildFromTemplate(siteInfoTemplate({ url: tab.url, security: tab.security })).popup({ window });
+        if (!tab) break;
+        const template = siteInfoTemplate(
+          { url: tab.url, security: tab.security },
+          {
+            revokeCertificateException: () => {
+              certificates.revoke(tab.url);
+              // Open connections were already accepted; new ones check the certificate again.
+              void daily.closeAllConnections().then(() => tabs.reload());
+            },
+          },
+        );
+        Menu.buildFromTemplate(template).popup({ window });
         break;
       }
       case 'toggle-panel':
@@ -502,6 +538,7 @@ function createBrowser(): void {
     adBlocker.destroy();
     settingsWindow.close();
     nativeTheme.off('updated', pushState);
+    app.off('certificate-error', onCertificateError);
     store.saveNow(
       settings.get().startupBehavior === 'restore'
         ? tabs.toSession()

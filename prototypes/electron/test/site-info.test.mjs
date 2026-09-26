@@ -7,6 +7,8 @@ const { securityState, siteInfoTemplate } = siteInfo;
 
 test('web pages are secure over https and insecure over http', () => {
   assert.equal(securityState('https://example.com/'), 'secure');
+  assert.equal(securityState('https://example.com/', true), 'dangerous');
+  assert.equal(securityState('http://example.com/', true), 'insecure');
   assert.equal(securityState('http://example.com/'), 'insecure');
   assert.equal(securityState('http://localhost:3000/'), 'insecure');
 });
@@ -18,10 +20,21 @@ test('pages not fetched from a site have no connection state', () => {
 });
 
 test('the menu names the site and its connection', () => {
-  const labels = (info) => siteInfoTemplate(info).map((item) => item.label);
+  const labels = (info) => siteInfoTemplate(info, {}).map((item) => item.label);
   assert.deepEqual(labels({ url: 'https://www.example.com/a', security: 'secure' }), ['www.example.com', 'Bağlantı güvenli']);
   assert.deepEqual(labels({ url: 'http://example.com:8080/', security: 'insecure' }), [
     'example.com:8080',
     'Bu siteye bağlantı güvenli değil',
   ]);
+});
+
+test('a trusted invalid certificate can be distrusted again', () => {
+  let revoked = false;
+  const items = siteInfoTemplate(
+    { url: 'https://a.test/', security: 'dangerous' },
+    { revokeCertificateException: () => (revoked = true) },
+  );
+  assert.equal(items[1].label, 'Geçersiz sertifika yok sayılarak bağlanıldı');
+  items.find((item) => item.label === 'Sertifika uyarılarını yeniden aç').click();
+  assert.equal(revoked, true);
 });

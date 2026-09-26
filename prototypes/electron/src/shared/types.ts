@@ -7,8 +7,11 @@ export const HISTORY_URL = 'yalqen://history/';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
-/** `local`: the browser's own pages, files and data, which have no connection to show. */
-export type SecurityState = 'secure' | 'insecure' | 'local';
+/**
+ * `dangerous`: https with a certificate the user chose to trust after a warning.
+ * `local`: the browser's own pages, files and data, which have no connection to show.
+ */
+export type SecurityState = 'secure' | 'insecure' | 'dangerous' | 'local';
 
 /** Tab data exposed to the UI. A tab can exist without a live page. */
 export interface TabSnapshot {
