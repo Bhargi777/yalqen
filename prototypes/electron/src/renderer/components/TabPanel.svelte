@@ -220,11 +220,20 @@
     {#if !collapsed}<span>Yeni sekme</span>{/if}
   </button>
 
-  {#if !collapsed}
-    <footer class="footer">
+  <footer class="footer" class:compact={collapsed}>
+    {#if !collapsed}
       <span class="tab-count">{tabs.length} sekme</span>
-    </footer>
-  {/if}
+    {/if}
+    <button
+      class="panel-toggle"
+      title={collapsed ? 'Yan paneli genişlet (⌘S)' : 'Yan paneli daralt (⌘S)'}
+      aria-label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
+      aria-expanded={!collapsed}
+      onclick={() => send({ type: 'toggle-panel' })}
+    >
+      <Icon name={side === 'left' ? (collapsed ? 'panel-expand' : 'panel-close') : (collapsed ? 'panel-expand-right' : 'panel-close-right')} size={16} />
+    </button>
+  </footer>
 </aside>
 
 <style>
@@ -560,9 +569,41 @@
   .footer {
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 34px;
     margin-top: auto;
-    padding: 0 11px;
+    padding: 0 8px;
+  }
+
+  .footer.compact {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .panel-toggle {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+  }
+
+  .panel-toggle:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .panel-toggle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 
   .tab-count {

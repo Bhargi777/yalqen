@@ -45,7 +45,7 @@ test('normal browsing keeps browser chrome spacing even at full screen window di
   });
 });
 
-test('hidden menus leave a top strip for the sidebar button and no sidebar width', () => {
+test('hidden menus leave no panel rail', () => {
   assert.deepEqual(pageFrame(1280, 820, { ...layout, panelWidth: 8 }, false), {
     x: 8,
     y: 44,

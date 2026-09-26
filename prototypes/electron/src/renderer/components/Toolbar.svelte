@@ -59,7 +59,7 @@
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading" aria-hidden="true"></div>
 
-  <div class="tab-group" style:transform="translateX({Math.max(0, (trailingInset - leadingInset) / 2)}px)">
+  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
     <nav class="capsule navigation" aria-label="Gezinme">
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />

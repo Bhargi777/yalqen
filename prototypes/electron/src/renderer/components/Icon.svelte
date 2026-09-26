@@ -29,6 +29,8 @@
     sparkle: 'M8 2.5c.4 2.9 2.6 5.1 5.5 5.5-2.9.4-5.1 2.6-5.5 5.5-.4-2.9-2.6-5.1-5.5-5.5 2.9-.4 5.1-2.6 5.5-5.5z',
     'panel-close': 'M2.5 3.5h11v9h-11zM6 3.5v9M11 6.5 9.5 8l1.5 1.5',
     'panel-close-right': 'M2.5 3.5h11v9h-11zM10 3.5v9M5 6.5 6.5 8 5 9.5',
+    'panel-expand': 'M2.5 3.5h11v9h-11zM6 3.5v9M9.5 6.5 11 8l-1.5 1.5',
+    'panel-expand-right': 'M2.5 3.5h11v9h-11zM10 3.5v9M6.5 6.5 5 8l1.5 1.5',
   } as const;
 
   export type IconName = keyof typeof paths;
