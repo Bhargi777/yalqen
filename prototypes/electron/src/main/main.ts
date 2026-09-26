@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, screen, session, shell } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, clipboard, ipcMain, nativeTheme, screen, session, shell } from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -13,6 +13,7 @@ import {
 } from '../shared/types.js';
 import { AdBlocker } from './adblock.js';
 import { CommandBar } from './command-bar.js';
+import { contextMenuTemplate } from './context-menu.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { FindBar } from './find-bar.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
@@ -22,7 +23,7 @@ import { buildMenu } from './menu.js';
 import { pageFrame } from './page-layout.js';
 import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
-import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
+import { SEARCH_ENGINES, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
 import { SettingsWindow } from './settings-window.js';
 import { TabManager } from './tabs.js';
@@ -215,6 +216,23 @@ function createBrowser(): void {
     onFindResult: (result) => findBar.showResult(result),
     zoomFor: (url) => zoom.get(url),
     onZoom: (url, factor) => zoom.set(url, factor),
+    onContextMenu: (contents, params) => {
+      const history = contents.navigationHistory;
+      const template = contextMenuTemplate(params, {
+        canGoBack: history.canGoBack(),
+        canGoForward: history.canGoForward(),
+        // Like other browsers, links open next to the page without leaving it.
+        openInNewTab: (url) => tabs.open(url, { activate: false }),
+        copyText: (text) => clipboard.writeText(text),
+        copyImage: () => contents.copyImageAt(params.x, params.y),
+        search: (text) => tabs.open(buildSearchUrl(searchEngine(), text)),
+        goBack: () => history.goBack(),
+        goForward: () => history.goForward(),
+        reload: () => contents.reload(),
+        inspect: () => contents.inspectElement(params.x, params.y),
+      });
+      Menu.buildFromTemplate(template).popup({ window });
+    },
   });
 
   serveInternalPages(

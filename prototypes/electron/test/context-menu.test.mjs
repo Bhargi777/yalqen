@@ -1,0 +1,105 @@
+// Runs against the compiled main-process modules (npm test builds them first).
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import contextMenu from '../dist/main/context-menu.js';
+
+const { contextMenuTemplate, snippet } = contextMenu;
+
+const FLAGS = { canUndo: false, canRedo: false, canCut: true, canCopy: true, canPaste: true, canSelectAll: true };
+const context = (overrides = {}) => ({
+  linkURL: '',
+  srcURL: '',
+  mediaType: 'none',
+  selectionText: '',
+  isEditable: false,
+  editFlags: FLAGS,
+  ...overrides,
+});
+
+function actions() {
+  const calls = [];
+  const record = (name) => (...args) => calls.push([name, ...args]);
+  return {
+    calls,
+    canGoBack: true,
+    canGoForward: false,
+    openInNewTab: record('open'),
+    copyText: record('copy'),
+    copyImage: record('copyImage'),
+    search: record('search'),
+    goBack: record('back'),
+    goForward: record('forward'),
+    reload: record('reload'),
+    inspect: record('inspect'),
+  };
+}
+
+const labels = (items) => items.map((item) => (item.type === 'separator' ? '-' : item.label));
+const item = (items, label) => items.find((entry) => entry.label === label);
+
+test('a plain page offers navigation and inspect', () => {
+  const a = actions();
+  const items = contextMenuTemplate(context(), a);
+  assert.deepEqual(labels(items), ['Geri', 'İleri', 'Yenile', '-', 'İncele']);
+  assert.equal(item(items, 'Geri').enabled, true);
+  assert.equal(item(items, 'İleri').enabled, false);
+  item(items, 'İncele').click();
+  assert.deepEqual(a.calls, [['inspect']]);
+});
+
+test('links can be opened in a new tab and copied', () => {
+  const a = actions();
+  const items = contextMenuTemplate(context({ linkURL: 'https://example.com/a' }), a);
+  assert.deepEqual(labels(items), ['Bağlantıyı yeni sekmede aç', 'Bağlantı adresini kopyala', '-', 'İncele']);
+  item(items, 'Bağlantıyı yeni sekmede aç').click();
+  item(items, 'Bağlantı adresini kopyala').click();
+  assert.deepEqual(a.calls, [['open', 'https://example.com/a'], ['copy', 'https://example.com/a']]);
+});
+
+test('script, local, internal and HTML document links are not opened', () => {
+  for (const linkURL of ['javascript:alert(1)', 'file:///etc/hosts', 'yalqen://history/clear', 'data:text/html,<p>x']) {
+    const items = contextMenuTemplate(context({ linkURL }), actions());
+    assert.deepEqual(labels(items), ['Bağlantı adresini kopyala', '-', 'İncele'], linkURL);
+  }
+});
+
+test('images inside links get both groups', () => {
+  const a = actions();
+  const items = contextMenuTemplate(
+    context({ linkURL: 'https://example.com/', mediaType: 'image', srcURL: 'https://example.com/i.png' }),
+    a,
+  );
+  assert.deepEqual(labels(items), [
+    'Bağlantıyı yeni sekmede aç',
+    'Bağlantı adresini kopyala',
+    '-',
+    'Resmi yeni sekmede aç',
+    'Resmi kopyala',
+    'Resim adresini kopyala',
+    '-',
+    'İncele',
+  ]);
+  item(items, 'Resmi kopyala').click();
+  assert.deepEqual(a.calls, [['copyImage']]);
+});
+
+test('selected text can be copied and searched', () => {
+  const a = actions();
+  const items = contextMenuTemplate(context({ selectionText: '  merhaba\n dünya ' }), a);
+  assert.deepEqual(labels(items), ['Kopyala', '-', '“merhaba dünya” için ara', '-', 'İncele']);
+  assert.equal(item(items, 'Kopyala').role, 'copy');
+  item(items, '“merhaba dünya” için ara').click();
+  assert.deepEqual(a.calls, [['search', 'merhaba\n dünya']]);
+});
+
+test('editable fields get edit commands with their flags', () => {
+  const items = contextMenuTemplate(context({ isEditable: true }), actions());
+  assert.deepEqual(labels(items), ['Geri al', 'Yinele', '-', 'Kes', 'Kopyala', 'Yapıştır', 'Tümünü seç', '-', 'İncele']);
+  assert.equal(item(items, 'Geri al').enabled, false);
+  assert.equal(item(items, 'Yapıştır').enabled, true);
+});
+
+test('long selections are shortened for the label', () => {
+  assert.equal(snippet('kısa'), 'kısa');
+  assert.equal(snippet('a'.repeat(40)), `${'a'.repeat(29)}…`);
+});

@@ -1,0 +1,87 @@
+import type { ContextMenuParams, MenuItemConstructorOptions } from 'electron';
+
+const SNIPPET_LENGTH = 30;
+
+export type PageContext = Pick<
+  ContextMenuParams,
+  'linkURL' | 'srcURL' | 'mediaType' | 'selectionText' | 'isEditable' | 'editFlags'
+>;
+
+export interface ContextMenuActions {
+  canGoBack: boolean;
+  canGoForward: boolean;
+  openInNewTab(url: string): void;
+  copyText(text: string): void;
+  copyImage(): void;
+  search(text: string): void;
+  goBack(): void;
+  goForward(): void;
+  reload(): void;
+  inspect(): void;
+}
+
+/** Selected text shortened to one line for a menu label. */
+export function snippet(text: string): string {
+  const line = text.replace(/\s+/g, ' ').trim();
+  return line.length > SNIPPET_LENGTH ? `${line.slice(0, SNIPPET_LENGTH - 1)}…` : line;
+}
+
+/**
+ * Links and images the menu offers to open. A page must not reach local files or
+ * the browser's own pages this way, and scripts or HTML documents in the address are left out.
+ */
+function canOpen(url: string): boolean {
+  return /^https?:/i.test(url) || (/^data:/i.test(url) && !/^data:text\/html/i.test(url));
+}
+
+/** Items for a right click on a page, grouped by what was clicked. */
+export function contextMenuTemplate(context: PageContext, actions: ContextMenuActions): MenuItemConstructorOptions[] {
+  const groups: MenuItemConstructorOptions[][] = [];
+  const link = context.linkURL;
+  const image = context.mediaType === 'image' ? context.srcURL : '';
+  const selection = context.selectionText.trim();
+
+  if (link) {
+    groups.push([
+      ...(canOpen(link) ? [{ label: 'Bağlantıyı yeni sekmede aç', click: () => actions.openInNewTab(link) }] : []),
+      { label: 'Bağlantı adresini kopyala', click: () => actions.copyText(link) },
+    ]);
+  }
+  if (image) {
+    groups.push([
+      ...(canOpen(image) ? [{ label: 'Resmi yeni sekmede aç', click: () => actions.openInNewTab(image) }] : []),
+      { label: 'Resmi kopyala', click: actions.copyImage },
+      { label: 'Resim adresini kopyala', click: () => actions.copyText(image) },
+    ]);
+  }
+  if (context.isEditable) {
+    const flags = context.editFlags;
+    groups.push(
+      [
+        { label: 'Geri al', role: 'undo', enabled: flags.canUndo },
+        { label: 'Yinele', role: 'redo', enabled: flags.canRedo },
+      ],
+      [
+        { label: 'Kes', role: 'cut', enabled: flags.canCut },
+        { label: 'Kopyala', role: 'copy', enabled: flags.canCopy },
+        { label: 'Yapıştır', role: 'paste', enabled: flags.canPaste },
+        { label: 'Tümünü seç', role: 'selectAll', enabled: flags.canSelectAll },
+      ],
+    );
+  } else if (selection) {
+    groups.push([{ label: 'Kopyala', role: 'copy' }]);
+  }
+  if (selection) {
+    groups.push([{ label: `“${snippet(selection)}” için ara`, click: () => actions.search(selection) }]);
+  }
+  if (groups.length === 0) {
+    groups.push([
+      { label: 'Geri', enabled: actions.canGoBack, click: actions.goBack },
+      { label: 'İleri', enabled: actions.canGoForward, click: actions.goForward },
+      { label: 'Yenile', click: actions.reload },
+    ]);
+  }
+  groups.push([{ label: 'İncele', click: actions.inspect }]);
+
+  return groups.flatMap((group, index) => (index === 0 ? group : [{ type: 'separator' as const }, ...group]));
+}

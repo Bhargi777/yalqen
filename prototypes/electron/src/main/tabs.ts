@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
+import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
 import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
@@ -54,6 +54,8 @@ export interface TabManagerOptions {
   zoomFor: (url: string) => number;
   /** The user zoomed the page at `url`. */
   onZoom: (url: string, factor: number) => void;
+  /** A page was right-clicked. */
+  onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
 }
 
 export interface RecentPage {
@@ -573,6 +575,8 @@ export class TabManager {
       const factor = this.options.zoomFor(url);
       if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
     });
+
+    contents.on('context-menu', (_event, params) => this.options.onContextMenu(contents, params));
 
     contents.on('found-in-page', (_event, result) => {
       if (tab.id !== this.activeId || result.matches === undefined) return;
