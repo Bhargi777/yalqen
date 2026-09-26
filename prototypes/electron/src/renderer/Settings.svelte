@@ -290,6 +290,22 @@
       </div>
     </div>
     <div class="row">
+      <span class="label">
+        <span>Üçüncü taraf çerezleri engelle</span>
+        <span class="hint">Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma ve yorum alanları çalışmayabilir.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Üçüncü taraf çerezleri engelle">
+        {#each onOffOptions as option (option.label)}
+          <button
+            aria-pressed={values.blockThirdPartyCookies === option.value}
+            onclick={() => update({ blockThirdPartyCookies: option.value })}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row">
       <label for="secure-dns" class="label">
         <span>Güvenli DNS</span>
         <span class="hint">Site adlarını şifreli sorgularla çözer. Otomatik, sistemin DNS sağlayıcısı destekliyorsa kullanır.</span>

@@ -243,6 +243,8 @@ export interface SettingsValues {
   adBlocking: boolean;
   /** Load http pages over https, asking before falling back to http. */
   httpsOnly: boolean;
+  /** Keep other sites than the page's from reading or creating cookies. */
+  blockThirdPartyCookies: boolean;
   secureDns: SecureDnsSetting;
   /** Default font size of new pages. */
   fontSize: FontSizeSetting;
