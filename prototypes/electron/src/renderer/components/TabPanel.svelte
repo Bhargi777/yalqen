@@ -15,7 +15,6 @@
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
     collapsed: boolean;
-    /** Window edge the panel sits on; the resize handle and toggle icons follow it. */
     side: PanelSide;
     width: number;
     minWidth: number;
@@ -29,7 +28,6 @@
 
   const send = window.yalqen.send;
 
-  // Tabs kept alive are shown as favorites above the list.
   const favorites = $derived(tabs.filter((tab) => tab.keepAlive));
   const listed = $derived(tabs.filter((tab) => !tab.keepAlive));
 
@@ -56,7 +54,6 @@
   function onDrop(event: DragEvent): void {
     event.preventDefault();
     if (dragId && dropIndex !== null) {
-      // Drop positions count listed tabs only; the main process orders all tabs.
       const from = tabs.findIndex((tab) => tab.id === dragId);
       const before = listed[dropIndex];
       const target = before ? tabs.indexOf(before) : tabs.indexOf(listed[listed.length - 1]) + 1;
@@ -243,7 +240,6 @@
     grid-area: panel;
     flex-direction: column;
     min-height: 0;
-    /* Same gap on both sides: the window edge on the left, the page card on the right. */
     padding: 0 8px 8px;
   }
 
@@ -276,7 +272,6 @@
     -webkit-app-region: drag;
   }
 
-  /* Favorites: a row of small tiles, a single column when collapsed. */
   .favorites {
     display: grid;
     flex: none;
@@ -347,7 +342,6 @@
     display: grid;
   }
 
-  /* Tab list: a rounded well with the active tab raised. */
   .tabs {
     flex: 0 1 auto;
     min-height: 0;
@@ -364,7 +358,6 @@
     width: 38px;
   }
 
-  /* Collapsed, favorites and tabs share one well, split by a line. */
   .collapsed .favorites:has(+ .tabs) {
     margin-bottom: 0;
     border-bottom-right-radius: 0;
@@ -489,7 +482,6 @@
     white-space: nowrap;
   }
 
-  /* Actions only show on hover, except close on the active tab. */
   .actions {
     display: flex;
     padding-right: 4px;
@@ -529,7 +521,6 @@
     font-style: italic;
   }
 
-  /* Stays visible while the other actions are hidden. */
   .audio {
     flex: none;
   }

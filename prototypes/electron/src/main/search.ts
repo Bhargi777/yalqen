@@ -5,9 +5,7 @@ export type { SearchEngineId };
 export interface SearchEngine {
   id: SearchEngineId;
   label: string;
-  /** Address bar placeholder, with the Turkish locative suffix for the name. */
   placeholder: string;
-  /** `%s` is replaced with the encoded query. */
   template: string;
 }
 
@@ -24,7 +22,6 @@ export const SEARCH_ENGINES: readonly SearchEngine[] = [
 
 const CUSTOM_PLACEHOLDER = 'Ara veya adres yaz';
 
-/** A custom template must be an http(s) URL containing `%s`. */
 export function isValidSearchTemplate(template: string | null | undefined): template is string {
   if (!template || !template.includes('%s')) return false;
   try {
@@ -35,7 +32,6 @@ export function isValidSearchTemplate(template: string | null | undefined): temp
   }
 }
 
-/** Resolves the selected engine; an unusable custom template falls back to the default. */
 export function resolveSearchEngine(id: SearchEngineId, customTemplate: string | null): SearchEngine {
   if (id === 'custom' && isValidSearchTemplate(customTemplate)) {
     return { id: 'custom', label: 'Özel', placeholder: CUSTOM_PLACEHOLDER, template: customTemplate };

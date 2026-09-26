@@ -19,7 +19,6 @@ const MAX_SPELLING_SUGGESTIONS = 5;
 export interface ContextMenuActions {
   canGoBack: boolean;
   canGoForward: boolean;
-  /** The page's source can be shown; false for the source view and internal pages. */
   canViewSource: boolean;
   openInNewTab(url: string): void;
   openInNewWindow(url: string): void;
@@ -37,21 +36,15 @@ export interface ContextMenuActions {
   addToDictionary(word: string): void;
 }
 
-/** Selected text shortened to one line for a menu label. */
 export function snippet(text: string): string {
   const line = text.replace(/\s+/g, ' ').trim();
   return line.length > SNIPPET_LENGTH ? `${line.slice(0, SNIPPET_LENGTH - 1)}…` : line;
 }
 
-/**
- * Links and images the menu offers to open. A page must not reach local files or
- * the browser's own pages this way, and scripts or HTML documents in the address are left out.
- */
 function canOpen(url: string): boolean {
   return /^https?:/i.test(url) || (/^data:/i.test(url) && !/^data:text\/html/i.test(url));
 }
 
-/** Items for a right click on a page, grouped by what was clicked. */
 export function contextMenuTemplate(context: PageContext, actions: ContextMenuActions): MenuItemConstructorOptions[] {
   const groups: MenuItemConstructorOptions[][] = [];
   const link = context.linkURL;

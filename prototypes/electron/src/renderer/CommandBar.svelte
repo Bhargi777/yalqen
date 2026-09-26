@@ -9,11 +9,8 @@
   let value = $state('');
   let placeholder = $state('Ara veya adres yaz');
   let suggestions: AddressSuggestion[] = $state([]);
-  /** Highlighted suggestion; -1 submits the typed text. */
   let selected = $state(-1);
 
-  // The box stays rendered while the view is detached, so it shows on the first
-  // frame after the main process attaches the view again.
   function finish(action: CommandBarAction): void {
     value = '';
     suggestions = [];
@@ -50,17 +47,22 @@
     }
   }
 
-  function onKeydown(event: KeyboardEvent): void {
+function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
       finish({ type: 'dismiss' });
     } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && suggestions.length > 0) {
       event.preventDefault();
       const step = event.key === 'ArrowDown' ? 1 : -1;
-      // Wraps through the typed text (-1) and every suggestion.
       selected = ((selected + 1 + step + suggestions.length + 1) % (suggestions.length + 1)) - 1;
-    }
   }
+}
+
+function onBackdropMouseDown(event: MouseEvent): void {
+  if (event.target instanceof HTMLElement && event.target.classList.contains('backdrop')) {
+    finish({ type: 'dismiss' });
+  }
+}
 
   onMount(() => {
     const offOpen = window.yalqenCommand.onOpen((open) => {
@@ -74,7 +76,6 @@
       });
     });
     const offSuggestions = window.yalqenCommand.onSuggestions((next) => {
-      // Late answers for text that has changed since are dropped.
       if (next.input !== value) return;
       suggestions = next.suggestions;
       selected = -1;
@@ -86,15 +87,9 @@
   });
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} onmousedown={onBackdropMouseDown} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div
-  class="backdrop"
-  onmousedown={(event) => {
-    if (event.target === event.currentTarget) finish({ type: 'dismiss' });
-  }}
->
+<div class="backdrop">
   <div class="box">
     <form class="bar" role="search" onsubmit={submit}>
       <span class="icon"><Icon name="search" size={18} /></span>
@@ -116,14 +111,20 @@
     {#if suggestions.length > 0}
       <ul class="suggestions" id="suggestions" role="listbox" aria-label="Öneriler">
         {#each suggestions as suggestion, index (suggestion.url)}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
           <li
             id="suggestion-{index}"
             role="option"
+            tabindex="-1"
             aria-selected={index === selected}
             class:selected={index === selected}
             onmousedown={(event) => event.preventDefault()}
             onclick={() => pick(suggestion)}
+            onkeydown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                pick(suggestion);
+              }
+            }}
             onmousemove={() => (selected = index)}
           >
             <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>

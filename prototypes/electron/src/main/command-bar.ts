@@ -11,21 +11,12 @@ export interface CommandBarOptions {
   window: BaseWindow;
   preload: string;
   page: string;
-  /** Called with the text the user submitted; the bar is already closed. */
   onSubmit: (input: string, mode: CommandBarOpen['mode']) => void;
-  /** Called after the bar is closed without a submit. */
   onDismiss: () => void;
-  /** Called with the current text each time the user edits it. */
   onInput: (input: string) => void;
-  /** An open tab was picked from the suggestions; the bar is already closed. */
   onSwitchTab: (id: TabId) => void;
 }
 
-/**
- * Centered search box drawn over the whole window, including the page view.
- * The view is created and loaded up front so it opens without delay; it is
- * attached to the window only while open.
- */
 export class CommandBar {
   private readonly view: WebContentsView;
   private opened = false;
@@ -72,7 +63,6 @@ export class CommandBar {
     if (this.ready) this.view.webContents.send(CommandBarChannel.open, open);
   }
 
-  /** Shows suggestions for `input`; the bar ignores them once the text has changed. */
   showSuggestions(input: string, suggestions: AddressSuggestion[]): void {
     if (this.opened) this.view.webContents.send(CommandBarChannel.suggestions, { input, suggestions });
   }
@@ -89,7 +79,6 @@ export class CommandBar {
     this.view.setBounds({ x: 0, y: 0, width, height });
   }
 
-  /** Page views added while the bar is open would cover it; move it back on top. */
   keepOnTop(): void {
     if (!this.opened) return;
     const children = this.options.window.contentView.children;

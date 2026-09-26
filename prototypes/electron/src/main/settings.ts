@@ -35,7 +35,6 @@ const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
 
-/** Keeps known, well-typed fields and takes the rest from `base`. */
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
   const {
@@ -108,7 +107,6 @@ export class SettingsStore {
     return this.current;
   }
 
-  /** Applies a patch from any source; invalid fields keep their current value. */
   update(patch: unknown): Settings {
     this.current = sanitizeSettings({ ...this.current, ...(patch as object) }, this.current);
     const temp = `${this.file}.tmp`;

@@ -11,7 +11,6 @@ export interface HistoryEntry {
   visitedAt: number;
 }
 
-/** Browser-wide visit history, independent of open tabs and session restore. */
 export class HistoryStore {
   private readonly file: string;
   private entries: HistoryEntry[] = [];
@@ -25,7 +24,6 @@ export class HistoryStore {
         this.entries = data.filter(isHistoryEntry).slice(0, MAX_VISITS);
       }
     } catch {
-      // No history file yet, or a damaged file. Start with an empty list.
     }
   }
 
@@ -66,7 +64,6 @@ export class HistoryStore {
     this.saveNow();
   }
 
-  /** Removes visits made at or after `since`; 0 removes all. */
   clearSince(since: number): void {
     this.entries = since > 0 ? this.entries.filter((entry) => entry.visitedAt < since) : [];
     this.saveNow();

@@ -1,4 +1,3 @@
-// Runs against the compiled main-process modules (npm test builds them first).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import url from '../dist/main/url.js';
@@ -48,7 +47,6 @@ test('custom templates are validated', () => {
   assert.equal(custom.id, 'custom');
   assert.equal(resolveInput('test 1', custom), 'https://ara.example/s?q=test%201');
 
-  // An unusable custom template falls back to the default engine.
   assert.equal(resolveSearchEngine('custom', 'not a url').id, 'google');
   assert.equal(resolveSearchEngine('custom', null).id, 'google');
 });

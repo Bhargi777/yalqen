@@ -1,9 +1,5 @@
-/// <reference lib="dom" />
 import { ipcRenderer } from 'electron';
 
-// A Magic Mouse or trackpad sends a stream of small horizontal wheel events.
-// Treat it as one page gesture only when the page has no horizontal scroller
-// under the pointer; carousels, tables and wide pages keep their own scrolling.
 const CHANNEL = 'yalqen:page-swipe';
 const THRESHOLD = 90;
 const GAP_MS = 350;

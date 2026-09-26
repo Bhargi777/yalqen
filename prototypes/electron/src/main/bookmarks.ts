@@ -8,7 +8,6 @@ export interface Bookmark {
   id: string;
   title: string;
   url: string;
-  /** Null for bookmarks outside any folder. */
   folderId: string | null;
   createdAt: number;
 }
@@ -28,7 +27,6 @@ interface SavedBookmarks {
 const MAX_TITLE = 200;
 const MENU_TITLE = 60;
 
-/** Pages that can be bookmarked: web pages and files. */
 export function canBookmark(url: string): boolean {
   return /^(https?|file):/i.test(url);
 }
@@ -37,7 +35,6 @@ function cleanTitle(title: string, fallback: string): string {
   return title.replace(/\s+/g, ' ').trim().slice(0, MAX_TITLE) || fallback;
 }
 
-/** Bookmarks in one level of folders, in the order they were added. */
 export class BookmarkStore {
   readonly file: string;
   private folderList: BookmarkFolder[] = [];
@@ -60,7 +57,6 @@ export class BookmarkStore {
         )
         .map((bookmark) => ({ ...bookmark, folderId: folderIds.has(bookmark.folderId ?? '') ? bookmark.folderId : null }));
     } catch {
-      // No bookmarks yet, or a damaged file.
     }
   }
 
@@ -68,7 +64,6 @@ export class BookmarkStore {
     return this.folderList.map((folder) => ({ ...folder }));
   }
 
-  /** Bookmarks, optionally only those whose title or address contains `query`. */
   bookmarks(query = ''): Bookmark[] {
     const term = query.trim().toLocaleLowerCase('tr').slice(0, 200);
     return this.bookmarkList
@@ -104,7 +99,6 @@ export class BookmarkStore {
     this.save();
   }
 
-  /** Moves a bookmark into a folder, or out of folders with null or an unknown id. */
   move(id: string, folderId: string | null): void {
     const bookmark = this.bookmarkList.find((item) => item.id === id);
     if (!bookmark) return;
@@ -126,7 +120,6 @@ export class BookmarkStore {
     this.save();
   }
 
-  /** Deletes a folder; its bookmarks move out of it. */
   removeFolder(id: string): void {
     const before = this.folderList.length;
     this.folderList = this.folderList.filter((folder) => folder.id !== id);
@@ -159,7 +152,6 @@ export interface BookmarksMenuActions {
   showAll(): void;
 }
 
-/** Menu of the toolbar's bookmarks button: folders first, then loose bookmarks. */
 export function bookmarksMenuTemplate(
   folders: readonly BookmarkFolder[],
   bookmarks: readonly Bookmark[],
@@ -197,7 +189,6 @@ function hostOf(url: string): string {
   }
 }
 
-/** Content of the bookmarks page. Its forms and links are commands the tab handles. */
 export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: readonly Bookmark[], query: string): string {
   const search = query.trim().slice(0, 200);
   const header =

@@ -1,8 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { FindBarAction, FindBarApi, FindBarChannel, FindResult } from '../shared/types.js';
 
-// Sandboxed preloads cannot require local modules, so channel names are
-// repeated here and checked against the shared definition at compile time.
 const channel: typeof FindBarChannel = {
   open: 'yalqen-find:open',
   result: 'yalqen-find:result',

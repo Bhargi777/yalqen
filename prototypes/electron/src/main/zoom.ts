@@ -1,19 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Zoom steps of the shortcuts, as in Chromium. */
 export const ZOOM_FACTORS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
 const MIN_FACTOR = ZOOM_FACTORS[0];
 const MAX_FACTOR = ZOOM_FACTORS[ZOOM_FACTORS.length - 1];
 const EPSILON = 0.001;
 
-/** The step after `current` in `direction`, staying at either end. */
 export function stepZoom(current: number, direction: 1 | -1): number {
   if (direction > 0) return ZOOM_FACTORS.find((factor) => factor > current + EPSILON) ?? MAX_FACTOR;
   return ZOOM_FACTORS.findLast((factor) => factor < current - EPSILON) ?? MIN_FACTOR;
 }
 
-/** Zoom is remembered per host, like Chromium applies it; other pages are not remembered. */
 export function zoomKey(url: string): string | null {
   try {
     const { protocol, hostname } = new URL(url);
@@ -28,30 +25,23 @@ interface SavedZoom {
   sites: Record<string, number>;
 }
 
-/**
- * Zoom factors people chose for sites; sites at the default zoom are not stored.
- * Without a directory the factors are kept in memory only, as for private tabs.
- */
 export class ZoomStore {
   readonly file: string | null;
   private readonly sites = new Map<string, number>();
 
   constructor(
     directory: string | null,
-    /** Zoom of pages without a factor of their own. */
     private readonly defaultFactor: () => number = () => 1,
   ) {
     this.file = directory === null ? null : path.join(directory, 'zoom.json');
     this.load();
   }
 
-  /** The remembered factor for `url`'s site, or the default. */
   get(url: string): number {
     const key = zoomKey(url);
     return (key === null ? undefined : this.sites.get(key)) ?? this.defaultFactor();
   }
 
-  /** Whether `url`'s site has a factor of its own. */
   has(url: string): boolean {
     const key = zoomKey(url);
     return key !== null && this.sites.has(key);
@@ -81,7 +71,6 @@ export class ZoomStore {
         }
       }
     } catch {
-      // Missing or unreadable: every site starts at actual size.
     }
   }
 

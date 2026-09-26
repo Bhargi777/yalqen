@@ -14,14 +14,10 @@
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
-    /** Zoom factor of the active page. */
     zoom: number;
-    /** Zoom of pages without a level of their own; other levels are shown. */
     defaultZoom: number;
     downloads: DownloadsSummary;
-    /** Space kept for macOS window controls when the sidebar is narrow. */
     leadingInset: number;
-    /** Gap between settings and the window edge or sidebar. */
     trailingInset: number;
   } = $props();
 
@@ -31,7 +27,6 @@
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
   $effect(() => {
-    // Keep the active tab in view when it changes.
     void activeTabId;
     strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
@@ -55,7 +50,7 @@
   </span>
 {/snippet}
 
-<!-- The active tab doubles as the address field; the existing capsules now frame the tab strip. -->
+
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading" aria-hidden="true"></div>
 
@@ -213,7 +208,6 @@
     -webkit-app-region: drag;
   }
 
-  /* Equal sides keep the tab group centered over the page card. */
   .side {
     display: flex;
     flex: 1 1 0;
@@ -237,7 +231,6 @@
     min-width: 0;
   }
 
-  /* Match the navigation capsule's width so the active tab sits at the center. */
   .new-tab-slot {
     display: flex;
     flex: none;
@@ -341,7 +334,6 @@
     background: var(--surface-hover);
   }
 
-  /* The active tab is the address field: wider, raised, site name centered. */
   .chip.active {
     width: clamp(220px, 32vw, 420px);
     max-width: none;
@@ -383,7 +375,6 @@
     font-weight: 500;
   }
 
-  /* Balance the favicon so the title itself is centered in the capsule. */
   .address:not(.after-site)::after {
     flex: none;
     width: 16px;
@@ -437,7 +428,6 @@
     font-weight: 600;
   }
 
-  /* The site button on the left takes the place of the centering padding. */
   .address.after-site {
     padding-left: 6px;
   }

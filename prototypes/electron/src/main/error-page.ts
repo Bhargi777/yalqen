@@ -1,6 +1,5 @@
 import { NEW_TAB_URL } from '../shared/types.js';
 
-/** Chromium's code for a navigation that was stopped or replaced; not an error to show. */
 export const ERR_ABORTED = -3;
 
 export interface ErrorText {
@@ -20,12 +19,10 @@ function hostOf(url: string): string {
   }
 }
 
-/** Chromium's certificate errors are -200 to -299. */
 export function isCertificateError(code: number): boolean {
   return code <= -200 && code > -300;
 }
 
-/** Explains a failed page load; `code` is Chromium's net error code. */
 export function describeError(code: number, url: string): ErrorText {
   const host = hostOf(url);
   switch (code) {
@@ -58,7 +55,6 @@ export function describeError(code: number, url: string): ErrorText {
   }
 }
 
-/** Explains why an http page could not be loaded over https in HTTPS-only mode. */
 export function describeHttpsOnly(url: string): ErrorText {
   return {
     title: 'Bu site güvenli bağlantıyı desteklemiyor',
@@ -66,11 +62,6 @@ export function describeHttpsOnly(url: string): ErrorText {
   };
 }
 
-/**
- * Markup of the error page shown in place of a page that failed to load. With
- * `proceedUrl` it is a warning that offers to continue anyway: past a certificate
- * error, or over http when `httpsOnly` is set.
- */
 export function errorPageHtml(
   code: number,
   name: string,
@@ -105,10 +96,6 @@ ${
 </main></body>`;
 }
 
-/**
- * Script that fills Chromium's empty error document, which keeps the failed
- * address in the address bar and history. It does nothing on any other page.
- */
 export function errorPageScript(
   code: number,
   name: string,

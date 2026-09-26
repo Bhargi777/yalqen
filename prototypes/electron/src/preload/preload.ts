@@ -7,8 +7,6 @@ import type {
   YalqenApi,
 } from '../shared/types.js';
 
-// Sandboxed preloads cannot require local modules, so channel names are
-// repeated here and checked against the shared definition at compile time.
 const channel: typeof IpcChannel = {
   getState: 'yalqen:get-state',
   state: 'yalqen:state',

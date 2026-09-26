@@ -18,7 +18,6 @@ export interface MenuActions {
   reopenClosedTab(): void;
   selectNextTab(): void;
   selectPreviousTab(): void;
-  /** Selects the tab at `index`; -1 selects the last tab. */
   selectTab(index: number): void;
   focusAddress(): void;
   find(): void;
@@ -41,7 +40,6 @@ export interface MenuActions {
   viewSource(): void;
 }
 
-/** Shortcuts live in the app menu so they work while a page has focus. */
 export function buildMenu(actions: MenuActions): Menu {
   const isMac = process.platform === 'darwin';
   const settingsItem: MenuItemConstructorOptions = {
@@ -125,7 +123,6 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Sonraki sekme', accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
         { label: 'Önceki sekme', accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },
         { label: 'Sekmeyi yeni pencereye taşı', click: actions.moveTabToNewWindow },
-        // ⌘1–⌘8 select a tab by position and ⌘9 the last one; hidden to keep the menu short.
         ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
           label: i === 8 ? 'Son sekme' : `Sekme ${i + 1}`,
           accelerator: `CmdOrCtrl+${i + 1}`,
@@ -142,7 +139,6 @@ export function buildMenu(actions: MenuActions): Menu {
         { type: 'separator' },
         { label: 'Varsayılan boyut', accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
         { label: 'Yakınlaştır', accelerator: 'CmdOrCtrl+Plus', click: () => actions.zoom(1) },
-        // ⌘= is the unshifted key of ⌘+ on most layouts.
         {
           label: 'Yakınlaştır',
           accelerator: 'CmdOrCtrl+=',

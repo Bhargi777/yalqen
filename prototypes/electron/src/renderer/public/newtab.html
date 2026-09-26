@@ -3,14 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <title>Yeni sekme</title>
-    <!--
-      Served as yalqen://newtab/ by the main process, which fills in the recently
-      closed pages. The search form submits to yalqen://newtab/search?q=…, which the
-      main process turns into a navigation. Suggestions come from the browser's
-      own local bookmarks and visit history.
-    -->
+
     <style>
-      /* The view is transparent so the native window material remains visible. */
       :root {
         --page: transparent;
         --text: #1a1b1e;
@@ -430,7 +424,7 @@
   </head>
   <body>
     <main>
-      <!-- welcome -->
+      __YALQEN_WELCOME_SLOT__
       <div class="search">
       <form id="search-form" action="yalqen://newtab/search" method="get" role="search">
         <span class="search-icon" aria-hidden="true">
@@ -456,7 +450,7 @@
       </form>
       <ul id="suggestions" class="suggestions" role="listbox" aria-label="Öneriler" hidden></ul>
       </div>
-      <!-- welcome-action -->
+      __YALQEN_WELCOME_ACTION_SLOT__
       <div class="actions">
         <label class="pill" for="q">
           <span class="blank"></span>
@@ -471,7 +465,7 @@
           </svg>
         </label>
       </div>
-      <!-- recent -->
+      __YALQEN_RECENT_SLOT__
     </main>
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>

@@ -1,12 +1,9 @@
 import { buildSearchUrl, type SearchEngine } from './search.js';
 import { resolveInput } from './url.js';
 
-/** How long typing must pause before the typed destination is connected to. */
 const TYPING_DELAY_MS = 150;
-/** An origin is not connected to again within this time; its socket is likely still open. */
 const REPEAT_AFTER_MS = 10_000;
 
-/** Origin that submitting `input` would load, or null for non-web destinations. */
 export function destinationOrigin(input: string, engine: SearchEngine): string | null {
   if (input.trim() === '') return null;
   try {
@@ -17,10 +14,6 @@ export function destinationOrigin(input: string, engine: SearchEngine): string |
   }
 }
 
-/**
- * Opens connections to where address input is heading while the user is still
- * typing, so DNS, TCP and TLS are done by the time they press Enter.
- */
 export class Preconnector {
   private timer: NodeJS.Timeout | null = null;
   private readonly recent = new Map<string, number>();
@@ -30,12 +23,10 @@ export class Preconnector {
     private readonly now: () => number = Date.now,
   ) {}
 
-  /** The search engine is the most likely destination as soon as the address box opens. */
   opened(engine: SearchEngine): void {
     this.connectTo(new URL(buildSearchUrl(engine, '')).origin);
   }
 
-  /** Connects once typing pauses; each keystroke restarts the wait. */
   typed(input: string, engine: SearchEngine): void {
     this.cancel();
     const origin = destinationOrigin(input, engine);

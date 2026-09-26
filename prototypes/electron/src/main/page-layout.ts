@@ -8,7 +8,6 @@ export interface PageFrame {
   radius: number;
 }
 
-/** A site's HTML full screen player removes browser insets and fills the display. */
 export function pageFrame(width: number, height: number, layout: ChromeLayout, pageFullScreen: boolean): PageFrame {
   if (pageFullScreen) return { x: 0, y: 0, width, height, radius: 0 };
   return {

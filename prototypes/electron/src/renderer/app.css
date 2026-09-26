@@ -4,7 +4,6 @@
   --surface-strong: #f6f7f8;
   --surface-hover: rgb(16 18 24 / 0.05);
   --surface-active: #ffffff;
-  /* Grouped containers in the sidebar: favorite tiles, the tab list, the footer. */
   --well: #dcdfe3;
   --well-hover: #d3d6db;
   --border: #d2d5da;
@@ -14,17 +13,14 @@
   --focus: #f28c28;
   --warn: #a34a06;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
-  /* Window background under the UI; transparent over the glass material. */
   --window: var(--bg);
   --chrome-base: var(--bg);
   --well-rim: none;
   --page: var(--surface);
   --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 2px 10px rgb(16 18 24 / 0.05);
   --page-divider: rgb(16 18 24 / 0.06);
-  /* Shown in the page area before a page view is drawn. */
   --page-empty: #f3f4f6;
   --badge: var(--bg);
-  /* Grouped toolbar controls; only drawn as a platter on glass. */
   --platter: transparent;
   --rim: none;
 
@@ -61,15 +57,9 @@
   }
 }
 
-/*
- * Liquid Glass: the system material (NSGlassEffectView) is drawn behind the
- * transparent UI by the main process. These tokens only tint controls on top of
- * it; the web page stays on an opaque card.
- */
 :root[data-material='glass'] {
   --window: transparent;
   --bg: transparent;
-  /* A quiet tint gives the native material a stable contrast floor. */
   --chrome-base: rgb(250 247 243 / 0.38);
   --well-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.45);
   --surface: rgb(255 255 255 / 0.76);

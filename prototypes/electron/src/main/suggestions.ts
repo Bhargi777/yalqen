@@ -1,22 +1,18 @@
 import type { AddressSuggestion } from '../shared/types.js';
 
 export interface SuggestionSources {
-  /** Open tabs other than the active one. */
   tabs: readonly { id: string; title: string; url: string }[];
   bookmarks: readonly { title: string; url: string }[];
-  /** Visits, newest first. */
   history: readonly { title: string; url: string; visitedAt: number }[];
 }
 
 export const MAX_SUGGESTIONS = 6;
 const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { tab: 0, bookmark: 1, history: 2 };
 
-/** Address without scheme and "www.", as people type it. */
 function bareUrl(url: string): string {
   return url.replace(/^[a-z][a-z\d+\-.]*:\/\/(www\.)?/i, '').toLocaleLowerCase('tr');
 }
 
-/** How well `term` matches a page: 0 for no match. */
 function matchScore(term: string, title: string, url: string): number {
   const address = bareUrl(url);
   const name = title.toLocaleLowerCase('tr');
@@ -33,10 +29,6 @@ interface Candidate extends AddressSuggestion {
   lastVisit: number;
 }
 
-/**
- * Pages matching what was typed in the address bar: open tabs, bookmarks and
- * history, one entry per address, best match first.
- */
 export function suggest(input: string, sources: SuggestionSources, limit = MAX_SUGGESTIONS): AddressSuggestion[] {
   const term = input.trim().toLocaleLowerCase('tr').slice(0, 200);
   if (term === '') return [];
@@ -47,7 +39,6 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
       byUrl.set(candidate.url, candidate);
       return;
     }
-    // One entry per address: an open tab wins over a bookmark, which wins over history.
     if (KIND_ORDER[candidate.kind] < KIND_ORDER[existing.kind]) {
       byUrl.set(candidate.url, { ...candidate, visits: existing.visits, lastVisit: existing.lastVisit });
     }

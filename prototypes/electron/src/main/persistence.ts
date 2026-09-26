@@ -22,7 +22,6 @@ export interface SavedWindow {
   tabs: SavedTab[];
 }
 
-/** Open windows and their tabs. Version 1 files held a single window. */
 export interface SavedSession {
   version: 2;
   windows: SavedWindow[];
@@ -59,7 +58,6 @@ export class SessionStore {
     }
   }
 
-  /** Coalesces frequent changes into one write. */
   scheduleSave(snapshot: () => SavedSession, delayMs = 500): void {
     if (this.closed) return;
     if (this.timer) clearTimeout(this.timer);
@@ -75,8 +73,6 @@ export class SessionStore {
     try {
       await fs.promises.mkdir(path.dirname(this.file), { recursive: true });
       await fs.promises.writeFile(temp, JSON.stringify(session));
-      // Checking and renaming on the main thread keeps a late write from
-      // replacing the final synchronous save during app shutdown.
       if (this.closed || generation !== this.generation) {
         await fs.promises.rm(temp, { force: true });
         return;
@@ -95,7 +91,6 @@ export class SessionStore {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    // Write to a temporary file first so a crash never leaves a truncated file.
     const temp = `${this.file}.tmp`;
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     fs.writeFileSync(temp, JSON.stringify(session));

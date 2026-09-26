@@ -12,19 +12,15 @@ export interface DownloadEntry {
   savePath: string;
   state: DownloadState;
   receivedBytes: number;
-  /** 0 when the server did not send a size. */
   totalBytes: number;
   startedAt: number;
-  /** Started in a private tab: listed until private browsing ends, never saved. */
   private?: boolean;
 }
 
 const MAX_ENTRIES = 200;
-/** Downloads listed in the toolbar menu. */
 const MENU_ENTRIES = 8;
 const STATES = new Set<string>(['progressing', 'paused', 'completed', 'cancelled', 'interrupted']);
 
-/** `filename` in `directory`, numbered like "name (1).ext" when the name is taken. */
 export function uniquePath(directory: string, filename: string, taken: (file: string) => boolean): string {
   const name = path.basename(filename).replace(/^\.+/, '') || 'indirme';
   const ext = path.extname(name);
@@ -47,7 +43,6 @@ export function formatBytes(bytes: number): string {
   return `${number.format(unit === 0 ? value : Math.round(value * 10) / 10)} ${units[unit]}`;
 }
 
-/** One line describing where a download stands. */
 export function downloadStatus(entry: DownloadEntry): string {
   const size = entry.totalBytes > 0
     ? `${formatBytes(entry.receivedBytes)} / ${formatBytes(entry.totalBytes)}`
@@ -70,7 +65,6 @@ export function isActive(entry: DownloadEntry): boolean {
   return entry.state === 'progressing' || entry.state === 'paused';
 }
 
-/** Toolbar indicator: running downloads and their overall progress when every size is known. */
 export function downloadsSummary(entries: readonly DownloadEntry[]): DownloadsSummary {
   const active = entries.filter(isActive);
   const known = active.every((entry) => entry.totalBytes > 0);
@@ -90,7 +84,6 @@ function isEntry(value: unknown): value is DownloadEntry {
   );
 }
 
-/** Downloads of this and earlier sessions, newest first. */
 export class DownloadStore {
   readonly file: string;
   private entries: DownloadEntry[] = [];
@@ -100,14 +93,12 @@ export class DownloadStore {
     try {
       const data: unknown = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       if (Array.isArray(data)) {
-        // Downloads still running when the app quit were stopped with it.
         this.entries = data
           .filter(isEntry)
           .slice(0, MAX_ENTRIES)
           .map((entry) => (isActive(entry) ? { ...entry, state: 'interrupted' } : entry));
       }
     } catch {
-      // No list yet, or a damaged file.
     }
   }
 
@@ -126,7 +117,6 @@ export class DownloadStore {
     this.save();
   }
 
-  /** Progress alone is not written to disk; a state change is. */
   update(id: string, patch: Partial<Omit<DownloadEntry, 'id'>>): void {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry) return;
@@ -141,18 +131,15 @@ export class DownloadStore {
     if (this.entries.length !== before) this.save();
   }
 
-  /** Removes finished downloads started at or after `since`; files stay on disk. */
   removeSince(since: number): void {
     this.entries = this.entries.filter((entry) => isActive(entry) || entry.startedAt < since);
     this.save();
   }
 
-  /** Forgets finished downloads of private tabs. */
   removePrivate(): void {
     this.entries = this.entries.filter((entry) => !entry.private || isActive(entry));
   }
 
-  /** Removes every download that is not running; files stay on disk. */
   clearFinished(): void {
     this.entries = this.entries.filter(isActive);
     this.save();
@@ -186,7 +173,6 @@ export interface DownloadActions {
   openFolder(): void;
 }
 
-/** Commands for one download, as [action, label] pairs. */
 export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions & string, string][] {
   switch (entry.state) {
     case 'progressing':
@@ -201,7 +187,6 @@ export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions &
   }
 }
 
-/** Menu of the toolbar's downloads button. */
 export function downloadsMenuTemplate(entries: readonly DownloadEntry[], actions: DownloadActions): MenuItemConstructorOptions[] {
   const recent = entries.slice(0, MENU_ENTRIES);
   return [
@@ -232,7 +217,6 @@ function hostOf(url: string): string {
   }
 }
 
-/** Content of the downloads page; its links are handled by the tab, not loaded. */
 export function renderDownloads(entries: readonly DownloadEntry[]): string {
   if (entries.length === 0) return '<p class="empty">Henüz indirilen bir dosya yok.</p>';
   const rows = entries

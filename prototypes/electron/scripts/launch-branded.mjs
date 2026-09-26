@@ -1,5 +1,3 @@
-// Run a local Electron build with its own macOS bundle identity and icon.
-// The installed Electron.app keeps its original files; our branded copy is in dist/.
 import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +22,6 @@ function brandedMacApp() {
   try {
     current = JSON.parse(fs.readFileSync(stamp, 'utf8'));
   } catch {
-    // First build, or Electron was reinstalled.
   }
   if (JSON.stringify(current) !== JSON.stringify(identity)) {
     fs.rmSync(destination, { recursive: true, force: true });

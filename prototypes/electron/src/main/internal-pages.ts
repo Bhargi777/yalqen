@@ -7,19 +7,17 @@ import type { HistoryEntry } from './history.js';
 import type { AddressSuggestion } from '../shared/types.js';
 import type { RecentPage } from './tabs.js';
 
-// Favicons of recent pages come from the web; nothing else is loaded.
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
 const NEW_TAB_CSP = `${INTERNAL_CSP}; script-src 'self'; connect-src 'self'`;
-const RECENT_MARKER = '<!-- recent -->';
-const WELCOME_MARKER = '<!-- welcome -->';
-const WELCOME_ACTION_MARKER = '<!-- welcome-action -->';
-const HISTORY_MARKER = '<!-- visits -->';
-const DOWNLOADS_MARKER = '<!-- downloads -->';
-const BOOKMARKS_MARKER = '<!-- bookmarks -->';
+const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
+const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
+const WELCOME_ACTION_MARKER = '__YALQEN_WELCOME_ACTION_SLOT__';
+const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
+const DOWNLOADS_MARKER = '__YALQEN_DOWNLOADS_SLOT__';
+const BOOKMARKS_MARKER = '__YALQEN_BOOKMARKS_SLOT__';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 
-/** Must run before the app is ready. */
 export function registerInternalScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -38,7 +36,6 @@ function hostOf(url: string): string {
   }
 }
 
-/** Renders the recently closed pages list, or nothing when there are none. */
 export function renderRecent(pages: RecentPage[]): string {
   if (pages.length === 0) return '';
   const items = pages
@@ -90,7 +87,6 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
   return `${form}<div class="results"><div class="summary"><span>${entries.length} ziyaret</span>${clear}</div><ol>${rows}</ol></div>`;
 }
 
-/** Serves the browser's own pages with their current data filled in. */
 export function serveInternalPages(
   session: Session,
   newTabFile: string,
@@ -129,7 +125,6 @@ export function serveInternalPages(
       });
     }
     if (url.host === 'bookmarks') {
-      // Commands are links and forms the tab handles; only the list itself is served.
       if (url.pathname !== '/') return new Response('Not found', { status: 404 });
       const query = url.searchParams.get('q') ?? '';
       const data = bookmarks(query);
@@ -138,7 +133,6 @@ export function serveInternalPages(
       });
     }
     if (url.host === 'downloads') {
-      // Commands are links the tab handles; only the list itself is served.
       if (url.pathname !== '/') return new Response('Not found', { status: 404 });
       return new Response(downloadsPage.replace(DOWNLOADS_MARKER, renderDownloads(downloads())), {
         headers: {

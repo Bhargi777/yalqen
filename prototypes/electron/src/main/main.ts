@@ -43,11 +43,9 @@ import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
 import { ZoomStore } from './zoom.js';
 
 const DAILY_PARTITION = 'persist:daily';
-// Without the "persist:" prefix the partition lives in memory only.
 const PRIVATE_PARTITION = 'private';
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 
-// Keep prototype data apart from any other Electron app.
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
 const appIcon = app.isPackaged
@@ -57,7 +55,6 @@ const appIcon = app.isPackaged
 registerInternalScheme();
 app.setName('Yalqen');
 
-// One browser process: links and files opened while it runs go to it.
 const primary = app.requestSingleInstanceLock();
 const isFile = (file: string) => {
   try {
@@ -66,7 +63,6 @@ const isFile = (file: string) => {
     return false;
   }
 };
-// Links opened by the system before the browser is ready; opened once it is.
 const pendingUrls: string[] = primary ? externalUrls(process.argv.slice(1), process.cwd(), isFile) : [];
 let openExternal: ((urls: string[]) => void) | null = null;
 const receiveUrls = (urls: string[]) => {
@@ -74,7 +70,6 @@ const receiveUrls = (urls: string[]) => {
   if (openExternal) openExternal(urls);
   else pendingUrls.push(...urls);
 };
-// macOS delivers links and files as events, which can arrive before "ready".
 app.on('open-url', (event, url) => {
   event.preventDefault();
   receiveUrls(externalUrls([url], process.cwd(), isFile));
@@ -103,15 +98,12 @@ function startBrowser(): void {
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
   app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
   const closedTabs: SavedTab[] = [];
-  // Private tabs keep their decisions and zoom levels in memory until the last one closes.
   let privatePermissions = new PermissionStore(null);
   let privateZoom = new ZoomStore(null, defaultZoom);
   const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
 
-  // Open windows, oldest first, and the one menu commands go to.
   const windows: YalqenWindow[] = [];
   let current: YalqenWindow | null = null;
-  // Set once the app is quitting, so closing windows no longer changes the saved session.
   let quitting = false;
   const eachWindow = (run: (window: YalqenWindow) => void) => {
     for (const window of [...windows]) run(window);
@@ -128,7 +120,6 @@ function startBrowser(): void {
         : [],
   });
 
-  // One question at a time; a queued request may be settled by an earlier answer.
   let permissionPrompts: Promise<unknown> = Promise.resolve();
   const askPermission = (
     contents: Electron.WebContents,
@@ -159,8 +150,6 @@ function startBrowser(): void {
     permissionPrompts = answer.catch(() => {});
     return answer;
   };
-  // Sites are asked for the preferred language first; spelling is checked in the
-  // same order (macOS uses the system spell checker instead).
   const applyLanguages = () => {
     const language = settings.get().pageLanguage;
     for (const browsing of [daily, privateBrowsing]) {
@@ -180,7 +169,6 @@ function startBrowser(): void {
       }
       const kinds = requestedPermissions(permission, 'mediaTypes' in details ? details.mediaTypes : []);
       const origin = permissionOrigin(details.requestingUrl);
-      // Only the page's own site is asked about; embedded frames of other sites are refused.
       if (!kinds || !origin || origin !== permissionOrigin(contents.getURL())) {
         callback(false);
         return;
@@ -235,10 +223,7 @@ function startBrowser(): void {
   };
 
   const downloadItems = new Map<string, Electron.DownloadItem>();
-  // Paths given to running downloads, which may not exist on disk yet.
   const reservedPaths = new Set<string>();
-  // Progress events are frequent: the toolbar is updated at most 4 times a
-  // second and an open downloads page reloaded at most once a second.
   let downloadsStateTimer: NodeJS.Timeout | null = null;
   let downloadsPageTimer: NodeJS.Timeout | null = null;
   const downloadsChanged = () => {
@@ -311,7 +296,6 @@ function startBrowser(): void {
       (actions[command as keyof DownloadActions] as (id: string) => void)(params.get('id') ?? '');
     }
   };
-  // Files are saved to the downloads folder without asking, like other browsers.
   const onWillDownload = (isPrivate: boolean) => (_event: Electron.Event, item: Electron.DownloadItem) => {
     const savePath = uniquePath(
       app.getPath('downloads'),
@@ -356,8 +340,6 @@ function startBrowser(): void {
   daily.on('will-download', onWillDownload(false));
   privateBrowsing.on('will-download', onWillDownload(true));
 
-  // Chromium rejects invalid certificates unless this trusts them. Main-frame
-  // rejections are recorded so the warning page can offer to proceed.
   app.on('certificate-error', (event, contents, url, _error, certificate, callback, isMainFrame) => {
     const browsing = contents.session === daily || contents.session === privateBrowsing;
     if (browsing && certificates.allows(url, certificate.fingerprint)) {
@@ -377,11 +359,8 @@ function startBrowser(): void {
     icon: appIcon,
   });
   nativeTheme.themeSource = settings.get().theme;
-  // Device used by the phone view shortcut; the last one picked from the menu.
-  // Radio items keep their own checked state, so the menu is not rebuilt.
   let deviceId = DEFAULT_DEVICE_ID;
 
-  // Unpackaged, the executable is Electron itself and the app folder is its argument.
   const clientPath = app.isPackaged ? undefined : process.execPath;
   const clientArgs = app.isPackaged ? undefined : [path.resolve(process.argv[1] ?? '.')];
   const settingsView = (): SettingsView => {
@@ -442,7 +421,6 @@ function startBrowser(): void {
     },
     onPrivateTabsClosed: () => {
       if (windows.some((window) => window.tabs.hasPrivateTabs)) return;
-      // Nothing of private browsing outlives its last tab.
       privatePermissions = new PermissionStore(null);
       privateZoom = new ZoomStore(null, defaultZoom);
       downloads.removePrivate();
@@ -456,8 +434,6 @@ function startBrowser(): void {
       current = window;
     },
     onWindowClosing: (window) => {
-      // Quitting saved every window already. Closing the last window saves it as
-      // it is, since the app quits with it; closing one of several drops it.
       if (quitting) return;
       if (windows.length === 1) {
         quitting = true;
@@ -507,7 +483,6 @@ function startBrowser(): void {
     );
   }
 
-  /** Runs a menu command in the window it is meant for, opening one if none is left. */
   const inWindow = (run: (window: YalqenWindow) => void) => () => {
     run(current && !current.window.isDestroyed() ? current : openWindow({}));
   };
@@ -518,7 +493,6 @@ function startBrowser(): void {
       newPrivateWindow: () => openWindow({ isPrivate: true, from: current ?? undefined }),
       newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
       closeTab: () => {
-        // The shortcut is app-wide; in the settings window it closes that window.
         if (settingsWindow.isFocused()) settingsWindow.close();
         else if (current?.tabs.activeTabId) current.tabs.close(current.tabs.activeTabId);
       },
@@ -580,7 +554,6 @@ function startBrowser(): void {
     const since = clearSince(request.range, Date.now());
     if (request.history) {
       history.clearSince(since);
-      // Recently closed tabs have no time; they go with any history clearing.
       closedTabs.length = 0;
       reloadPages(HISTORY_URL);
       reloadPages(NEW_TAB_URL);
@@ -589,7 +562,6 @@ function startBrowser(): void {
       downloads.removeSince(since);
       downloadsChanged();
     }
-    // Electron cannot clear these by time; they are cleared entirely.
     if (request.siteData) await daily.clearStorageData();
     if (request.cache) await daily.clearCache();
   });
@@ -619,7 +591,6 @@ function startBrowser(): void {
     history.saveNow();
     downloads.saveNow();
   });
-  // Clicking the Dock icon with no window open starts a new one.
   app.on('activate', () => {
     if (windows.length === 0 && !quitting) openWindow({});
   });
@@ -627,7 +598,6 @@ function startBrowser(): void {
   const saved = settings.get().startupBehavior === 'restore' ? store.load() : null;
   const restored = saved?.windows.filter((window) => window.tabs.length > 0) ?? [];
   const [first, ...rest] = pendingUrls.splice(0);
-  // Started to open a link with nothing to restore: the link is the first tab.
   if (restored.length === 0) openWindow(first ? { url: first } : {});
   for (const window of restored) openWindow({ saved: window });
   openExternal = (urls) => {
@@ -647,11 +617,9 @@ app.setAboutPanelOptions({
 });
 
 if (!primary) {
-  // Another Yalqen is running; it received this launch's links.
   app.quit();
 } else {
   app.whenReady().then(() => {
-    // The unpackaged macOS run needs its Dock icon set separately from the bundle icon.
     app.dock?.setIcon(appIcon);
     startBrowser();
   });

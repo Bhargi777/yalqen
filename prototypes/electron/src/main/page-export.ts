@@ -1,6 +1,5 @@
 const MAX_NAME = 120;
 
-/** A file name for saving a page as PDF, from its title or else its address. */
 export function pdfFileName(title: string, url: string): string {
   let name = title.trim();
   if (name === '' || name === url) {
@@ -19,7 +18,6 @@ export function pdfFileName(title: string, url: string): string {
   return `${safe || 'sayfa'}.pdf`;
 }
 
-/** Pages whose source can be shown; the source view itself and internal pages cannot. */
 export function canViewSource(url: string): boolean {
   return /^(https?|file):/i.test(url);
 }

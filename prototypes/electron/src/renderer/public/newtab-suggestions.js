@@ -1,4 +1,3 @@
-// Runs only on yalqen://newtab/. The browser supplies local page suggestions.
 const field = document.getElementById('q');
 const form = document.getElementById('search-form');
 const list = document.getElementById('suggestions');

@@ -9,13 +9,10 @@
   const MIN_WIDTH = 180;
   const MAX_WIDTH = 360;
   const DEFAULT_WIDTH = 220;
-  /** Top bar height, page card gap to the right and bottom window edges, card radius. */
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
   const PAGE_RADIUS = 16;
-  /** Space kept for macOS traffic lights at the top-left edge. */
   const WINDOW_CONTROLS_END = 88;
-  // Versioned so the wider sidebar of earlier designs is not restored.
   const PREFS_KEY = 'yalqen:panel:2';
   const DEVICE_BEZEL = 10;
 
@@ -42,19 +39,14 @@
       width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved.width) || DEFAULT_WIDTH));
     }
   } catch {
-    // Preferences are optional.
   }
 
-  // Traffic lights are drawn by macOS only.
   const windowControls = navigator.userAgent.includes('Macintosh');
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
-  // Collapsed state is a setting kept by the main process; width is a local convenience.
   const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(browser.sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : width) : PAGE_INSET);
   const side = $derived(browser.panelSide);
-  // macOS keeps room for the window controls when the toolbar is hidden.
   const topInset = $derived(browser.toolbarVisible || windowControls ? CHROME_HEIGHT : 0);
-  // The new tab page is an empty board: no card, the page blends into the window.
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = browser.material;
@@ -71,7 +63,6 @@
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
-      // Preferences are optional.
     }
   });
 
@@ -124,7 +115,7 @@
     style:margin={browser.pageFullScreen ? '0' : side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
     style:border-radius={browser.pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
-    <!-- The page view is drawn by the main process over this area. -->
+
     <div class="viewport" aria-hidden="true">
       {#if browser.device}
         {@const device = browser.device}

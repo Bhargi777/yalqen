@@ -1,4 +1,3 @@
-// Runs against the compiled main-process modules (npm test builds them first).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import certificates from '../dist/main/certificates.js';
@@ -15,7 +14,6 @@ test('a warning page can trust only the certificate it was shown for', () => {
   assert.equal(exceptions.proceed('wrong', URL_A), false);
   assert.equal(exceptions.proceed(token, 'https://other.test/'), false);
   assert.equal(exceptions.proceed(token, URL_A), true);
-  // Tokens are single use.
   assert.equal(exceptions.proceed(token, URL_A), false);
 
   assert.equal(exceptions.allows('https://a.test:8443/other', 'fp1'), true);

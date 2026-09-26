@@ -4,11 +4,9 @@ import type { DeviceId } from '../shared/types.js';
 export interface Device {
   id: DeviceId;
   label: string;
-  /** CSS pixels in portrait orientation. */
   width: number;
   height: number;
   deviceScaleFactor: number;
-  /** Screen corner radius in CSS pixels. */
   cornerRadius: number;
   userAgent: string;
   platform: string;
@@ -39,7 +37,6 @@ export interface Emulation {
   landscape: boolean;
 }
 
-/** Device size in CSS pixels for the current orientation. */
 export function deviceSize(emulation: Emulation): { width: number; height: number } {
   const device = findDevice(emulation.deviceId);
   return emulation.landscape
@@ -49,10 +46,6 @@ export function deviceSize(emulation: Emulation): { width: number; height: numbe
 
 const PROTOCOL_VERSION = '1.3';
 
-/**
- * Applies the device through the DevTools protocol. `scale` shrinks the
- * rendered page when the window is smaller than the device.
- */
 export async function applyDeviceMetrics(contents: WebContents, emulation: Emulation, scale: number): Promise<void> {
   const device = findDevice(emulation.deviceId);
   const { width, height } = deviceSize(emulation);
@@ -83,16 +76,11 @@ export async function applyEmulation(contents: WebContents, emulation: Emulation
   });
 }
 
-/**
- * Clears the overrides but keeps the protocol session, which background tab
- * freezing also uses.
- */
 export async function clearEmulation(contents: WebContents): Promise<void> {
   if (contents.isDestroyed() || !contents.debugger.isAttached()) return;
   const dbg = contents.debugger;
   await dbg.sendCommand('Emulation.clearDeviceMetricsOverride');
   await dbg.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: false });
   await dbg.sendCommand('Emulation.setEmitTouchEventsForMouse', { enabled: false });
-  // An empty user agent removes the override.
   await dbg.sendCommand('Emulation.setUserAgentOverride', { userAgent: '' });
 }

@@ -35,13 +35,9 @@ import { TabManager, type DetachedTab } from './tabs.js';
 import { resolveInput } from './url.js';
 import type { ZoomStore } from './zoom.js';
 
-// Offset of the traffic lights from the top-left corner. Their 14pt buttons then
-// share the 22px center line of the back and forward capsule.
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
-// A new window opens this far from the one it came from.
 const CASCADE_OFFSET = 24;
 
-/** What every window shares: sessions, stores and app-wide actions. */
 export interface AppContext {
   icon: string;
   daily: Session;
@@ -53,45 +49,33 @@ export interface AppContext {
   bookmarks: BookmarkStore;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
-  /** Recently closed tabs of all windows. */
   closedTabs: SavedTab[];
   permissionsFor(isPrivate: boolean): PermissionStore;
   zoomFor(isPrivate: boolean): ZoomStore;
   searchEngine(): SearchEngine;
-  /** Download commands; "show all" opens the list in `window`. */
   downloadActions(window: YalqenWindow): DownloadActions;
   downloadsChanged(): void;
   toggleBookmark(url: string, title: string): void;
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
-  /** Device used by the phone view shortcut. */
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
-  /** A window's tabs changed; `persist` asks for the saved session to be updated. */
   onWindowChange(persist: boolean): void;
-  /** A window has no private tabs left. */
   onPrivateTabsClosed(): void;
   onWindowFocus(window: YalqenWindow): void;
-  /** The window is closing; it is still listed and its tabs are still open. */
   onWindowClosing(window: YalqenWindow): void;
   onWindowClosed(window: YalqenWindow): void;
 }
 
 export interface WindowOptions {
-  /** Every tab of a private window is private, and the window is not restored. */
   isPrivate?: boolean;
-  /** Tabs to restore. */
   saved?: SavedWindow;
-  /** Address of the first tab, instead of a new tab page. */
   url?: string;
-  /** A tab moved from another window. */
   tab?: DetachedTab;
-  /** Window it was opened from, to place the new one next to it. */
   from?: YalqenWindow;
 }
 
-/** One browser window: its tabs, toolbar, command bar and find bar. */
 export class YalqenWindow {
   readonly window: BaseWindow;
   readonly tabs: TabManager;
@@ -107,10 +91,8 @@ export class YalqenWindow {
     pageInset: 8,
     pageRadius: 16,
   };
-  // Optimistic until the glass view is added, so the UI does not start opaque.
   private glassApplied = glassAvailable;
   private htmlFullScreenTabId: string | null = null;
-  // Tab and address (without fragment) the find bar searches; it closes when either changes.
   private findTarget: { tabId: string; url: string } | null = null;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
@@ -129,7 +111,6 @@ export class YalqenWindow {
       title: this.isPrivate ? 'Yalqen (gizli)' : 'Yalqen',
       icon: app.icon,
       titleBarStyle: 'hiddenInset',
-      // The glass view sits behind the UI, so the window itself must be see-through.
       transparent: glassAvailable,
     });
 
@@ -282,7 +263,6 @@ export class YalqenWindow {
     this.window.on('leave-full-screen', () => this.applyLayout());
     this.applyLayout();
 
-    // "Reduce transparency" can change while the app runs; the UI then paints opaque.
     nativeTheme.on('updated', this.pushState);
     this.ui.webContents.once('did-finish-load', () => {
       this.glassApplied = applyGlass(this.window);
@@ -311,8 +291,6 @@ export class YalqenWindow {
 
   private navigateByGesture(direction: 'back' | 'forward', source: 'native' | 'page'): void {
     if (process.platform !== 'darwin') return;
-    // Some macOS settings deliver both the native swipe and horizontal wheel
-    // stream for one movement. Let only the first source navigate it.
     const now = Date.now();
     const last = this.lastNavigationGesture;
     if (last && last.source !== source && last.direction === direction && now - last.at < 650) return;
@@ -321,7 +299,6 @@ export class YalqenWindow {
     else this.tabs.goForward();
   }
 
-  /** The toolbar and sidebar page of this window. */
   get uiContents(): Electron.WebContents {
     return this.ui.webContents;
   }
@@ -360,7 +337,6 @@ export class YalqenWindow {
     this.applyLayout();
   }
 
-  /** Opens the centered address bar with the current address selected. */
   openAddress(): void {
     const url = this.tabs.activeUrl;
     this.preconnector.opened(this.app.searchEngine());
@@ -371,7 +347,6 @@ export class YalqenWindow {
     });
   }
 
-  /** Opens the find bar, or moves to the next or previous match when `forward` is set. */
   openFind(forward?: boolean): void {
     if (this.isPageFullScreen() || !this.tabs.activeTabId) return;
     this.commandBar.close();
@@ -409,7 +384,6 @@ export class YalqenWindow {
     }
   }
 
-  /** Moves the active tab into a new window; the last tab of a window stays. */
   moveActiveTabToNewWindow(): void {
     const id = this.tabs.activeTabId;
     const tab = id ? this.tabs.detach(id) : null;
@@ -490,7 +464,6 @@ export class YalqenWindow {
             },
             revokeCertificateException: () => {
               app.certificates.revoke(tab.url);
-              // Open connections were already accepted; new ones check the certificate again.
               const browsing = tab.isPrivate ? app.privateBrowsing : app.daily;
               void browsing.closeAllConnections().then(() => tabs.reload());
             },
@@ -556,7 +529,6 @@ export class YalqenWindow {
       canGoBack: history.canGoBack(),
       canGoForward: history.canGoForward(),
       canViewSource: canViewSource(contents.getURL()),
-      // Like other browsers, links open next to the page without leaving it.
       openInNewTab: (url) => tabs.open(url, { activate: false, isPrivate }),
       openInNewWindow: (url) => this.app.openWindow({ url, isPrivate, from: this }),
       copyText: (text) => clipboard.writeText(text),
@@ -600,7 +572,6 @@ export class YalqenWindow {
     this.pushState();
   }
 
-  // macOS moves the controls into its own title bar in full screen.
   private showWindowControls(): void {
     this.window.setWindowButtonVisibility(true);
     if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);

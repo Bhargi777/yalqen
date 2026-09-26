@@ -1,8 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ClearDataRequest, SettingsApi, SettingsChannel, SettingsValues, SettingsView } from '../shared/types.js';
 
-// Sandboxed preloads cannot require local modules, so channel names are
-// repeated here and checked against the shared definition at compile time.
 const channel: typeof SettingsChannel = {
   get: 'yalqen-settings:get',
   update: 'yalqen-settings:update',

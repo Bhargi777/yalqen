@@ -1,45 +1,32 @@
 export type TabId = string;
 
-/** Scheme for the browser's own pages, served from the tab session. */
 export const INTERNAL_SCHEME = 'yalqen';
 export const NEW_TAB_URL = 'yalqen://newtab/';
 export const HISTORY_URL = 'yalqen://history/';
 export const DOWNLOADS_URL = 'yalqen://downloads/';
 export const BOOKMARKS_URL = 'yalqen://bookmarks/';
-/** Internal pages whose links and forms are commands handled by the browser. */
 export type CommandPage = 'downloads' | 'bookmarks';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
-/** DNS over HTTPS: off, the system resolver's provider when it has one, or a fixed provider. */
 export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
 export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
-/** Language sites are asked for first, then the other one. */
 export type PageLanguage = 'tr' | 'en';
-/**
- * `dangerous`: https with a certificate the user chose to trust after a warning.
- * `local`: the browser's own pages, files and data, which have no connection to show.
- */
 export type SecurityState = 'secure' | 'insecure' | 'dangerous' | 'local';
 
-/** Tab data exposed to the UI. A tab can exist without a live page. */
 export interface TabSnapshot {
   id: TabId;
   title: string;
   url: string;
   faviconUrl: string | null;
   live: boolean;
-  /** Live, but its page is frozen in the background (no JS, timers or animations). */
   frozen: boolean;
   loading: boolean;
   keepAlive: boolean;
   security: SecurityState;
-  /** Private tab: in-memory session, no history, not restored. */
   isPrivate: boolean;
   bookmarked: boolean;
-  /** New windows the page tried to open without a click or key press. */
   blockedPopups: number;
-  /** The page is playing sound, muted or not. */
   audible: boolean;
   muted: boolean;
   canGoBack: boolean;
@@ -48,13 +35,10 @@ export interface TabSnapshot {
 
 export type DeviceId = 'iphone-15' | 'iphone-se' | 'pixel-8' | 'ipad-mini';
 
-/** Where the emulated device screen sits, relative to the page area. */
 export interface DeviceFrame {
   label: string;
-  /** Emulated size in CSS pixels. */
   width: number;
   height: number;
-  /** Rendered size divided by emulated size; below 1 when the window is too small. */
   scale: number;
   cornerRadius: number;
   x: number;
@@ -63,20 +47,13 @@ export interface DeviceFrame {
   viewHeight: number;
 }
 
-/**
- * `glass`: the window is transparent over the system glass material and only the
- * page card is opaque. `opaque`: no glass view (other platforms, addon missing)
- * or the system "Reduce transparency" setting is on.
- */
 export type WindowMaterial = 'glass' | 'opaque';
 
-/** Which edge of the window the tab panel sits on. */
 export type PanelSide = 'left' | 'right';
 
 export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
-  /** The active site's HTML full screen player occupies the whole window. */
   pageFullScreen: boolean;
   addressPlaceholder: string;
   panelCollapsed: boolean;
@@ -84,35 +61,25 @@ export interface BrowserState {
   sidebarVisible: boolean;
   toolbarVisible: boolean;
   material: WindowMaterial;
-  /** Set while the active tab is shown as a device. */
   device: DeviceFrame | null;
-  /** Zoom factor of the active page; 1 is actual size. */
   zoom: number;
-  /** Zoom of pages without a level of their own; the address bar shows other levels. */
   defaultZoom: number;
   downloads: DownloadsSummary;
 }
 
-/** Running downloads for the toolbar; `progress` is 0–1, or null when a size is unknown. */
 export interface DownloadsSummary {
   active: number;
   progress: number | null;
 }
 
-/** Regions of the window reserved for the UI; the page view fills the rest. */
 export interface ChromeLayout {
-  /** Width of the sidebar, including its gap to the page card. */
   panelWidth: number;
   panelSide: PanelSide;
-  /** Height of the top bar above the page card. */
   chromeHeight: number;
-  /** Gap between the page card and the right and bottom window edges. */
   pageInset: number;
-  /** Corner radius of the page card. */
   pageRadius: number;
 }
 
-/** Requests the UI sends to the main process. */
 export type UiAction =
   | { type: 'new-tab'; url?: string }
   | { type: 'activate-tab'; id: TabId }
@@ -146,7 +113,6 @@ export const IpcChannel = {
   action: 'yalqen:action',
 } as const;
 
-/** API exposed to the UI renderer by the preload script. */
 export interface YalqenApi {
   getState(): Promise<BrowserState>;
   onState(listener: (state: BrowserState) => void): () => void;
@@ -154,14 +120,12 @@ export interface YalqenApi {
   send(action: UiAction): void;
 }
 
-/** Sent to the command bar each time it opens. */
 export interface CommandBarOpen {
   placeholder: string;
   mode: 'navigate' | 'new-tab';
   value?: string;
 }
 
-/** A page offered below the address bar; `tabId` is set for an open tab to switch to. */
 export interface AddressSuggestion {
   kind: 'tab' | 'bookmark' | 'history';
   title: string;
@@ -169,18 +133,15 @@ export interface AddressSuggestion {
   tabId?: TabId;
 }
 
-/** Suggestions for the text they were computed for. */
 export interface CommandBarSuggestions {
   input: string;
   suggestions: AddressSuggestion[];
 }
 
-/** Requests the command bar sends to the main process. */
 export type CommandBarAction =
   | { type: 'submit'; input: string }
   | { type: 'switch-tab'; id: TabId }
   | { type: 'dismiss' }
-  /** The text changed; the bar stays open. */
   | { type: 'input'; input: string };
 
 export const CommandBarChannel = {
@@ -189,22 +150,18 @@ export const CommandBarChannel = {
   action: 'yalqen-command:action',
 } as const;
 
-/** API exposed to the command bar overlay by its preload script. */
 export interface CommandBarApi {
   onOpen(listener: (open: CommandBarOpen) => void): () => void;
   onSuggestions(listener: (suggestions: CommandBarSuggestions) => void): () => void;
   send(action: CommandBarAction): void;
 }
 
-/** Match counts for the find bar; `active` is 0 when nothing matches. */
 export interface FindResult {
   active: number;
   matches: number;
 }
 
-/** Requests the find bar sends to the main process. */
 export type FindBarAction =
-  /** `next` moves within the current matches instead of starting a new search. */
   | { type: 'find'; text: string; forward: boolean; next: boolean }
   | { type: 'close' };
 
@@ -214,46 +171,34 @@ export const FindBarChannel = {
   action: 'yalqen-find:action',
 } as const;
 
-/** API exposed to the find bar overlay by its preload script. */
 export interface FindBarApi {
   onOpen(listener: () => void): () => void;
   onResult(listener: (result: FindResult) => void): () => void;
   send(action: FindBarAction): void;
 }
 
-/** User settings the settings window can change. */
 export interface SettingsValues {
   searchEngine: SearchEngineId;
-  /** Used when `searchEngine` is `custom`; `%s` marks the query. */
   customSearchTemplate: string | null;
   theme: ThemeSource;
-  /** What to open when the browser starts again. */
   startupBehavior: 'restore' | 'new-tab';
   panelCollapsed: boolean;
   panelSide: PanelSide;
   sidebarVisible: boolean;
   toolbarVisible: boolean;
-  /** Freeze background tabs' pages when switching away from them. */
   freezeBackgroundTabs: boolean;
-  /** Block ads on web pages. */
   adBlocking: boolean;
-  /** Load http pages over https, asking before falling back to http. */
   httpsOnly: boolean;
-  /** Keep other sites than the page's from reading or creating cookies. */
   blockThirdPartyCookies: boolean;
   secureDns: SecureDnsSetting;
-  /** Default font size of new pages. */
   fontSize: FontSizeSetting;
-  /** Zoom of pages without a level of their own. */
   defaultZoom: number;
   pageLanguage: PageLanguage;
-  /** Whether the one-time first launch welcome has been dismissed. */
   welcomeCompleted: boolean;
 }
 
 export interface SettingsView {
   values: SettingsValues;
-  /** Whether web links from other apps open in this browser. */
   defaultBrowser: boolean;
   engines: { id: SearchEngineId; label: string }[];
   customTemplateValid: boolean;
@@ -261,7 +206,6 @@ export interface SettingsView {
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
 
-/** What to clear from the settings window. Site data and the cache are always cleared entirely. */
 export interface ClearDataRequest {
   range: ClearDataRange;
   history: boolean;
@@ -278,13 +222,10 @@ export const SettingsChannel = {
   makeDefault: 'yalqen-settings:make-default',
 } as const;
 
-/** API exposed to the settings window by its preload script. */
 export interface SettingsApi {
   get(): Promise<SettingsView>;
   update(patch: Partial<SettingsValues>): Promise<SettingsView>;
   onChange(listener: (view: SettingsView) => void): () => void;
-  /** Resolves once the data is cleared. */
   clearData(request: ClearDataRequest): Promise<void>;
-  /** Asks the system to open web links in this browser. */
   makeDefault(): Promise<SettingsView>;
 }

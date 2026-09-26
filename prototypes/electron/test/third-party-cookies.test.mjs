@@ -1,4 +1,3 @@
-// Runs against the compiled main-process modules (npm test builds them first).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import cookies from '../dist/main/third-party-cookies.js';
@@ -19,7 +18,6 @@ test('sites are registrable domains, public suffixes included', () => {
 test('requests to another site are third party', () => {
   assert.equal(isThirdParty('https://cdn.example.com/x.js', 'https://www.example.com/'), false);
   assert.equal(isThirdParty('https://tracker.net/p', 'https://www.example.com/'), true);
-  // Neighbours under a public suffix are different sites.
   assert.equal(isThirdParty('https://a.gov.tr/', 'https://b.gov.tr/'), true);
   assert.equal(isThirdParty('https://tracker.net/p', 'yalqen://newtab/'), true);
   assert.equal(isThirdParty('data:text/plain,x', 'https://example.com/'), false);

@@ -1,4 +1,3 @@
-// Runs against the compiled main-process modules (npm test builds them first).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import pageExport from '../dist/main/page-export.js';

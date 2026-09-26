@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Per-site permissions. Pop-ups are never asked about: they are blocked unless allowed. */
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
 export type Decision = 'allow' | 'deny';
 
@@ -15,10 +14,6 @@ export const PERMISSION_LABELS: Record<SitePermission, string> = {
   popups: 'Açılır pencereler',
 };
 
-/**
- * Site permissions a Chromium permission request needs, or null for requests
- * the user is never asked about.
- */
 export function requestedPermissions(permission: string, mediaTypes: readonly string[] = []): SitePermission[] | null {
   switch (permission) {
     case 'media': {
@@ -36,7 +31,6 @@ export function requestedPermissions(permission: string, mediaTypes: readonly st
   }
 }
 
-/** The origin permissions are kept for: web pages only. */
 export function permissionOrigin(url: string | undefined): string | null {
   if (!url) return null;
   try {
@@ -47,7 +41,6 @@ export function permissionOrigin(url: string | undefined): string | null {
   }
 }
 
-/** Question shown when `host` asks for `kinds`. */
 export function permissionQuestion(host: string, kinds: readonly SitePermission[]): string {
   if (kinds.includes('geolocation')) return `${host} konumunuzu öğrenmek istiyor.`;
   if (kinds.includes('notifications')) return `${host} bildirim göstermek istiyor.`;
@@ -60,10 +53,6 @@ interface SavedPermissions {
   sites: Record<string, Partial<Record<SitePermission, Decision>>>;
 }
 
-/**
- * Per-site decisions. "Allow" and "block" are saved; a one-time grant lasts
- * until the app quits. Without a directory nothing is saved, as for private tabs.
- */
 export class PermissionStore {
   readonly file: string | null;
   private readonly sites = new Map<string, Map<SitePermission, Decision>>();
@@ -74,7 +63,6 @@ export class PermissionStore {
     this.load();
   }
 
-  /** `ask` unless every permission is allowed, or one is blocked. */
   decide(origin: string, kinds: readonly SitePermission[]): Decision | 'ask' {
     const decisions = kinds.map((kind) => this.get(origin, kind) ?? (this.once.has(`${origin} ${kind}`) ? 'allow' : undefined));
     if (decisions.includes('deny')) return 'deny';
@@ -85,7 +73,6 @@ export class PermissionStore {
     return this.sites.get(origin)?.get(kind);
   }
 
-  /** Saved decisions for a site, in a fixed order. */
   list(origin: string): { kind: SitePermission; decision: Decision }[] {
     const site = this.sites.get(origin);
     return SITE_PERMISSIONS.flatMap((kind) => {
@@ -94,7 +81,6 @@ export class PermissionStore {
     });
   }
 
-  /** Saves a decision; null asks again next time. */
   set(origin: string, kinds: readonly SitePermission[], decision: Decision | null): void {
     let site = this.sites.get(origin);
     for (const kind of kinds) {
@@ -130,7 +116,6 @@ export class PermissionStore {
         if (site.size > 0) this.sites.set(origin, site);
       }
     } catch {
-      // Missing or unreadable: every site is asked again.
     }
   }
 

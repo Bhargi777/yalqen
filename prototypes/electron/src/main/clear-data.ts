@@ -9,13 +9,11 @@ const RANGE_MS: Record<ClearDataRange, number> = {
   all: Infinity,
 };
 
-/** Start of the range to clear; 0 clears everything. */
 export function clearSince(range: ClearDataRange, now: number): number {
   const span = RANGE_MS[range];
   return Number.isFinite(span) ? now - span : 0;
 }
 
-/** Keeps a well-formed request from the settings window, or null. */
 export function sanitizeClearRequest(value: unknown): ClearDataRequest | null {
   if (typeof value !== 'object' || value === null) return null;
   const request = value as Record<string, unknown>;

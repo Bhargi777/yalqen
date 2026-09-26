@@ -1,4 +1,3 @@
-// Runs against the compiled main-process modules (npm test builds them first).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -48,7 +47,6 @@ test('decisions are asked for, saved per site and survive a restart', () => {
     assert.equal(store.decide(SITE, ['camera']), 'ask');
     store.set(SITE, ['camera'], 'allow');
     assert.equal(store.decide(SITE, ['camera']), 'allow');
-    // Every permission of a request must be allowed.
     assert.equal(store.decide(SITE, ['camera', 'microphone']), 'ask');
     store.set(SITE, ['microphone'], 'deny');
     assert.equal(store.decide(SITE, ['camera', 'microphone']), 'deny');
@@ -71,7 +69,6 @@ test('one-time grants are not saved', () => {
     store.allowOnce(SITE, ['geolocation']);
     assert.equal(store.decide(SITE, ['geolocation']), 'allow');
     assert.equal(new PermissionStore(dir).decide(SITE, ['geolocation']), 'ask');
-    // A saved decision replaces the one-time grant.
     store.set(SITE, ['geolocation'], null);
     assert.equal(store.decide(SITE, ['geolocation']), 'ask');
   });

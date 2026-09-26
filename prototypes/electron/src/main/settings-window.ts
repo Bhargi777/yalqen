@@ -7,7 +7,6 @@ export interface SettingsWindowOptions {
   icon: string;
 }
 
-/** A single settings window, created on demand and released when closed. */
 export class SettingsWindow {
   private window: BrowserWindow | null = null;
 

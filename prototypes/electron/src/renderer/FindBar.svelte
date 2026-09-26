@@ -35,7 +35,6 @@
     const offOpen = window.yalqenFind.onOpen(() => {
       input?.focus();
       input?.select();
-      // Highlights are cleared when the bar closes; show them again.
       if (value !== '') search();
     });
     const offResult = window.yalqenFind.onResult((next) => (result = next));
