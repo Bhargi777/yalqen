@@ -45,6 +45,12 @@
         "to": "brand/icon-512.png"
       }
     ],
+    "protocols": [
+      {
+        "name": "Web sayfası",
+        "schemes": ["http", "https"]
+      }
+    ],
     "mac": {
       "target": "dmg",
       "icon": "yalqen-fitted.icns",

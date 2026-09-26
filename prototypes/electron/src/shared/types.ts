@@ -240,6 +240,8 @@ export interface SettingsValues {
 
 export interface SettingsView {
   values: SettingsValues;
+  /** Whether web links from other apps open in this browser. */
+  defaultBrowser: boolean;
   engines: { id: SearchEngineId; label: string }[];
   customTemplateValid: boolean;
 }
@@ -260,6 +262,7 @@ export const SettingsChannel = {
   update: 'yalqen-settings:update',
   changed: 'yalqen-settings:changed',
   clearData: 'yalqen-settings:clear-data',
+  makeDefault: 'yalqen-settings:make-default',
 } as const;
 
 /** API exposed to the settings window by its preload script. */
@@ -269,4 +272,6 @@ export interface SettingsApi {
   onChange(listener: (view: SettingsView) => void): () => void;
   /** Resolves once the data is cleared. */
   clearData(request: ClearDataRequest): Promise<void>;
+  /** Asks the system to open web links in this browser. */
+  makeDefault(): Promise<SettingsView>;
 }

@@ -21,6 +21,7 @@ import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { DownloadStore, uniquePath, type DownloadActions } from './downloads.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
+import { externalUrls } from './launch.js';
 import { buildMenu } from './menu.js';
 import {
   PermissionStore,
@@ -51,6 +52,36 @@ const appIcon = app.isPackaged
 
 registerInternalScheme();
 app.setName('Yalqen');
+
+// One browser process: links and files opened while it runs go to it.
+const primary = app.requestSingleInstanceLock();
+const isFile = (file: string) => {
+  try {
+    return fs.statSync(file).isFile();
+  } catch {
+    return false;
+  }
+};
+// Links opened by the system before the browser is ready; opened once it is.
+const pendingUrls: string[] = primary ? externalUrls(process.argv.slice(1), process.cwd(), isFile) : [];
+let openExternal: ((urls: string[]) => void) | null = null;
+const receiveUrls = (urls: string[]) => {
+  if (urls.length === 0) return;
+  if (openExternal) openExternal(urls);
+  else pendingUrls.push(...urls);
+};
+// macOS delivers links and files as events, which can arrive before "ready".
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  receiveUrls(externalUrls([url], process.cwd(), isFile));
+});
+app.on('open-file', (event, file) => {
+  event.preventDefault();
+  receiveUrls(externalUrls([file], process.cwd(), isFile));
+});
+app.on('second-instance', (_event, argv, workingDirectory) => {
+  receiveUrls(externalUrls(argv.slice(1), workingDirectory, isFile));
+});
 
 function startBrowser(): void {
   const userData = app.getPath('userData');
@@ -334,10 +365,14 @@ function startBrowser(): void {
   // Radio items keep their own checked state, so the menu is not rebuilt.
   let deviceId = DEFAULT_DEVICE_ID;
 
+  // Unpackaged, the executable is Electron itself and the app folder is its argument.
+  const clientPath = app.isPackaged ? undefined : process.execPath;
+  const clientArgs = app.isPackaged ? undefined : [path.resolve(process.argv[1] ?? '.')];
   const settingsView = (): SettingsView => {
     const { version: _version, ...values } = settings.get();
     return {
       values,
+      defaultBrowser: app.isDefaultProtocolClient('https', clientPath, clientArgs),
       engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       customTemplateValid: isValidSearchTemplate(values.customSearchTemplate),
     };
@@ -527,6 +562,15 @@ function startBrowser(): void {
     if (request.siteData) await daily.clearStorageData();
     if (request.cache) await daily.clearCache();
   });
+  ipcMain.handle(SettingsChannel.makeDefault, (event) => {
+    if (event.sender !== settingsWindow.contents) return null;
+    for (const scheme of ['http', 'https']) {
+      if (!app.setAsDefaultProtocolClient(scheme, clientPath, clientArgs)) {
+        console.warn(`[default-browser] the system did not accept ${scheme}`);
+      }
+    }
+    return settingsView();
+  });
   ipcMain.handle(SettingsChannel.update, (event, patch: unknown) => {
     if (event.sender !== settingsWindow.contents) return null;
     updateSettings(patch);
@@ -551,8 +595,17 @@ function startBrowser(): void {
 
   const saved = settings.get().startupBehavior === 'restore' ? store.load() : null;
   const restored = saved?.windows.filter((window) => window.tabs.length > 0) ?? [];
-  if (restored.length === 0) openWindow({});
+  const [first, ...rest] = pendingUrls.splice(0);
+  // Started to open a link with nothing to restore: the link is the first tab.
+  if (restored.length === 0) openWindow(first ? { url: first } : {});
   for (const window of restored) openWindow({ saved: window });
+  openExternal = (urls) => {
+    const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
+    for (const url of urls) window.tabs.open(url);
+    window.focus();
+  };
+  if (restored.length > 0 && first) openExternal([first, ...rest]);
+  else if (rest.length > 0) openExternal(rest);
 }
 
 app.setAboutPanelOptions({
@@ -562,9 +615,14 @@ app.setAboutPanelOptions({
   iconPath: appIcon,
 });
 
-app.whenReady().then(() => {
-  // The unpackaged macOS run needs its Dock icon set separately from the bundle icon.
-  app.dock?.setIcon(appIcon);
-  startBrowser();
-});
+if (!primary) {
+  // Another Yalqen is running; it received this launch's links.
+  app.quit();
+} else {
+  app.whenReady().then(() => {
+    // The unpackaged macOS run needs its Dock icon set separately from the bundle icon.
+    app.dock?.setIcon(appIcon);
+    startBrowser();
+  });
+}
 app.on('window-all-closed', () => app.quit());

@@ -131,6 +131,17 @@
       </div>
     {/if}
 
+    <h2>Varsayılan tarayıcı</h2>
+    <div class="row">
+      <span class="label">
+        <span>{view.defaultBrowser ? 'Yalqen varsayılan tarayıcınız' : 'Yalqen varsayılan tarayıcı değil'}</span>
+        <span class="hint">Diğer uygulamalardaki bağlantılar varsayılan tarayıcıda açılır.</span>
+      </span>
+      {#if !view.defaultBrowser}
+        <button class="primary" onclick={async () => (view = await api.makeDefault())}>Varsayılan yap</button>
+      {/if}
+    </div>
+
     <h2>Açılış</h2>
     <div class="row">
       <span class="label">

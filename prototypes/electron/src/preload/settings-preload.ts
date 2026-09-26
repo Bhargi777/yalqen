@@ -8,6 +8,7 @@ const channel: typeof SettingsChannel = {
   update: 'yalqen-settings:update',
   changed: 'yalqen-settings:changed',
   clearData: 'yalqen-settings:clear-data',
+  makeDefault: 'yalqen-settings:make-default',
 };
 
 const api: SettingsApi = {
@@ -15,6 +16,7 @@ const api: SettingsApi = {
   update: (patch: Partial<SettingsValues>) =>
     ipcRenderer.invoke(channel.update, patch) as Promise<SettingsView>,
   clearData: (request: ClearDataRequest) => ipcRenderer.invoke(channel.clearData, request) as Promise<void>,
+  makeDefault: () => ipcRenderer.invoke(channel.makeDefault) as Promise<SettingsView>,
   onChange: (listener) => {
     const handler = (_event: IpcRendererEvent, view: SettingsView) => listener(view);
     ipcRenderer.on(channel.changed, handler);
