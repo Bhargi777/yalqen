@@ -17,6 +17,7 @@ export default defineConfig({
         index: page('index.html'),
         settings: page('settings.html'),
         command: page('command.html'),
+        find: page('find.html'),
       },
     },
   },

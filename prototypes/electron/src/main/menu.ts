@@ -16,6 +16,8 @@ export interface MenuActions {
   /** Selects the tab at `index`; -1 selects the last tab. */
   selectTab(index: number): void;
   focusAddress(): void;
+  find(): void;
+  findNext(forward: boolean): void;
   reload(): void;
   togglePanel(): void;
   toggleDevTools(): void;
@@ -71,7 +73,24 @@ export function buildMenu(actions: MenuActions): Menu {
         ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],
     },
-    { role: 'editMenu' },
+    {
+      label: 'Düzen',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        ...(isMac ? [{ role: 'pasteAndMatchStyle' } as const] : []),
+        { role: 'delete' },
+        { role: 'selectAll' },
+        { type: 'separator' },
+        { label: 'Bul…', accelerator: 'CmdOrCtrl+F', click: actions.find },
+        { label: 'Sonrakini bul', accelerator: 'CmdOrCtrl+G', click: () => actions.findNext(true) },
+        { label: 'Öncekini bul', accelerator: 'CmdOrCtrl+Shift+G', click: () => actions.findNext(false) },
+      ],
+    },
     {
       label: 'Sekme',
       submenu: [

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
-import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type TabId, type TabSnapshot } from '../shared/types.js';
+import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
@@ -47,6 +47,8 @@ export interface TabManagerOptions {
   onVisitTitle: (id: string | null, title: string) => void;
   onHistoryDelete: (id: string) => void;
   onHistoryClear: () => void;
+  /** Match counts of a search in the active tab. */
+  onFindResult: (result: FindResult) => void;
 }
 
 export interface RecentPage {
@@ -313,6 +315,24 @@ export class TabManager {
     this.active()?.view?.webContents.stop();
   }
 
+  /** Searches the active page; `next` moves within the current matches instead of starting over. */
+  findInPage(text: string, forward: boolean, next: boolean): void {
+    const contents = this.active()?.view?.webContents;
+    if (!contents) return;
+    if (text === '') {
+      contents.stopFindInPage('clearSelection');
+      this.options.onFindResult({ active: 0, matches: 0 });
+      return;
+    }
+    contents.findInPage(text, { forward, findNext: !next });
+  }
+
+  /** Ends a search in `id`, keeping the active match selected. */
+  stopFind(id: TabId): void {
+    const contents = this.find(id)?.view?.webContents;
+    if (contents && !contents.isDestroyed()) contents.stopFindInPage('keepSelection');
+  }
+
   /** Applies the freeze setting to the current background tabs. */
   applyFreezeSetting(): void {
     for (const tab of this.tabs) {
@@ -522,6 +542,11 @@ export class TabManager {
       // Esc stops a loading page. It still reaches the page, which may use it too.
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
+    });
+
+    contents.on('found-in-page', (_event, result) => {
+      if (tab.id !== this.activeId || result.matches === undefined) return;
+      this.options.onFindResult({ active: result.activeMatchOrdinal ?? 0, matches: result.matches });
     });
 
     contents.on('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));

@@ -14,6 +14,7 @@ import {
 import { AdBlocker } from './adblock.js';
 import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
+import { FindBar } from './find-bar.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import { HistoryStore } from './history.js';
@@ -146,6 +147,34 @@ function createBrowser(): void {
     onInput: (input) => preconnector.typed(input, searchEngine()),
   });
 
+  // Tab and address (without fragment) the find bar searches; it closes when either changes.
+  let findTarget: { tabId: string; url: string } | null = null;
+  const pageAddress = (url: string) => url.split('#')[0];
+  const endFind = () => {
+    if (findTarget) tabs.stopFind(findTarget.tabId);
+    findTarget = null;
+    findBar.close();
+  };
+  /** Opens the find bar, or moves to the next or previous match when `forward` is set. */
+  const openFind = (forward?: boolean) => {
+    if (settingsWindow.isFocused() || isPageFullScreen() || !tabs.activeTabId) return;
+    commandBar.close();
+    findTarget = { tabId: tabs.activeTabId, url: pageAddress(tabs.activeUrl) };
+    if (forward === undefined) findBar.open();
+    else findBar.findNext(forward);
+  };
+  const findBar = new FindBar({
+    window,
+    preload: path.join(__dirname, '../preload/find-preload.js'),
+    page: path.join(__dirname, '../renderer/find.html'),
+    onFind: (text, forward, next) => tabs.findInPage(text, forward, next),
+    onClose: () => {
+      if (findTarget) tabs.stopFind(findTarget.tabId);
+      findTarget = null;
+      if (!tabs.focusActive()) ui.webContents.focus();
+    },
+  });
+
   const tabs: TabManager = new TabManager({
     window,
     session: daily,
@@ -155,6 +184,10 @@ function createBrowser(): void {
         htmlFullScreenTabId = null;
         syncPageFullScreen();
       }
+      if (findTarget && (findTarget.tabId !== tabs.activeTabId || findTarget.url !== pageAddress(tabs.activeUrl))) {
+        endFind();
+      }
+      findBar.keepOnTop();
       commandBar.keepOnTop();
       pushState();
       if (persist) store.scheduleSave(() => tabs.toSession());
@@ -177,6 +210,7 @@ function createBrowser(): void {
     onVisitTitle: (id, title) => history.setTitle(id, title),
     onHistoryDelete: (id) => history.remove(id),
     onHistoryClear: () => history.clear(),
+    onFindResult: (result) => findBar.showResult(result),
   });
 
   serveInternalPages(
@@ -207,6 +241,7 @@ function createBrowser(): void {
     const { radius, ...bounds } = pageFrame(width, height, layout, isPageFullScreen());
     tabs.setPageBounds(bounds);
     tabs.setPageRadius(radius);
+    findBar.setArea(bounds);
     if (process.platform === 'darwin') {
       setWindowControls(layout.windowControls || controlsRevealed);
     }
@@ -251,6 +286,7 @@ function createBrowser(): void {
   const syncPageFullScreen = () => {
     if (isPageFullScreen()) {
       commandBar.close();
+      endFind();
       hideWindowControls();
     }
     applyLayout();
@@ -312,6 +348,8 @@ function createBrowser(): void {
       selectPreviousTab: () => tabs.selectRelative(-1),
       selectTab: (index) => tabs.selectByIndex(index),
       focusAddress: openCenteredAddress,
+      find: () => openFind(),
+      findNext: (forward) => openFind(forward),
       reload: () => tabs.reload(),
       togglePanel,
       toggleDevTools: () => tabs.toggleDevTools(),
@@ -437,6 +475,7 @@ function createBrowser(): void {
     history.saveNow();
     tabs.destroyAll();
     commandBar.destroy();
+    findBar.destroy();
     if (!ui.webContents.isDestroyed()) ui.webContents.close();
   });
 

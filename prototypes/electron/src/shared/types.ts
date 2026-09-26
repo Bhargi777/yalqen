@@ -145,6 +145,31 @@ export interface CommandBarApi {
   send(action: CommandBarAction): void;
 }
 
+/** Match counts for the find bar; `active` is 0 when nothing matches. */
+export interface FindResult {
+  active: number;
+  matches: number;
+}
+
+/** Requests the find bar sends to the main process. */
+export type FindBarAction =
+  /** `next` moves within the current matches instead of starting a new search. */
+  | { type: 'find'; text: string; forward: boolean; next: boolean }
+  | { type: 'close' };
+
+export const FindBarChannel = {
+  open: 'yalqen-find:open',
+  result: 'yalqen-find:result',
+  action: 'yalqen-find:action',
+} as const;
+
+/** API exposed to the find bar overlay by its preload script. */
+export interface FindBarApi {
+  onOpen(listener: () => void): () => void;
+  onResult(listener: (result: FindResult) => void): () => void;
+  send(action: FindBarAction): void;
+}
+
 /** User settings the settings window can change. */
 export interface SettingsValues {
   searchEngine: SearchEngineId;
