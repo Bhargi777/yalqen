@@ -61,6 +61,8 @@ export interface BrowserState {
   material: WindowMaterial;
   /** Set while the active tab is shown as a device. */
   device: DeviceFrame | null;
+  /** Zoom factor of the active page; 1 is actual size. */
+  zoom: number;
 }
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
@@ -94,6 +96,7 @@ export type UiAction =
   | { type: 'go-forward' }
   | { type: 'reload' }
   | { type: 'stop' }
+  | { type: 'reset-zoom' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }

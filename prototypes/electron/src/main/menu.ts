@@ -19,6 +19,7 @@ export interface MenuActions {
   find(): void;
   findNext(forward: boolean): void;
   reload(): void;
+  zoom(direction: 1 | -1 | 0): void;
   togglePanel(): void;
   toggleDevTools(): void;
   toggleDeviceView(): void;
@@ -110,6 +111,18 @@ export function buildMenu(actions: MenuActions): Menu {
       label: 'Görünüm',
       submenu: [
         { label: 'Yenile', accelerator: 'CmdOrCtrl+R', click: actions.reload },
+        { type: 'separator' },
+        { label: 'Gerçek boyut', accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
+        { label: 'Yakınlaştır', accelerator: 'CmdOrCtrl+Plus', click: () => actions.zoom(1) },
+        // ⌘= is the unshifted key of ⌘+ on most layouts.
+        {
+          label: 'Yakınlaştır',
+          accelerator: 'CmdOrCtrl+=',
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => actions.zoom(1),
+        },
+        { label: 'Uzaklaştır', accelerator: 'CmdOrCtrl+-', click: () => actions.zoom(-1) },
         { label: 'Sekme panelini daralt/genişlet', accelerator: 'CmdOrCtrl+S', click: actions.togglePanel },
         { type: 'separator' },
         { label: 'Sayfa DevTools', accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },

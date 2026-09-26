@@ -3,6 +3,7 @@ import { WebContentsView, type BaseWindow, type Rectangle, type Session } from '
 import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
+import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
 /** Links on the new tab page handled here instead of navigating: open the address bar, forget a recent page. */
@@ -49,6 +50,10 @@ export interface TabManagerOptions {
   onHistoryClear: () => void;
   /** Match counts of a search in the active tab. */
   onFindResult: (result: FindResult) => void;
+  /** Remembered zoom factor for a page address. */
+  zoomFor: (url: string) => number;
+  /** The user zoomed the page at `url`. */
+  onZoom: (url: string, factor: number) => void;
 }
 
 export interface RecentPage {
@@ -105,11 +110,13 @@ export class TabManager {
     return pages;
   }
 
-  state(): Pick<BrowserState, 'tabs' | 'activeTabId' | 'device'> {
+  state(): Pick<BrowserState, 'tabs' | 'activeTabId' | 'device' | 'zoom'> {
+    const contents = this.active()?.view?.webContents;
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
       activeTabId: this.activeId,
       device: this.deviceFrame(),
+      zoom: contents && !contents.isDestroyed() ? contents.getZoomFactor() : 1,
     };
   }
 
@@ -315,6 +322,12 @@ export class TabManager {
     this.active()?.view?.webContents.stop();
   }
 
+  /** Zooms the active page one step in (1) or out (-1), or back to actual size (0). */
+  zoom(direction: 1 | -1 | 0): void {
+    const tab = this.active();
+    if (tab?.view) this.zoomView(tab.view, direction);
+  }
+
   /** Searches the active page; `next` moves within the current matches instead of starting over. */
   findInPage(text: string, forward: boolean, next: boolean): void {
     const contents = this.active()?.view?.webContents;
@@ -449,6 +462,15 @@ export class TabManager {
     }
   }
 
+  private zoomView(view: WebContentsView, direction: 1 | -1 | 0): void {
+    const contents = view.webContents;
+    const factor = direction === 0 ? 1 : stepZoom(contents.getZoomFactor(), direction);
+    // Chromium applies the factor to every page of the same host in this session.
+    contents.setZoomFactor(factor);
+    this.options.onZoom(contents.getURL(), factor);
+    this.changed();
+  }
+
   private setEmulation(tab: Tab, emulation: Emulation | null): void {
     const wasEmulated = tab.emulation !== null;
     tab.emulation = emulation;
@@ -542,6 +564,14 @@ export class TabManager {
       // Esc stops a loading page. It still reaches the page, which may use it too.
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
+    });
+
+    // Ctrl + wheel or trackpad pinch; Electron leaves zooming to the app.
+    contents.on('zoom-changed', (_event, direction) => this.zoomView(view, direction === 'in' ? 1 : -1));
+    contents.on('did-navigate', (_event, url) => {
+      // Chromium forgets zoom levels on restart; apply the remembered one.
+      const factor = this.options.zoomFor(url);
+      if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
     });
 
     contents.on('found-in-page', (_event, result) => {

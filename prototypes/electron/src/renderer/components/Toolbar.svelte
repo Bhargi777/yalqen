@@ -6,11 +6,14 @@
   let {
     tabs,
     activeTabId,
+    zoom,
     leadingInset,
     trailingInset,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
+    /** Zoom factor of the active page. */
+    zoom: number;
     /** Space kept for macOS window controls when the sidebar is narrow. */
     leadingInset: number;
     /** Gap between settings and the window edge or sidebar. */
@@ -78,6 +81,11 @@
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
           </button>
+          {#if Math.round(zoom * 100) !== 100}
+            <button class="zoom" title="Gerçek boyuta dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
+              %{Math.round(zoom * 100)}
+            </button>
+          {/if}
         {:else}
           <button
             class="select"
@@ -287,6 +295,23 @@
     padding-left: 28px;
     color: var(--text);
     font-weight: 500;
+  }
+
+  .zoom {
+    flex: none;
+    height: 22px;
+    padding: 0 7px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    transition: color var(--transition);
+  }
+
+  .zoom:hover {
+    color: var(--text);
   }
 
   .favicon {

@@ -26,6 +26,7 @@ import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './se
 import { SettingsStore } from './settings.js';
 import { SettingsWindow } from './settings-window.js';
 import { TabManager } from './tabs.js';
+import { ZoomStore } from './zoom.js';
 import { resolveInput } from './url.js';
 
 const DAILY_PARTITION = 'persist:daily';
@@ -83,6 +84,7 @@ function createBrowser(): void {
   const history = new HistoryStore(app.getPath('userData'));
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
+  const zoom = new ZoomStore(app.getPath('userData'));
   const adBlocker = new AdBlocker(daily, path.join(app.getPath('userData'), 'adblock-engine.bin'));
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () =>
@@ -211,6 +213,8 @@ function createBrowser(): void {
     onHistoryDelete: (id) => history.remove(id),
     onHistoryClear: () => history.clear(),
     onFindResult: (result) => findBar.showResult(result),
+    zoomFor: (url) => zoom.get(url),
+    onZoom: (url, factor) => zoom.set(url, factor),
   });
 
   serveInternalPages(
@@ -351,6 +355,7 @@ function createBrowser(): void {
       find: () => openFind(),
       findNext: (forward) => openFind(forward),
       reload: () => tabs.reload(),
+      zoom: (direction) => tabs.zoom(direction),
       togglePanel,
       toggleDevTools: () => tabs.toggleDevTools(),
       toggleDeviceView: () => tabs.toggleEmulation(deviceId),
@@ -424,6 +429,9 @@ function createBrowser(): void {
         break;
       case 'stop':
         tabs.stop();
+        break;
+      case 'reset-zoom':
+        tabs.zoom(0);
         break;
       case 'toggle-panel':
         togglePanel();
