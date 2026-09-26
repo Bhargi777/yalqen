@@ -3,6 +3,7 @@ import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangl
 import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
+import { ERR_ABORTED, errorPageScript } from './error-page.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -673,6 +674,23 @@ export class TabManager {
       this.changed();
     });
     contents.on('did-navigate', updateUrl);
+    // A failed load commits Chromium's empty error document under the failed
+    // address without a did-navigate; show that address and explain the error.
+    let failure: string | null = null;
+    contents.on('did-fail-load', (_event, code, name, url, isMainFrame) => {
+      if (!isMainFrame || code === ERR_ABORTED) return;
+      failure = errorPageScript(code, name, url);
+      tab.url = url;
+      // Nothing was visited; later title changes must not rename the previous page's visit.
+      tab.visitId = null;
+      this.changed(true);
+    });
+    contents.on('did-finish-load', () => {
+      if (!failure) return;
+      const script = failure;
+      failure = null;
+      void contents.executeJavaScript(script).catch(() => {});
+    });
     contents.on('did-navigate-in-page', updateUrl);
     contents.on('render-process-gone', () => {
       // Keep the tab discarded instead of reloading, so a crashing page cannot
