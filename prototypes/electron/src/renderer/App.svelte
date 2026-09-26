@@ -154,6 +154,7 @@
       'panel bar'
       'panel page';
     height: 100%;
+    background: var(--chrome-base);
   }
 
   .shell.right {

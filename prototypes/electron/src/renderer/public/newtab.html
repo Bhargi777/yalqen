@@ -9,30 +9,30 @@
       main process turns into a navigation; the page itself runs no scripts.
     -->
     <style>
-      /* The page matches the window background, so the new tab reads as an empty board. */
+      /* The view is transparent so the native window material remains visible. */
       :root {
-        --page: #e6e8eb;
+        --page: transparent;
         --text: #1a1b1e;
         --hint: #a4a7ad;
-        --muted: #6b6e75;
-        --surface: #ffffff;
-        --well: #dcdfe3;
+        --muted: #50545b;
+        --surface: rgb(255 255 255 / 0.82);
+        --well: rgb(255 255 255 / 0.38);
         --hover: rgb(0 0 0 / 0.04);
-        --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.08), 0 1px 3px rgb(16 18 24 / 0.08);
+        --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.12), 0 5px 18px rgb(16 18 24 / 0.1);
         --accent: #f28c28;
         color-scheme: light;
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --page: #141517;
+          --page: transparent;
           --text: #eceef1;
           --hint: #53565d;
-          --muted: #9a9ea6;
-          --surface: #26282c;
-          --well: #1e2023;
+          --muted: #c2c3c9;
+          --surface: rgb(39 38 41 / 0.82);
+          --well: rgb(14 14 16 / 0.32);
           --hover: rgb(255 255 255 / 0.05);
-          --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 1px 3px rgb(0 0 0 / 0.3);
+          --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.18), 0 6px 18px rgb(0 0 0 / 0.24);
           --accent: #f28c28;
           color-scheme: dark;
         }
@@ -46,6 +46,7 @@
       body {
         height: 100%;
         margin: 0;
+        background: var(--page);
       }
 
       body {
@@ -57,6 +58,25 @@
         overflow: hidden;
         user-select: none;
         -webkit-font-smoothing: antialiased;
+      }
+
+      @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+        :root {
+          --page: #e6e8eb;
+          --surface: #fff;
+          --well: #dcdfe3;
+          --muted: #4a4e54;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) and (prefers-reduced-transparency: reduce),
+        (prefers-color-scheme: dark) and (prefers-contrast: more) {
+        :root {
+          --page: #141517;
+          --surface: #26282c;
+          --well: #1e2023;
+          --muted: #c2c3c9;
+        }
       }
 
       a {
@@ -82,7 +102,7 @@
         padding: 0 16px;
         border-radius: 999px;
         background: var(--surface);
-        box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 12px 40px rgb(0 0 0 / 0.16);
+        box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 14px 40px rgb(0 0 0 / 0.16);
       }
 
       .prompt {

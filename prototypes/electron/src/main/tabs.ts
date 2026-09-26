@@ -379,6 +379,9 @@ export class TabManager {
         nodeIntegration: false,
       },
     });
+    // Only Yalqen's own new tab is transparent. External pages retain a solid
+    // view background, including while they are loading or render no body color.
+    view.setBackgroundColor(tab.url === NEW_TAB_URL ? '#00000000' : '#ffffff');
     tab.view = view;
     // Background tabs get real bounds too, so they lay out like visible pages.
     this.attachListeners(tab, view);
@@ -493,6 +496,15 @@ export class TabManager {
 
   private attachListeners(tab: Tab, view: WebContentsView): void {
     const contents = view.webContents;
+
+    contents.on('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
+      // Search and "forget" are intercepted by this view, so they must not
+      // briefly turn the still-visible new tab into an opaque page.
+      const intercepted = url.startsWith(NEW_TAB_SEARCH_URL) || url.startsWith(NEW_TAB_FORGET_URL);
+      if (isMainFrame && !isSameDocument && !intercepted) {
+        view.setBackgroundColor(url === NEW_TAB_URL ? '#00000000' : '#ffffff');
+      }
+    });
 
     contents.on('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));
     contents.on('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));

@@ -219,6 +219,12 @@
     min-height: 0;
     /* Same gap on both sides: the window edge on the left, the page card on the right. */
     padding: 0 8px 8px;
+    background: var(--panel-tint);
+    box-shadow: inset -1px 0 var(--chrome-divider);
+  }
+
+  .panel.right {
+    box-shadow: inset 1px 0 var(--chrome-divider);
   }
 
   .panel.collapsed {
@@ -267,6 +273,7 @@
     padding: 3px;
     border-radius: 14px;
     background: var(--well);
+    box-shadow: var(--well-rim);
   }
 
   .favorite {
@@ -329,6 +336,7 @@
     overflow-y: auto;
     border-radius: 14px;
     background: var(--well);
+    box-shadow: var(--well-rim);
     list-style: none;
   }
 
