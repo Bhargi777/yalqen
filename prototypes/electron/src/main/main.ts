@@ -32,6 +32,7 @@ import {
 import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } from './search.js';
+import { blockedPopupsTemplate } from './popups.js';
 import { SettingsStore } from './settings.js';
 import { siteInfoTemplate } from './site-info.js';
 import { SettingsWindow } from './settings-window.js';
@@ -296,6 +297,10 @@ function createBrowser(): void {
     hasCertificateException: (url) => certificates.hasException(url),
     certificateToken: (url) => certificates.tokenFor(url),
     onCertificateProceed: (token, url) => certificates.proceed(token, url),
+    popupsAllowed: (url) => {
+      const origin = permissionOrigin(url);
+      return origin !== null && permissions.get(origin, 'popups') === 'allow';
+    },
     onContextMenu: (contents, params) => {
       const history = contents.navigationHistory;
       const template = contextMenuTemplate(params, {
@@ -534,6 +539,20 @@ function createBrowser(): void {
       case 'reset-zoom':
         tabs.zoom(0);
         break;
+      case 'open-blocked-popups': {
+        const origin = permissionOrigin(tabs.activeUrl);
+        const blocked = tabs.blockedPopups();
+        if (!origin || blocked.length === 0) break;
+        const template = blockedPopupsTemplate(new URL(origin).host, blocked, {
+          open: (url) => tabs.openBlockedPopup(url),
+          allowSite: () => {
+            permissions.set(origin, ['popups'], 'allow');
+            tabs.clearBlockedPopups();
+          },
+        });
+        Menu.buildFromTemplate(template).popup({ window });
+        break;
+      }
       case 'open-site-info': {
         const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
         if (!tab) break;

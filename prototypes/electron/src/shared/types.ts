@@ -25,6 +25,8 @@ export interface TabSnapshot {
   loading: boolean;
   keepAlive: boolean;
   security: SecurityState;
+  /** New windows the page tried to open without a click or key press. */
+  blockedPopups: number;
   /** The page is playing sound, muted or not. */
   audible: boolean;
   muted: boolean;
@@ -108,6 +110,7 @@ export type UiAction =
   | { type: 'stop' }
   | { type: 'reset-zoom' }
   | { type: 'open-site-info' }
+  | { type: 'open-blocked-popups' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }

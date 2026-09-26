@@ -65,7 +65,8 @@ export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): Menu
           ['Engelle', 'deny'],
         ] as const
       ).map(([label, choice]) => ({
-        label,
+        // Pop-ups are blocked, not asked about, until allowed.
+        label: choice === null && kind === 'popups' ? 'Varsayılan (engelle)' : label,
         type: 'radio' as const,
         checked: choice === decision,
         click: () => actions.setPermission(kind, choice),

@@ -1,17 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Permissions a site is asked about and that can be changed per site. */
-export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications';
+/** Per-site permissions. Pop-ups are never asked about: they are blocked unless allowed. */
+export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
 export type Decision = 'allow' | 'deny';
 
-export const SITE_PERMISSIONS: readonly SitePermission[] = ['camera', 'microphone', 'geolocation', 'notifications'];
+export const SITE_PERMISSIONS: readonly SitePermission[] = ['camera', 'microphone', 'geolocation', 'notifications', 'popups'];
 
 export const PERMISSION_LABELS: Record<SitePermission, string> = {
   camera: 'Kamera',
   microphone: 'Mikrofon',
   geolocation: 'Konum',
   notifications: 'Bildirimler',
+  popups: 'Açılır pencereler',
 };
 
 /**

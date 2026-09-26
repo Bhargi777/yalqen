@@ -5,6 +5,7 @@ import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDev
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
+import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
 
@@ -30,6 +31,10 @@ interface Tab {
   muted: boolean;
   /** The page failed to load and shows an error page instead. */
   failed: boolean;
+  /** Time of the last click or key press in the page; 0 once used to open a window. */
+  activatedAt: number;
+  /** Addresses of windows the current page was not allowed to open. */
+  blockedPopups: string[];
   loading: boolean;
   /** Live page frozen in the background: no JS, timers or rendering until selected again. */
   frozen: boolean;
@@ -67,6 +72,8 @@ export interface TabManagerOptions {
   certificateToken: (url: string) => string | null;
   /** The warning page for `url` asked to proceed; returns whether the certificate is now trusted. */
   onCertificateProceed: (token: string, url: string) => boolean;
+  /** Whether the site of the page at `url` may open windows without a click. */
+  popupsAllowed: (url: string) => boolean;
   /** A page was right-clicked. */
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
 }
@@ -300,6 +307,26 @@ export class TabManager {
     this.changed(true);
   }
 
+  /** Windows the active page was not allowed to open. */
+  blockedPopups(): string[] {
+    return [...(this.active()?.blockedPopups ?? [])];
+  }
+
+  /** Opens a window the active page was not allowed to open, next to it. */
+  openBlockedPopup(url: string): void {
+    const tab = this.active();
+    if (!tab) return;
+    tab.blockedPopups = tab.blockedPopups.filter((item) => item !== url);
+    this.open(url);
+  }
+
+  clearBlockedPopups(): void {
+    const tab = this.active();
+    if (!tab || tab.blockedPopups.length === 0) return;
+    tab.blockedPopups = [];
+    this.changed();
+  }
+
   toggleMute(id: TabId): void {
     const tab = this.find(id);
     if (!tab) return;
@@ -430,6 +457,8 @@ export class TabManager {
       keepAlive: saved.keepAlive ?? false,
       muted: false,
       failed: false,
+      activatedAt: 0,
+      blockedPopups: [],
       loading: false,
       frozen: false,
       history: saved.history ?? null,
@@ -646,8 +675,18 @@ export class TabManager {
         contents.reload();
       }
     });
+    contents.on('input-event', (_event, input) => {
+      if (isActivation(input.type)) tab.activatedAt = Date.now();
+    });
     contents.setWindowOpenHandler(({ url }) => {
-      this.open(url);
+      // Like Chromium's pop-up blocker: a click or key press lets the page open one window.
+      if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL()))) {
+        tab.activatedAt = 0;
+        this.open(url);
+      } else {
+        tab.blockedPopups = recordBlocked(tab.blockedPopups, url);
+        this.changed();
+      }
       return { action: 'deny' };
     });
     contents.on('page-title-updated', (_event, title) => {
@@ -678,6 +717,11 @@ export class TabManager {
       this.changed();
     });
     contents.on('devtools-closed', () => this.maybeFreeze(tab));
+    contents.on('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
+      if (!isMainFrame || isSameDocument || tab.blockedPopups.length === 0) return;
+      tab.blockedPopups = [];
+      this.changed();
+    });
     const updateUrl = () => {
       tab.url = contents.getURL();
       tab.failed = false;
@@ -807,6 +851,7 @@ export class TabManager {
       keepAlive: tab.keepAlive,
       // An error page is not the site: it gets no connection state, not even a lock.
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
+      blockedPopups: tab.blockedPopups.length,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,

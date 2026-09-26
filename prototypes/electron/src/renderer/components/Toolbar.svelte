@@ -94,6 +94,16 @@
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
           </button>
+          {#if tab.blockedPopups > 0}
+            <button
+              class="popups"
+              title="Açılır pencere engellendi"
+              aria-label="{tab.blockedPopups} açılır pencere engellendi"
+              onclick={() => send({ type: 'open-blocked-popups' })}
+            >
+              <Icon name="popup-blocked" size={13} />
+            </button>
+          {/if}
           {#if Math.round(zoom * 100) !== 100}
             <button class="zoom" title="Gerçek boyuta dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
               %{Math.round(zoom * 100)}
@@ -355,6 +365,19 @@
   /* The site button on the left takes the place of the centering padding. */
   .address.after-site {
     padding-left: 6px;
+  }
+
+  .popups {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 24px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface-hover);
+    color: var(--warn);
   }
 
   .zoom {
