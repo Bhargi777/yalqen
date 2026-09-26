@@ -5,6 +5,7 @@ import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDev
 import type { SavedHistory, SavedTab, SavedWindow } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
+import { PROCEED_HTTP_URL } from './https-only.js';
 import { canViewSource } from './page-export.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
@@ -37,6 +38,8 @@ interface Tab {
   isPrivate: boolean;
   /** Removes this window's listeners from the page, when the tab moves to another window. */
   detachListeners: (() => void) | null;
+  /** An http address being loaded over https in HTTPS-only mode. */
+  upgrade: { https: string; http: string } | null;
   /** The page failed to load and shows an error page instead. */
   failed: boolean;
   /** Time of the last click or key press in the page; 0 once used to open a window. */
@@ -93,6 +96,14 @@ export interface TabManagerOptions {
   /** A command link or form on the downloads or bookmarks page, such as `open` with an id. */
   onPageCommand: (page: CommandPage, command: string, params: URLSearchParams) => void;
   isBookmarked: (url: string) => boolean;
+  /** The https address to load instead of an http one in HTTPS-only mode, or null. */
+  upgradeHttp: (url: string) => string | null;
+  /** An upgraded load failed; returns the token its warning page uses to continue over http. */
+  httpsOnlyWarning: (https: string, http: string) => string;
+  /** The warning page at `currentUrl` asked to continue; returns the http address to load, or null. */
+  onProceedHttp: (token: string, currentUrl: string) => string | null;
+  /** A page redirects to http in HTTPS-only mode; resolves to whether to follow it. */
+  confirmHttpRedirect: (url: string) => Promise<boolean>;
   /** A page was right-clicked. */
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
 }
@@ -115,6 +126,10 @@ function pageCommand(url: string): { page: CommandPage; name: string; params: UR
   } catch {
     return null;
   }
+}
+
+function withoutHash(url: string): string {
+  return url.split('#')[0];
 }
 
 /** A tab taken out of one window for another to adopt; its page stays loaded. */
@@ -224,7 +239,9 @@ export class TabManager {
   }
 
   open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow } = {}): TabId {
-    const tab = this.createRecord({ url }, isPrivate);
+    const upgraded = this.options.upgradeHttp(url);
+    const tab = this.createRecord({ url: upgraded ?? url }, isPrivate);
+    if (upgraded) tab.upgrade = { https: upgraded, http: url };
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
     if (activate) {
@@ -382,6 +399,9 @@ export class TabManager {
   navigate(url: string): void {
     const tab = this.active();
     if (!tab) return;
+    const upgraded = this.options.upgradeHttp(url);
+    tab.upgrade = upgraded ? { https: upgraded, http: url } : null;
+    if (upgraded) url = upgraded;
     if (!tab.view && tab.emulation) {
       // The page load is deferred until the device is applied; load the new address instead.
       tab.url = url;
@@ -596,6 +616,7 @@ export class TabManager {
       muted: false,
       isPrivate,
       detachListeners: null,
+      upgrade: null,
       failed: false,
       activatedAt: 0,
       blockedPopups: [],
@@ -790,6 +811,24 @@ export class TabManager {
     listen('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
 
     listen('will-navigate', (event) => {
+      if (event.url.startsWith(PROCEED_HTTP_URL)) {
+        event.preventDefault();
+        // The token only works on the warning page it was issued for.
+        const http = this.options.onProceedHttp(event.url.slice(PROCEED_HTTP_URL.length), contents.getURL());
+        if (http) {
+          tab.upgrade = null;
+          void contents.loadURL(http);
+        }
+        return;
+      }
+      const upgraded = this.options.upgradeHttp(event.url);
+      if (upgraded) {
+        // HTTPS-only mode: links to http pages are followed over https.
+        event.preventDefault();
+        tab.upgrade = { https: upgraded, http: event.url };
+        void contents.loadURL(upgraded);
+        return;
+      }
       if (event.url.startsWith(PROCEED_URL)) {
         event.preventDefault();
         // The token only works on the warning page it was issued for.
@@ -880,9 +919,28 @@ export class TabManager {
       tab.blockedPopups = [];
       this.changed();
     });
+    listen('will-redirect', (event) => {
+      if (!event.isMainFrame) return;
+      if (!this.options.upgradeHttp(event.url)) return;
+      // HTTPS-only mode: a redirect to http is followed only if the person agrees.
+      event.preventDefault();
+      const http = event.url;
+      void this.options.confirmHttpRedirect(http).then((follow) => {
+        if (!follow || tab.view !== view || contents.isDestroyed()) return;
+        const load = () => {
+          if (tab.view !== view || contents.isDestroyed()) return;
+          tab.upgrade = null;
+          void contents.loadURL(http);
+        };
+        // A load started while the cancelled redirect is still stopping fails at once.
+        if (contents.isLoading()) contents.once('did-stop-loading', load);
+        else load();
+      });
+    });
     const updateUrl = () => {
       tab.url = contents.getURL();
       tab.failed = false;
+      tab.upgrade = null;
       // A page without a title must not keep the previous page's; Chromium then
       // reports the address. Pages with a title update it again when it is parsed.
       const title = contents.getTitle();
@@ -907,8 +965,15 @@ export class TabManager {
     let failure: string | null = null;
     listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
       if (!isMainFrame || code === ERR_ABORTED) return;
-      const token = isCertificateError(code) ? this.options.certificateToken(url) : null;
-      failure = errorPageScript(code, name, url, token ? `${PROCEED_URL}${token}` : null);
+      const upgrade = tab.upgrade;
+      if (upgrade && withoutHash(url) === withoutHash(upgrade.https)) {
+        // The http page could not be loaded over https: ask before using http.
+        const token = this.options.httpsOnlyWarning(upgrade.https, upgrade.http);
+        failure = errorPageScript(code, name, url, `${PROCEED_HTTP_URL}${token}`, true);
+      } else {
+        const token = isCertificateError(code) ? this.options.certificateToken(url) : null;
+        failure = errorPageScript(code, name, url, token ? `${PROCEED_URL}${token}` : null);
+      }
       tab.url = url;
       tab.failed = true;
       // Nothing was visited; later title changes must not rename the previous page's visit.

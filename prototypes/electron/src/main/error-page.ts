@@ -58,12 +58,28 @@ export function describeError(code: number, url: string): ErrorText {
   }
 }
 
+/** Explains why an http page could not be loaded over https in HTTPS-only mode. */
+export function describeHttpsOnly(url: string): ErrorText {
+  return {
+    title: 'Bu site güvenli bağlantıyı desteklemiyor',
+    message: `${hostOf(url)} HTTPS ile açılamadı. HTTP ile devam ederseniz bu sitedeki bilgileriniz şifrelenmeden gönderilir ve başkaları tarafından görülebilir.`,
+  };
+}
+
 /**
  * Markup of the error page shown in place of a page that failed to load. With
- * `proceedUrl` it is a certificate warning that offers to continue anyway.
+ * `proceedUrl` it is a warning that offers to continue anyway: past a certificate
+ * error, or over http when `httpsOnly` is set.
  */
-export function errorPageHtml(code: number, name: string, url: string, proceedUrl: string | null = null): string {
-  const { title, message } = describeError(code, url);
+export function errorPageHtml(
+  code: number,
+  name: string,
+  url: string,
+  proceedUrl: string | null = null,
+  httpsOnly = false,
+): string {
+  const { title, message } = httpsOnly ? describeHttpsOnly(url) : describeError(code, url);
+  const proceedLabel = httpsOnly ? 'HTTP ile devam et (güvenli değil)' : 'Yine de devam et (güvenli değil)';
   return `<head><meta charset="utf-8"><title>${escapeHtml(hostOf(url))}</title><style>
 :root { color-scheme: light dark; --text: #1a1b1e; --muted: #6b6e75; --accent: #f28c28; --page: #fff; }
 @media (prefers-color-scheme: dark) { :root { --text: #eceef1; --muted: #9a9ea6; --page: #1f2124; } }
@@ -83,7 +99,7 @@ button.link { display: block; margin-top: 12px; padding: 0; background: none; co
 <code>${escapeHtml(name)}</code><br>
 ${
     proceedUrl
-      ? '<button id="back" type="button">Güvenliğe dön</button><button id="proceed" class="link" type="button">Yine de devam et (güvenli değil)</button>'
+      ? `<button id="back" type="button">Güvenliğe dön</button><button id="proceed" class="link" type="button">${proceedLabel}</button>`
       : '<button id="retry" type="button">Yeniden dene</button>'
   }
 </main></body>`;
@@ -93,10 +109,16 @@ ${
  * Script that fills Chromium's empty error document, which keeps the failed
  * address in the address bar and history. It does nothing on any other page.
  */
-export function errorPageScript(code: number, name: string, url: string, proceedUrl: string | null = null): string {
+export function errorPageScript(
+  code: number,
+  name: string,
+  url: string,
+  proceedUrl: string | null = null,
+  httpsOnly = false,
+): string {
   return `(() => {
   if (location.protocol !== 'chrome-error:') return;
-  document.documentElement.innerHTML = ${JSON.stringify(errorPageHtml(code, name, url, proceedUrl))};
+  document.documentElement.innerHTML = ${JSON.stringify(errorPageHtml(code, name, url, proceedUrl, httpsOnly))};
   const on = (id, listener) => document.getElementById(id)?.addEventListener('click', listener);
   on('retry', () => location.replace(${JSON.stringify(url)}));
   on('back', () => (history.length > 1 ? history.back() : location.replace(${JSON.stringify(NEW_TAB_URL)})));

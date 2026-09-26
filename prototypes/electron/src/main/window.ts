@@ -19,6 +19,7 @@ import { downloadsMenuTemplate, downloadsSummary, type DownloadActions, type Dow
 import { FindBar } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from './history.js';
+import type { HttpsOnly } from './https-only.js';
 import { canViewSource, pdfFileName } from './page-export.js';
 import { pageFrame } from './page-layout.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
@@ -56,6 +57,7 @@ export interface AppContext {
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
   certificates: CertificateExceptions;
+  httpsOnly: HttpsOnly;
   /** Recently closed tabs of all windows. */
   closedTabs: SavedTab[];
   permissionsFor(isPrivate: boolean): PermissionStore;
@@ -254,6 +256,22 @@ export class YalqenWindow {
       popupsAllowed: (url, isPrivate) => {
         const origin = permissionOrigin(url);
         return origin !== null && app.permissionsFor(isPrivate).get(origin, 'popups') === 'allow';
+      },
+      upgradeHttp: (url) => app.httpsOnly.upgrade(url),
+      httpsOnlyWarning: (https, http) => app.httpsOnly.warn(https, http),
+      onProceedHttp: (token, currentUrl) => app.httpsOnly.proceed(token, currentUrl),
+      confirmHttpRedirect: async (url) => {
+        const { response } = await dialog.showMessageBox(this.window, {
+          type: 'warning',
+          message: 'Sayfa güvenli olmayan bir adrese yönlendiriyor',
+          detail: `${new URL(url).host} HTTPS yerine HTTP ile açılmak istiyor. Bu sitedeki bilgileriniz şifrelenmeden gönderilir.`,
+          buttons: ['Geri dön', 'HTTP ile devam et'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        });
+        if (response === 1) app.httpsOnly.allowHost(url);
+        return response === 1;
       },
       onContextMenu: (contents, params) => this.showContextMenu(contents, params),
     });

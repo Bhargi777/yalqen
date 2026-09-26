@@ -18,6 +18,8 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'top',
       freezeBackgroundTabs: 1,
       adBlocking: 'no',
+      httpsOnly: 'yes',
+      secureDns: 'opendns',
     }),
     {
       version: 1,
@@ -29,6 +31,8 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'left',
       freezeBackgroundTabs: true,
       adBlocking: true,
+      httpsOnly: false,
+      secureDns: 'automatic',
       welcomeCompleted: false,
     },
   );
@@ -48,6 +52,8 @@ test('updates keep valid fields and persist', () => {
       panelSide: 'right',
       freezeBackgroundTabs: false,
       adBlocking: false,
+      httpsOnly: true,
+      secureDns: 'quad9',
     });
     store.update({ searchEngine: 'nope', theme: 7 });
     assert.equal(store.get().searchEngine, 'yandex');
@@ -60,6 +66,8 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.panelSide, 'right');
     assert.equal(reloaded.freezeBackgroundTabs, false);
     assert.equal(reloaded.adBlocking, false);
+    assert.equal(reloaded.httpsOnly, true);
+    assert.equal(reloaded.secureDns, 'quad9');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

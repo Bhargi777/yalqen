@@ -40,6 +40,14 @@ test('the script only replaces Chromium error documents and retries the failed a
   assert.equal(replaced, url);
 });
 
+test('HTTPS-only warnings explain the missing https and offer http', () => {
+  const html = errorPageHtml(-107, 'ERR_SSL_PROTOCOL_ERROR', 'https://old.example/', 'yalqen://proceed-http/t', true);
+  assert.match(html, /Bu site güvenli bağlantıyı desteklemiyor/);
+  assert.match(html, /old\.example HTTPS ile açılamadı/);
+  assert.match(html, /HTTP ile devam et \(güvenli değil\)/);
+  assert.doesNotMatch(html, /id="retry"/);
+});
+
 test('certificate warnings offer to go back or proceed instead of retrying', () => {
   const html = errorPageHtml(-202, 'ERR_CERT_AUTHORITY_INVALID', 'https://a.com/', 'yalqen://proceed/t');
   assert.match(html, /id="back"/);

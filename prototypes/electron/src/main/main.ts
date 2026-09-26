@@ -21,6 +21,7 @@ import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { DownloadStore, uniquePath, type DownloadActions } from './downloads.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
+import { HttpsOnly, hostResolverOptions } from './https-only.js';
 import { externalUrls } from './launch.js';
 import { buildMenu } from './menu.js';
 import {
@@ -95,6 +96,8 @@ function startBrowser(): void {
   const zoom = new ZoomStore(userData);
   const permissions = new PermissionStore(userData);
   const certificates = new CertificateExceptions();
+  const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
+  app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
   const closedTabs: SavedTab[] = [];
   // Private tabs keep their decisions and zoom levels in memory until the last one closes.
   let privatePermissions = new PermissionStore(null);
@@ -379,7 +382,9 @@ function startBrowser(): void {
   };
   const updateSettings = (patch: unknown) => {
     const wasFreezing = settings.get().freezeBackgroundTabs;
+    const previousDns = settings.get().secureDns;
     settings.update(patch);
+    if (settings.get().secureDns !== previousDns) app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
     nativeTheme.themeSource = settings.get().theme;
     if (settings.get().freezeBackgroundTabs !== wasFreezing) eachWindow((window) => window.tabs.applyFreezeSetting());
     adBlocker.setEnabled(settings.get().adBlocking);
@@ -397,6 +402,7 @@ function startBrowser(): void {
     downloads,
     bookmarks,
     certificates,
+    httpsOnly,
     closedTabs,
     permissionsFor,
     zoomFor: (isPrivate) => (isPrivate ? privateZoom : zoom),

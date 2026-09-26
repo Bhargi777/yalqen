@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PanelSide, SettingsValues, ThemeSource } from '../shared/types.js';
+import type { PanelSide, SecureDnsSetting, SettingsValues, ThemeSource } from '../shared/types.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from './search.js';
 
 export interface Settings extends SettingsValues {
@@ -17,12 +17,15 @@ const DEFAULTS: Settings = {
   panelSide: 'left',
   freezeBackgroundTabs: true,
   adBlocking: true,
+  httpsOnly: false,
+  secureDns: 'automatic',
   welcomeCompleted: false,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
 const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
+const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
 
 /** Keeps known, well-typed fields and takes the rest from `base`. */
@@ -37,6 +40,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     panelSide,
     freezeBackgroundTabs,
     adBlocking,
+    httpsOnly,
+    secureDns,
     welcomeCompleted,
   } = input;
   return {
@@ -60,6 +65,9 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs:
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
+    httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
+    secureDns:
+      typeof secureDns === 'string' && SECURE_DNS.has(secureDns) ? (secureDns as SecureDnsSetting) : base.secureDns,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
   };
 }

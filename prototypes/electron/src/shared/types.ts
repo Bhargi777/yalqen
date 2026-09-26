@@ -11,6 +11,8 @@ export type CommandPage = 'downloads' | 'bookmarks';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
+/** DNS over HTTPS: off, the system resolver's provider when it has one, or a fixed provider. */
+export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
 /**
  * `dangerous`: https with a certificate the user chose to trust after a warning.
  * `local`: the browser's own pages, files and data, which have no connection to show.
@@ -234,6 +236,9 @@ export interface SettingsValues {
   freezeBackgroundTabs: boolean;
   /** Block ads on web pages. */
   adBlocking: boolean;
+  /** Load http pages over https, asking before falling back to http. */
+  httpsOnly: boolean;
+  secureDns: SecureDnsSetting;
   /** Whether the one-time first launch welcome has been dismissed. */
   welcomeCompleted: boolean;
 }

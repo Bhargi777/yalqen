@@ -26,6 +26,13 @@
     { value: 'new-tab', label: 'Yeni sekmeyle başla' },
   ] as const;
 
+  const dnsOptions = [
+    { value: 'automatic', label: 'Otomatik' },
+    { value: 'cloudflare', label: 'Cloudflare' },
+    { value: 'google', label: 'Google' },
+    { value: 'quad9', label: 'Quad9' },
+    { value: 'off', label: 'Kapalı' },
+  ] as const;
   const rangeOptions: { value: ClearDataRange; label: string }[] = [
     { value: 'hour', label: 'Son 1 saat' },
     { value: 'day', label: 'Son 24 saat' },
@@ -218,6 +225,34 @@
       </div>
     </div>
 
+    <div class="row">
+      <span class="label">
+        <span>Yalnızca HTTPS</span>
+        <span class="hint">HTTP sayfalarını HTTPS ile açar; site desteklemiyorsa HTTP ile devam etmeden önce sorar. Yerel adresler ve IP adresleri hariç.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Yalnızca HTTPS">
+        {#each onOffOptions as option (option.label)}
+          <button aria-pressed={values.httpsOnly === option.value} onclick={() => update({ httpsOnly: option.value })}>
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row">
+      <label for="secure-dns" class="label">
+        <span>Güvenli DNS</span>
+        <span class="hint">Site adlarını şifreli sorgularla çözer. Otomatik, sistemin DNS sağlayıcısı destekliyorsa kullanır.</span>
+      </label>
+      <select
+        id="secure-dns"
+        value={values.secureDns}
+        onchange={(event) => update({ secureDns: event.currentTarget.value as SettingsValues['secureDns'] })}
+      >
+        {#each dnsOptions as option (option.value)}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </select>
+    </div>
     <div class="row stacked">
       <span class="label">
         <span>Tarama verilerini temizle</span>
