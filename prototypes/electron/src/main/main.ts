@@ -23,6 +23,7 @@ import { registerInternalScheme, serveInternalPages } from './internal-pages.js'
 import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
+import { blockThirdPartyCookies } from './third-party-cookies.js';
 import { externalUrls } from './launch.js';
 import { buildMenu } from './menu.js';
 import {
@@ -167,6 +168,9 @@ function startBrowser(): void {
     }
   };
   applyLanguages();
+  for (const browsing of [daily, privateBrowsing]) {
+    blockThirdPartyCookies(browsing, () => settings.get().blockThirdPartyCookies);
+  }
   for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
     browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) {

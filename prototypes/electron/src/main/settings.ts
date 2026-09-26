@@ -19,6 +19,7 @@ const DEFAULTS: Settings = {
   freezeBackgroundTabs: true,
   adBlocking: true,
   httpsOnly: false,
+  blockThirdPartyCookies: false,
   secureDns: 'automatic',
   fontSize: 'medium',
   defaultZoom: 1,
@@ -45,6 +46,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs,
     adBlocking,
     httpsOnly,
+    blockThirdPartyCookies,
     secureDns,
     fontSize,
     defaultZoom,
@@ -73,6 +75,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
     httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
+    blockThirdPartyCookies:
+      typeof blockThirdPartyCookies === 'boolean' ? blockThirdPartyCookies : base.blockThirdPartyCookies,
     secureDns:
       typeof secureDns === 'string' && SECURE_DNS.has(secureDns) ? (secureDns as SecureDnsSetting) : base.secureDns,
     fontSize: typeof fontSize === 'string' && fontSize in FONT_SIZES ? (fontSize as FontSizeSetting) : base.fontSize,

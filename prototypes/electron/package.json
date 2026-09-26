@@ -48,7 +48,10 @@
     "protocols": [
       {
         "name": "Web sayfası",
-        "schemes": ["http", "https"]
+        "schemes": [
+          "http",
+          "https"
+        ]
       }
     ],
     "mac": {
@@ -62,6 +65,7 @@
     }
   },
   "dependencies": {
-    "@ghostery/adblocker-electron": "^2.18.2"
+    "@ghostery/adblocker-electron": "^2.18.2",
+    "tldts": "^7.4.15"
   }
 }
