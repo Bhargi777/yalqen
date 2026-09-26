@@ -20,7 +20,7 @@ test('pages not fetched from a site have no connection state', () => {
 });
 
 test('the menu names the site and its connection', () => {
-  const labels = (info) => siteInfoTemplate(info, {}).map((item) => item.label);
+  const labels = (info) => siteInfoTemplate({ permissions: [], ...info }, {}).map((item) => item.label);
   assert.deepEqual(labels({ url: 'https://www.example.com/a', security: 'secure' }), ['www.example.com', 'Bağlantı güvenli']);
   assert.deepEqual(labels({ url: 'http://example.com:8080/', security: 'insecure' }), [
     'example.com:8080',
@@ -31,10 +31,34 @@ test('the menu names the site and its connection', () => {
 test('a trusted invalid certificate can be distrusted again', () => {
   let revoked = false;
   const items = siteInfoTemplate(
-    { url: 'https://a.test/', security: 'dangerous' },
+    { url: 'https://a.test/', security: 'dangerous', permissions: [] },
     { revokeCertificateException: () => (revoked = true) },
   );
   assert.equal(items[1].label, 'Geçersiz sertifika yok sayılarak bağlanıldı');
   items.find((item) => item.label === 'Sertifika uyarılarını yeniden aç').click();
   assert.equal(revoked, true);
+});
+
+test('saved permissions can be changed from the menu', () => {
+  const changes = [];
+  const items = siteInfoTemplate(
+    {
+      url: 'https://a.test/',
+      security: 'secure',
+      permissions: [
+        { kind: 'camera', decision: 'allow' },
+        { kind: 'notifications', decision: 'deny' },
+      ],
+    },
+    { setPermission: (kind, decision) => changes.push([kind, decision]) },
+  );
+  assert.deepEqual(
+    items.map((item) => item.label ?? '-'),
+    ['a.test', 'Bağlantı güvenli', '-', 'Kamera: İzin verildi', 'Bildirimler: Engellendi'],
+  );
+  const camera = items[3].submenu;
+  assert.deepEqual(camera.map((item) => [item.label, item.checked]), [['Sor', false], ['İzin ver', true], ['Engelle', false]]);
+  camera[0].click();
+  items[4].submenu[1].click();
+  assert.deepEqual(changes, [['camera', null], ['notifications', 'allow']]);
 });

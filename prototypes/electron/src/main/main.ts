@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, clipboard, ipcMain, nativeTheme, screen, session, shell } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, ipcMain, nativeTheme, screen, session, shell } from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -22,6 +22,13 @@ import { applyGlass, glassAvailable } from './glass.js';
 import { HistoryStore } from './history.js';
 import { buildMenu } from './menu.js';
 import { pageFrame } from './page-layout.js';
+import {
+  PermissionStore,
+  permissionOrigin,
+  permissionQuestion,
+  requestedPermissions,
+  type SitePermission,
+} from './permissions.js';
 import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } from './search.js';
@@ -80,10 +87,57 @@ function createBrowser(): void {
   window.contentView.addChildView(ui);
 
   const daily = session.fromPartition(DAILY_PARTITION);
-  daily.setPermissionRequestHandler((_contents, permission, callback) =>
-    callback(ALLOWED_PERMISSIONS.has(permission)),
-  );
-  daily.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission));
+  const permissions = new PermissionStore(app.getPath('userData'));
+  // One question at a time; a queued request may be settled by an earlier answer.
+  let permissionPrompts: Promise<unknown> = Promise.resolve();
+  const askPermission = (origin: string, kinds: SitePermission[]): Promise<boolean> => {
+    const answer = permissionPrompts.then(async () => {
+      const decided = permissions.decide(origin, kinds);
+      if (decided !== 'ask') return decided === 'allow';
+      const { response } = await dialog.showMessageBox(window, {
+        type: 'question',
+        message: permissionQuestion(new URL(origin).host, kinds),
+        detail: 'Bu kararı daha sonra adres çubuğundaki site bilgisinden değiştirebilirsiniz.',
+        buttons: ['İzin ver', 'Bu seferlik izin ver', 'Engelle'],
+        defaultId: 2,
+        cancelId: 2,
+        noLink: true,
+      });
+      if (response === 0) permissions.set(origin, kinds, 'allow');
+      else if (response === 1) permissions.allowOnce(origin, kinds);
+      else permissions.set(origin, kinds, 'deny');
+      return response !== 2;
+    });
+    permissionPrompts = answer.catch(() => {});
+    return answer;
+  };
+  daily.setPermissionRequestHandler((contents, permission, callback, details) => {
+    if (ALLOWED_PERMISSIONS.has(permission)) {
+      callback(true);
+      return;
+    }
+    const kinds = requestedPermissions(permission, 'mediaTypes' in details ? details.mediaTypes : []);
+    const origin = permissionOrigin(details.requestingUrl);
+    // Only the page's own site is asked about; embedded frames of other sites are refused.
+    if (!kinds || !origin || origin !== permissionOrigin(contents.getURL())) {
+      callback(false);
+      return;
+    }
+    const decided = permissions.decide(origin, kinds);
+    if (decided !== 'ask') {
+      callback(decided === 'allow');
+      return;
+    }
+    askPermission(origin, kinds).then(callback, () => callback(false));
+  });
+  daily.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+    if (ALLOWED_PERMISSIONS.has(permission)) return true;
+    const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
+    const origin = permissionOrigin(requestingOrigin);
+    if (!kinds || !origin) return false;
+    if (details.embeddingOrigin && permissionOrigin(details.embeddingOrigin) !== origin) return false;
+    return permissions.decide(origin, kinds) === 'allow';
+  });
   const history = new HistoryStore(app.getPath('userData'));
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
@@ -483,9 +537,13 @@ function createBrowser(): void {
       case 'open-site-info': {
         const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
         if (!tab) break;
+        const origin = permissionOrigin(tab.url);
         const template = siteInfoTemplate(
-          { url: tab.url, security: tab.security },
+          { url: tab.url, security: tab.security, permissions: origin ? permissions.list(origin) : [] },
           {
+            setPermission: (kind, decision) => {
+              if (origin) permissions.set(origin, [kind], decision);
+            },
             revokeCertificateException: () => {
               certificates.revoke(tab.url);
               // Open connections were already accepted; new ones check the certificate again.
