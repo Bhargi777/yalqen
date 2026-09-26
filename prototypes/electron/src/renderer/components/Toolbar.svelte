@@ -76,8 +76,20 @@
     {#each tabs as tab (tab.id)}
       {@const active = tab.id === activeTabId}
       <li class="chip" class:active>
+        {#if active && tab.security !== 'local'}
+          <button
+            class="site"
+            class:insecure={tab.security === 'insecure'}
+            title="Site bilgisi"
+            aria-label={tab.security === 'secure' ? 'Bağlantı güvenli, site bilgisi' : 'Güvenli değil, site bilgisi'}
+            onclick={() => send({ type: 'open-site-info' })}
+          >
+            <Icon name={tab.security === 'secure' ? 'lock' : 'info'} size={13} />
+            {#if tab.security === 'insecure'}<span>Güvenli değil</span>{/if}
+          </button>
+        {/if}
         {#if active}
-          <button class="address" title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
+          <button class="address" class:after-site={tab.security !== 'local'} title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
             {@render favicon(tab)}
             <span class="label">{siteLabel(tab)}</span>
           </button>
@@ -306,6 +318,37 @@
     padding-left: 28px;
     color: var(--text);
     font-weight: 500;
+  }
+
+  .site {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    margin-left: 4px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  .site:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .site.insecure {
+    color: var(--warn);
+  }
+
+  /* The site button on the left takes the place of the centering padding. */
+  .address.after-site {
+    padding-left: 6px;
   }
 
   .zoom {

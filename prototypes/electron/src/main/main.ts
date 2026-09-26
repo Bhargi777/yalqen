@@ -25,6 +25,7 @@ import { SessionStore } from './persistence.js';
 import { Preconnector } from './preconnect.js';
 import { SEARCH_ENGINES, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
+import { siteInfoTemplate } from './site-info.js';
 import { SettingsWindow } from './settings-window.js';
 import { TabManager } from './tabs.js';
 import { ZoomStore } from './zoom.js';
@@ -454,6 +455,11 @@ function createBrowser(): void {
       case 'reset-zoom':
         tabs.zoom(0);
         break;
+      case 'open-site-info': {
+        const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
+        if (tab) Menu.buildFromTemplate(siteInfoTemplate({ url: tab.url, security: tab.security })).popup({ window });
+        break;
+      }
       case 'toggle-panel':
         togglePanel();
         break;

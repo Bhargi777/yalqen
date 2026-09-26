@@ -7,6 +7,8 @@ export const HISTORY_URL = 'yalqen://history/';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
+/** `local`: the browser's own pages, files and data, which have no connection to show. */
+export type SecurityState = 'secure' | 'insecure' | 'local';
 
 /** Tab data exposed to the UI. A tab can exist without a live page. */
 export interface TabSnapshot {
@@ -19,6 +21,7 @@ export interface TabSnapshot {
   frozen: boolean;
   loading: boolean;
   keepAlive: boolean;
+  security: SecurityState;
   /** The page is playing sound, muted or not. */
   audible: boolean;
   muted: boolean;
@@ -101,6 +104,7 @@ export type UiAction =
   | { type: 'reload' }
   | { type: 'stop' }
   | { type: 'reset-zoom' }
+  | { type: 'open-site-info' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }

@@ -4,6 +4,7 @@ import { HISTORY_URL, NEW_TAB_URL, type BrowserState, type DeviceFrame, type Dev
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 import { ERR_ABORTED, errorPageScript } from './error-page.js';
+import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -783,6 +784,7 @@ export class TabManager {
       frozen: tab.frozen,
       loading: tab.loading,
       keepAlive: tab.keepAlive,
+      security: securityState(tab.url),
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,
