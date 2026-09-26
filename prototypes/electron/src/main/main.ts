@@ -308,6 +308,9 @@ function createBrowser(): void {
         else if (tabs.activeTabId) tabs.close(tabs.activeTabId);
       },
       reopenClosedTab: () => tabs.reopenClosed(),
+      selectNextTab: () => tabs.selectRelative(1),
+      selectPreviousTab: () => tabs.selectRelative(-1),
+      selectTab: (index) => tabs.selectByIndex(index),
       focusAddress: openCenteredAddress,
       reload: () => tabs.reload(),
       togglePanel,

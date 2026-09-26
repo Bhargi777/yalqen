@@ -331,6 +331,14 @@ export class TabManager {
     if (tab) this.activate(tab.id);
   }
 
+  /** Selects the tab `offset` places from the active one, wrapping at either end. */
+  selectRelative(offset: number): void {
+    if (this.tabs.length < 2 || !this.activeId) return;
+    const count = this.tabs.length;
+    const index = (((this.indexOf(this.activeId) + offset) % count) + count) % count;
+    this.activate(this.tabs[index].id);
+  }
+
   /** Restores a saved session with every tab discarded, then loads only the active one. */
   restore(session: SavedSession): void {
     for (const saved of session.tabs) {

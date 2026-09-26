@@ -11,6 +11,10 @@ export interface MenuActions {
   newTab(): void;
   closeTab(): void;
   reopenClosedTab(): void;
+  selectNextTab(): void;
+  selectPreviousTab(): void;
+  /** Selects the tab at `index`; -1 selects the last tab. */
+  selectTab(index: number): void;
   focusAddress(): void;
   reload(): void;
   togglePanel(): void;
@@ -68,6 +72,21 @@ export function buildMenu(actions: MenuActions): Menu {
       ],
     },
     { role: 'editMenu' },
+    {
+      label: 'Sekme',
+      submenu: [
+        { label: 'Sonraki sekme', accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
+        { label: 'Önceki sekme', accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },
+        // ⌘1–⌘8 select a tab by position and ⌘9 the last one; hidden to keep the menu short.
+        ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
+          label: i === 8 ? 'Son sekme' : `Sekme ${i + 1}`,
+          accelerator: `CmdOrCtrl+${i + 1}`,
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => actions.selectTab(i === 8 ? -1 : i),
+        })),
+      ],
+    },
     {
       label: 'Görünüm',
       submenu: [
