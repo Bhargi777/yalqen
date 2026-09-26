@@ -219,7 +219,6 @@
     min-height: 0;
     /* Same gap on both sides: the window edge on the left, the page card on the right. */
     padding: 0 8px 8px;
-    background: var(--panel-tint);
   }
 
   .panel.collapsed {

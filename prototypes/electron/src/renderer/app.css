@@ -17,9 +17,6 @@
   /* Window background under the UI; transparent over the glass material. */
   --window: var(--bg);
   --chrome-base: var(--bg);
-  --panel-tint: transparent;
-  --toolbar-tint: transparent;
-  --chrome-divider: transparent;
   --well-rim: none;
   --page: var(--surface);
   --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 2px 10px rgb(16 18 24 / 0.05);
@@ -74,9 +71,6 @@
   --bg: transparent;
   /* A quiet tint gives the native material a stable contrast floor. */
   --chrome-base: rgb(250 247 243 / 0.38);
-  --panel-tint: rgb(255 255 255 / 0.22);
-  --toolbar-tint: rgb(255 255 255 / 0.13);
-  --chrome-divider: rgb(70 55 42 / 0.1);
   --well-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.45);
   --surface: rgb(255 255 255 / 0.76);
   --surface-strong: rgb(255 255 255 / 0.95);
@@ -103,9 +97,6 @@
 @media (prefers-color-scheme: dark) {
   :root[data-material='glass'] {
     --chrome-base: rgb(27 24 24 / 0.5);
-    --panel-tint: rgb(18 17 18 / 0.25);
-    --toolbar-tint: rgb(18 17 18 / 0.13);
-    --chrome-divider: rgb(255 255 255 / 0.1);
     --well-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.09);
     --surface: rgb(255 255 255 / 0.12);
     --surface-strong: rgb(255 255 255 / 0.18);
@@ -133,8 +124,6 @@
 @media (prefers-contrast: more) {
   :root[data-material='glass'] {
     --chrome-base: rgb(246 245 243 / 0.94);
-    --panel-tint: rgb(255 255 255 / 0.72);
-    --toolbar-tint: rgb(255 255 255 / 0.72);
     --surface: #fff;
     --surface-active: #fff;
     --well: rgb(0 0 0 / 0.08);
@@ -145,8 +134,6 @@
 @media (prefers-color-scheme: dark) and (prefers-contrast: more) {
   :root[data-material='glass'] {
     --chrome-base: rgb(21 21 23 / 0.95);
-    --panel-tint: rgb(0 0 0 / 0.62);
-    --toolbar-tint: rgb(0 0 0 / 0.62);
     --surface: #37383c;
     --surface-active: #414247;
     --well: rgb(0 0 0 / 0.32);

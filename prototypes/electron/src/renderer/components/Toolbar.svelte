@@ -122,8 +122,6 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
-    background: var(--toolbar-tint);
-    box-shadow: inset 0 -1px var(--chrome-divider);
     transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
   }
