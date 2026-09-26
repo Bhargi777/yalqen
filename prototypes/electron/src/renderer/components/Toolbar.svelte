@@ -59,7 +59,7 @@
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading" aria-hidden="true"></div>
 
-  <div class="tab-group">
+  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
     <nav class="capsule navigation" aria-label="Gezinme">
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />
@@ -161,10 +161,12 @@
       </li>
     {/each}
     </ol>
-    <div class="capsule">
-      <button class="icon" title="Yeni sekme (⌘T)" aria-label="Yeni sekme" onclick={() => send({ type: 'new-tab' })}>
-        <Icon name="plus" />
-      </button>
+    <div class="new-tab-slot">
+      <div class="capsule">
+        <button class="icon" title="Yeni sekme (⌘T)" aria-label="Yeni sekme" onclick={() => send({ type: 'new-tab' })}>
+          <Icon name="plus" />
+        </button>
+      </div>
     </div>
   </div>
 
@@ -233,6 +235,19 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
+  }
+
+  /* Match the navigation capsule's width so the active tab sits at the center. */
+  .new-tab-slot {
+    display: flex;
+    flex: none;
+    width: 92px;
+  }
+
+  @media (max-width: 760px) {
+    .new-tab-slot {
+      width: 34px;
+    }
   }
 
   .capsule {
@@ -363,9 +378,16 @@
 
   .address {
     justify-content: center;
-    padding-left: 28px;
+    padding-left: 33px;
     color: var(--text);
     font-weight: 500;
+  }
+
+  /* Balance the favicon so the title itself is centered in the capsule. */
+  .address:not(.after-site)::after {
+    flex: none;
+    width: 16px;
+    content: '';
   }
 
   .private-badge {
