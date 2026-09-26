@@ -5,6 +5,7 @@ import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, ipcMain, nat
 import {
   BOOKMARKS_URL,
   DOWNLOADS_URL,
+  HISTORY_URL,
   NEW_TAB_URL,
   IpcChannel,
   SettingsChannel,
@@ -18,6 +19,7 @@ import {
 import { AdBlocker } from './adblock.js';
 import { BookmarkStore, bookmarksMenuTemplate } from './bookmarks.js';
 import { CertificateExceptions } from './certificates.js';
+import { clearSince, sanitizeClearRequest } from './clear-data.js';
 import { CommandBar } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
@@ -686,6 +688,26 @@ function createBrowser(): void {
   ipcMain.handle(SettingsChannel.get, (event) =>
     event.sender === settingsWindow.contents ? settingsView() : null,
   );
+  ipcMain.handle(SettingsChannel.clearData, async (event, value: unknown) => {
+    if (event.sender !== settingsWindow.contents) return;
+    const request = sanitizeClearRequest(value);
+    if (!request) return;
+    const since = clearSince(request.range, Date.now());
+    if (request.history) {
+      history.clearSince(since);
+      // Recently closed tabs have no time; they go with any history clearing.
+      tabs.forgetAllClosed();
+      tabs.reloadPages(HISTORY_URL);
+      tabs.reloadPages(NEW_TAB_URL);
+    }
+    if (request.downloads) {
+      downloads.removeSince(since);
+      downloadsChanged();
+    }
+    // Electron cannot clear these by time; they are cleared entirely.
+    if (request.siteData) await daily.clearStorageData();
+    if (request.cache) await daily.clearCache();
+  });
   ipcMain.handle(SettingsChannel.update, (event, patch: unknown) => {
     if (event.sender !== settingsWindow.contents) return null;
     updateSettings(patch);

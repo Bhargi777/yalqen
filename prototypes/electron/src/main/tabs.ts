@@ -131,6 +131,11 @@ export class TabManager {
     return this.tabs.length;
   }
 
+  /** Empties the recently closed list. */
+  forgetAllClosed(): void {
+    this.closed.length = 0;
+  }
+
   /** Drops a page from the recently closed list; it can no longer be reopened. */
   forgetClosed(url: string): void {
     for (let i = this.closed.length - 1; i >= 0; i--) {

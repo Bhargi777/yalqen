@@ -242,10 +242,22 @@ export interface SettingsView {
   customTemplateValid: boolean;
 }
 
+export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
+
+/** What to clear from the settings window. Site data and the cache are always cleared entirely. */
+export interface ClearDataRequest {
+  range: ClearDataRange;
+  history: boolean;
+  downloads: boolean;
+  siteData: boolean;
+  cache: boolean;
+}
+
 export const SettingsChannel = {
   get: 'yalqen-settings:get',
   update: 'yalqen-settings:update',
   changed: 'yalqen-settings:changed',
+  clearData: 'yalqen-settings:clear-data',
 } as const;
 
 /** API exposed to the settings window by its preload script. */
@@ -253,4 +265,6 @@ export interface SettingsApi {
   get(): Promise<SettingsView>;
   update(patch: Partial<SettingsValues>): Promise<SettingsView>;
   onChange(listener: (view: SettingsView) => void): () => void;
+  /** Resolves once the data is cleared. */
+  clearData(request: ClearDataRequest): Promise<void>;
 }

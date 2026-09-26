@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { SettingsValues, SettingsView } from '../shared/types';
+  import type { ClearDataRange, SettingsValues, SettingsView } from '../shared/types';
 
   const api = window.yalqenSettings;
 
@@ -25,6 +25,37 @@
     { value: 'restore', label: 'Kaldığım yerden devam et' },
     { value: 'new-tab', label: 'Yeni sekmeyle başla' },
   ] as const;
+
+  const rangeOptions: { value: ClearDataRange; label: string }[] = [
+    { value: 'hour', label: 'Son 1 saat' },
+    { value: 'day', label: 'Son 24 saat' },
+    { value: 'week', label: 'Son 7 gün' },
+    { value: 'month', label: 'Son 4 hafta' },
+    { value: 'all', label: 'Tüm zamanlar' },
+  ];
+  const clearOptions = [
+    { key: 'history', label: 'Tarama geçmişi' },
+    { key: 'downloads', label: 'İndirme listesi' },
+    { key: 'siteData', label: 'Çerezler ve site verileri' },
+    { key: 'cache', label: 'Önbellek' },
+  ] as const;
+
+  let clearRange = $state<ClearDataRange>('hour');
+  let clearKinds = $state({ history: true, downloads: false, siteData: false, cache: false });
+  let clearing = $state(false);
+  let cleared = $state(false);
+  const clearSelected = $derived(Object.values(clearKinds).some(Boolean));
+
+  async function clearData(): Promise<void> {
+    clearing = true;
+    cleared = false;
+    try {
+      await api.clearData({ range: clearRange, ...clearKinds });
+      cleared = true;
+    } finally {
+      clearing = false;
+    }
+  }
 
   let view = $state<SettingsView | null>(null);
   let templateDraft = $state('');
@@ -176,6 +207,32 @@
       </div>
     </div>
 
+    <div class="row stacked">
+      <span class="label">
+        <span>Tarama verilerini temizle</span>
+        <span class="hint">Geçmiş ve indirme listesi seçilen aralıktan silinir. Çerezler, site verileri ve önbellek her zaman tümüyle silinir.</span>
+      </span>
+      <div class="clear">
+        <select aria-label="Zaman aralığı" bind:value={clearRange} onchange={() => (cleared = false)}>
+          {#each rangeOptions as option (option.value)}
+            <option value={option.value}>{option.label}</option>
+          {/each}
+        </select>
+        {#each clearOptions as option (option.key)}
+          <label class="check">
+            <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
+            {option.label}
+          </label>
+        {/each}
+        <div class="clear-actions">
+          <button class="primary" disabled={!clearSelected || clearing} onclick={clearData}>
+            {clearing ? 'Temizleniyor…' : 'Verileri temizle'}
+          </button>
+          {#if cleared}<span class="hint" role="status">Temizlendi.</span>{/if}
+        </div>
+      </div>
+    </div>
+
     <h2>Bellek</h2>
     <div class="row last">
       <span class="label">
@@ -274,6 +331,47 @@
   .error {
     color: var(--warn);
     font-size: var(--font-size-small);
+  }
+
+  .clear {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .check input {
+    height: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  .clear-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .primary {
+    height: 28px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .primary:disabled {
+    opacity: 0.5;
   }
 
   .segmented {

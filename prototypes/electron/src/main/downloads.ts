@@ -139,6 +139,12 @@ export class DownloadStore {
     if (this.entries.length !== before) this.save();
   }
 
+  /** Removes finished downloads started at or after `since`; files stay on disk. */
+  removeSince(since: number): void {
+    this.entries = this.entries.filter((entry) => isActive(entry) || entry.startedAt < since);
+    this.save();
+  }
+
   /** Removes every download that is not running; files stay on disk. */
   clearFinished(): void {
     this.entries = this.entries.filter(isActive);
