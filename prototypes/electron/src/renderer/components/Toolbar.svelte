@@ -59,9 +59,15 @@
       <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
         <Icon name="forward" />
       </button>
-      <button class="icon" title="Yenile" onclick={() => send({ type: 'reload' })}>
-        <Icon name="reload" />
-      </button>
+      {#if activeTab?.loading}
+        <button class="icon" title="Durdur (Esc)" aria-label="Durdur" onclick={() => send({ type: 'stop' })}>
+          <Icon name="close" />
+        </button>
+      {:else}
+        <button class="icon" title="Yenile (⌘R)" aria-label="Yenile" onclick={() => send({ type: 'reload' })}>
+          <Icon name="reload" />
+        </button>
+      {/if}
     </nav>
     <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
     {#each tabs as tab (tab.id)}

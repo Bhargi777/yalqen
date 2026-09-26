@@ -381,6 +381,9 @@ function createBrowser(): void {
       case 'reload':
         tabs.reload();
         break;
+      case 'stop':
+        tabs.stop();
+        break;
       case 'toggle-panel':
         togglePanel();
         break;

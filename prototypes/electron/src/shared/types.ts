@@ -93,6 +93,7 @@ export type UiAction =
   | { type: 'go-back' }
   | { type: 'go-forward' }
   | { type: 'reload' }
+  | { type: 'stop' }
   | { type: 'toggle-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }

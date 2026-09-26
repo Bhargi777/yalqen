@@ -309,6 +309,10 @@ export class TabManager {
     this.active()?.view?.webContents.reload();
   }
 
+  stop(): void {
+    this.active()?.view?.webContents.stop();
+  }
+
   /** Applies the freeze setting to the current background tabs. */
   applyFreezeSetting(): void {
     for (const tab of this.tabs) {
@@ -504,6 +508,12 @@ export class TabManager {
       if (isMainFrame && !isSameDocument && !intercepted) {
         view.setBackgroundColor(url === NEW_TAB_URL ? '#00000000' : '#ffffff');
       }
+    });
+
+    contents.on('before-input-event', (_event, input) => {
+      // Esc stops a loading page. It still reaches the page, which may use it too.
+      const modifier = input.control || input.meta || input.alt || input.shift;
+      if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
     });
 
     contents.on('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));
