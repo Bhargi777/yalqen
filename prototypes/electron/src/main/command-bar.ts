@@ -30,6 +30,8 @@ export class CommandBar {
   private readonly view: WebContentsView;
   private opened = false;
   private mode: CommandBarOpen['mode'] = 'navigate';
+  private ready = false;
+  private lastOpen: CommandBarOpen | null = null;
 
   constructor(private readonly options: CommandBarOptions) {
     this.view = new WebContentsView({
@@ -45,7 +47,10 @@ export class CommandBar {
     contents.on('will-navigate', (event) => event.preventDefault());
     contents.setWindowOpenHandler(() => ({ action: 'deny' }));
     ipcMain.on(CommandBarChannel.action, this.onAction);
-    void contents.loadFile(options.page);
+    void contents.loadFile(options.page).then(() => {
+      this.ready = true;
+      if (this.opened && this.lastOpen) contents.send(CommandBarChannel.open, this.lastOpen);
+    });
   }
 
   get isOpen(): boolean {
@@ -55,6 +60,7 @@ export class CommandBar {
   open(open: CommandBarOpen): void {
     this.fitWindow();
     this.mode = open.mode;
+    this.lastOpen = open;
     if (!this.opened) {
       this.opened = true;
       this.options.window.contentView.addChildView(this.view);
@@ -63,7 +69,7 @@ export class CommandBar {
     }
     this.options.window.focus();
     this.view.webContents.focus();
-    this.view.webContents.send(CommandBarChannel.open, open);
+    if (this.ready) this.view.webContents.send(CommandBarChannel.open, open);
   }
 
   /** Shows suggestions for `input`; the bar ignores them once the text has changed. */
@@ -74,6 +80,7 @@ export class CommandBar {
   close(): void {
     if (!this.opened) return;
     this.opened = false;
+    this.lastOpen = null;
     this.options.window.contentView.removeChildView(this.view);
   }
 

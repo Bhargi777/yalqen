@@ -6,7 +6,8 @@
     <!--
       Served as yalqen://newtab/ by the main process, which fills in the recently
       closed pages. The search form submits to yalqen://newtab/search?q=…, which the
-      main process turns into a navigation; the page itself runs no scripts.
+      main process turns into a navigation. Suggestions come from the browser's
+      own local bookmarks and visit history.
     -->
     <style>
       /* The view is transparent so the native window material remains visible. */
@@ -92,11 +93,16 @@
         padding: 0 24px 6vh;
       }
 
-      form {
+      .search {
+        position: relative;
+        width: min(640px, 100%);
+      }
+
+      #search-form {
         display: flex;
         align-items: center;
         gap: 10px;
-        width: min(640px, 100%);
+        width: 100%;
         height: 52px;
         margin: 0 auto;
         padding: 0 16px;
@@ -128,6 +134,65 @@
         outline: none;
       }
 
+      .suggestions {
+        position: absolute;
+        z-index: 1;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        margin: 0;
+        padding: 6px;
+        border-radius: 20px;
+        background: var(--surface);
+        box-shadow: var(--shadow), 0 12px 40px rgb(0 0 0 / 0.16);
+        list-style: none;
+      }
+
+      .suggestions[hidden] {
+        display: none;
+      }
+
+      .suggestions li {
+        border-radius: 14px;
+      }
+
+      .suggestions li:hover,
+      .suggestions li.selected {
+        background: var(--hover);
+      }
+
+      .suggestions a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 12px;
+        min-width: 0;
+      }
+
+      .suggestions .kind {
+        flex: none;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .suggestions .title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .suggestions .host {
+        flex: none;
+        max-width: 40%;
+        margin-left: auto;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .search-icon {
         display: grid;
         flex: none;
@@ -136,7 +201,7 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        form {
+        #search-form {
           box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 12px 40px rgb(0 0 0 / 0.5);
         }
       }
@@ -366,6 +431,7 @@
   <body>
     <main>
       <!-- welcome -->
+      <div class="search">
       <form id="search-form" action="yalqen://newtab/search" method="get" role="search">
         <span class="search-icon" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
@@ -383,8 +449,13 @@
           autocomplete="off"
           spellcheck="false"
           autofocus
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="suggestions"
         />
       </form>
+      <ul id="suggestions" class="suggestions" role="listbox" aria-label="Öneriler" hidden></ul>
+      </div>
       <!-- welcome-action -->
       <div class="actions">
         <label class="pill" for="q">
@@ -402,5 +473,6 @@
       </div>
       <!-- recent -->
     </main>
+    <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>
 </html>

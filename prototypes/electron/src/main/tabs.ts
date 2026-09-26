@@ -281,27 +281,11 @@ export class TabManager {
     this.changed(true);
   }
 
-  /** Gives focus back to the active page. Returns false for a new tab page or a discarded tab. */
+  /** Gives focus back to the active page. Returns false for a blank or discarded tab. */
   focusActive(): boolean {
     const tab = this.active();
-    if (!tab?.view || tab.url === NEW_TAB_URL || tab.url === 'about:blank') return false;
+    if (!tab?.view || tab.url === 'about:blank') return false;
     tab.view.webContents.focus();
-    return true;
-  }
-
-  /** Focuses the existing search field on the new tab page. */
-  focusNewTabSearch(): boolean {
-    const tab = this.active();
-    const view = tab?.view;
-    if (!tab || !view || tab.url !== NEW_TAB_URL) return false;
-
-    const focusInput = () => {
-      if (tab.view !== view || tab.url !== NEW_TAB_URL || view.webContents.isDestroyed()) return;
-      void view.webContents.executeJavaScript("document.getElementById('q')?.focus()").catch(() => {});
-    };
-    view.webContents.focus();
-    if (view.webContents.isLoadingMainFrame()) view.webContents.once('did-finish-load', focusInput);
-    else focusInput();
     return true;
   }
 

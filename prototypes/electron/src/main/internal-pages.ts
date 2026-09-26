@@ -4,10 +4,12 @@ import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
 import { renderBookmarks, type Bookmark, type BookmarkFolder } from './bookmarks.js';
 import { renderDownloads, type DownloadEntry } from './downloads.js';
 import type { HistoryEntry } from './history.js';
+import type { AddressSuggestion } from '../shared/types.js';
 import type { RecentPage } from './tabs.js';
 
 // Favicons of recent pages come from the web; nothing else is loaded.
-const NEW_TAB_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
+const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
+const NEW_TAB_CSP = `${INTERNAL_CSP}; script-src 'self'; connect-src 'self'`;
 const RECENT_MARKER = '<!-- recent -->';
 const WELCOME_MARKER = '<!-- welcome -->';
 const WELCOME_ACTION_MARKER = '<!-- welcome-action -->';
@@ -20,7 +22,7 @@ const FORGET_ICON =
 /** Must run before the app is ready. */
 export function registerInternalScheme(): void {
   protocol.registerSchemesAsPrivileged([
-    { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true } },
+    { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
   ]);
 }
 
@@ -92,6 +94,7 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
 export function serveInternalPages(
   session: Session,
   newTabFile: string,
+  newTabScriptFile: string,
   historyFile: string,
   downloadsFile: string,
   bookmarksFile: string,
@@ -100,19 +103,31 @@ export function serveInternalPages(
   downloads: () => DownloadEntry[],
   bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] },
   showWelcome: () => boolean,
+  suggestions: (query: string) => AddressSuggestion[],
 ): void {
   const page = fs.readFileSync(newTabFile, 'utf8');
+  const newTabScript = fs.readFileSync(newTabScriptFile, 'utf8');
   const historyPage = fs.readFileSync(historyFile, 'utf8');
   const downloadsPage = fs.readFileSync(downloadsFile, 'utf8');
   const bookmarksPage = fs.readFileSync(bookmarksFile, 'utf8');
   const htmlHeaders = {
     'content-type': 'text/html; charset=utf-8',
-    'content-security-policy': NEW_TAB_CSP,
+    'content-security-policy': INTERNAL_CSP,
     'cache-control': 'no-store',
   };
 
   session.protocol.handle(INTERNAL_SCHEME, (request) => {
     const url = new URL(request.url);
+    if (url.host === 'newtab' && url.pathname === '/suggestions.js') {
+      return new Response(newTabScript, {
+        headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    }
+    if (url.host === 'newtab' && url.pathname === '/suggestions') {
+      return Response.json(suggestions(url.searchParams.get('q') ?? ''), {
+        headers: { 'cache-control': 'no-store' },
+      });
+    }
     if (url.host === 'bookmarks') {
       // Commands are links and forms the tab handles; only the list itself is served.
       if (url.pathname !== '/') return new Response('Not found', { status: 404 });
@@ -128,7 +143,7 @@ export function serveInternalPages(
       return new Response(downloadsPage.replace(DOWNLOADS_MARKER, renderDownloads(downloads())), {
         headers: {
           'content-type': 'text/html; charset=utf-8',
-          'content-security-policy': NEW_TAB_CSP,
+          'content-security-policy': INTERNAL_CSP,
           'cache-control': 'no-store',
         },
       });
@@ -146,7 +161,7 @@ export function serveInternalPages(
       return new Response(historyPage.replace(HISTORY_MARKER, content), {
         headers: {
           'content-type': 'text/html; charset=utf-8',
-          'content-security-policy': NEW_TAB_CSP,
+          'content-security-policy': INTERNAL_CSP,
           'cache-control': 'no-store',
         },
       });

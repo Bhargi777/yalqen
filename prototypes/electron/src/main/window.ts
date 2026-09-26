@@ -184,7 +184,7 @@ export class YalqenWindow {
           suggest(input, {
             tabs: open.tabs.filter((tab) => tab.id !== open.activeTabId),
             bookmarks: app.bookmarks.bookmarks(),
-            history: app.history.list(),
+            history: this.tabs.activeIsPrivate ? [] : app.history.list(),
           }),
         );
       },
@@ -358,10 +358,9 @@ export class YalqenWindow {
     this.applyLayout();
   }
 
-  /** Opens the centered address bar, or focuses the new tab page's own field. */
+  /** Opens the centered address bar with the current address selected. */
   openAddress(): void {
     const url = this.tabs.activeUrl;
-    if (url === NEW_TAB_URL && this.tabs.focusNewTabSearch()) return;
     this.preconnector.opened(this.app.searchEngine());
     this.commandBar.open({
       placeholder: this.app.searchEngine().placeholder,

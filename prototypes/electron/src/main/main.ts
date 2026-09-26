@@ -37,6 +37,7 @@ import { SessionStore, type SavedSession, type SavedTab } from './persistence.js
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
 import { SettingsWindow } from './settings-window.js';
+import { suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
 import { ZoomStore } from './zoom.js';
@@ -485,6 +486,7 @@ function startBrowser(): void {
     serveInternalPages(
       browsing,
       path.join(__dirname, '../renderer/newtab.html'),
+      path.join(__dirname, '../renderer/newtab-suggestions.js'),
       path.join(__dirname, '../renderer/history.html'),
       path.join(__dirname, '../renderer/downloads.html'),
       path.join(__dirname, '../renderer/bookmarks.html'),
@@ -497,6 +499,11 @@ function startBrowser(): void {
         if (showWelcome) settings.update({ welcomeCompleted: true });
         return showWelcome;
       },
+      (query) => suggest(query, {
+        tabs: [],
+        bookmarks: bookmarks.bookmarks(),
+        history: browsing === privateBrowsing ? [] : history.list(),
+      }),
     );
   }
 

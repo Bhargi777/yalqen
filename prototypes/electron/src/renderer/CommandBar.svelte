@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { AddressSuggestion, CommandBarAction } from '../shared/types';
   import Icon from './components/Icon.svelte';
 
@@ -35,10 +35,11 @@
     finish({ type: 'submit', input: value });
   }
 
-  function onInput(): void {
+  function onInput(event: Event): void {
+    const text = (event.currentTarget as HTMLInputElement).value;
     selected = -1;
-    if (value.trim() === '') suggestions = [];
-    window.yalqenCommand.send({ type: 'input', input: value });
+    if (text.trim() === '') suggestions = [];
+    window.yalqenCommand.send({ type: 'input', input: text });
   }
 
   function hostOf(url: string): string {
@@ -67,8 +68,10 @@
       value = open.value ?? '';
       suggestions = [];
       selected = -1;
-      input?.focus();
-      input?.select();
+      void tick().then(() => {
+        input?.focus();
+        input?.select();
+      });
     });
     const offSuggestions = window.yalqenCommand.onSuggestions((next) => {
       // Late answers for text that has changed since are dropped.
