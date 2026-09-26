@@ -27,6 +27,7 @@ function actions() {
     canGoForward: false,
     canViewSource: true,
     openInNewTab: record('open'),
+    openInNewWindow: record('window'),
     copyText: record('copy'),
     copyImage: record('copyImage'),
     download: record('download'),
@@ -79,16 +80,19 @@ test('links can be opened in a new tab and copied', () => {
   const items = contextMenuTemplate(context({ linkURL: 'https://example.com/a' }), a);
   assert.deepEqual(labels(items), [
     'Bağlantıyı yeni sekmede aç',
+    'Bağlantıyı yeni pencerede aç',
     'Bağlantıyı indir',
     'Bağlantı adresini kopyala',
     '-',
     'İncele',
   ]);
   item(items, 'Bağlantıyı yeni sekmede aç').click();
+  item(items, 'Bağlantıyı yeni pencerede aç').click();
   item(items, 'Bağlantıyı indir').click();
   item(items, 'Bağlantı adresini kopyala').click();
   assert.deepEqual(a.calls, [
     ['open', 'https://example.com/a'],
+    ['window', 'https://example.com/a'],
     ['download', 'https://example.com/a'],
     ['copy', 'https://example.com/a'],
   ]);
@@ -109,6 +113,7 @@ test('images inside links get both groups', () => {
   );
   assert.deepEqual(labels(items), [
     'Bağlantıyı yeni sekmede aç',
+    'Bağlantıyı yeni pencerede aç',
     'Bağlantıyı indir',
     'Bağlantı adresini kopyala',
     '-',

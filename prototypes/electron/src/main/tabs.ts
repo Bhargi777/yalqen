@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
 import { BOOKMARKS_URL, DOWNLOADS_URL, HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, type CommandPage, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
-import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
+import type { SavedHistory, SavedTab, SavedWindow } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
 import { canViewSource } from './page-export.js';
@@ -35,6 +35,8 @@ interface Tab {
    * left out of the saved session and the recently closed list.
    */
   isPrivate: boolean;
+  /** Removes this window's listeners from the page, when the tab moves to another window. */
+  detachListeners: (() => void) | null;
   /** The page failed to load and shows an error page instead. */
   failed: boolean;
   /** Time of the last click or key press in the page; 0 once used to open a window. */
@@ -53,6 +55,10 @@ interface Tab {
 
 export interface TabManagerOptions {
   window: BaseWindow;
+  /** Recently closed tabs, shared by every window. */
+  closed: SavedTab[];
+  /** Private window: every tab it opens is private. */
+  privateWindow: boolean;
   session: Session;
   /** In-memory session of private tabs. */
   privateSession: Session;
@@ -111,10 +117,23 @@ function pageCommand(url: string): { page: CommandPage; name: string; params: UR
   }
 }
 
+/** A tab taken out of one window for another to adopt; its page stays loaded. */
+export type DetachedTab = Tab;
+
+/** Recently closed web pages, newest first, one per address. */
+export function recentPages(closed: readonly SavedTab[], limit = 5): RecentPage[] {
+  const pages: RecentPage[] = [];
+  for (const tab of [...closed].reverse()) {
+    if (!/^https?:/.test(tab.url) || pages.some((page) => page.url === tab.url)) continue;
+    pages.push({ url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl });
+    if (pages.length === limit) break;
+  }
+  return pages;
+}
+
 /** Owns tab records and their page views. Only the active tab's view is attached to the window. */
 export class TabManager {
   private readonly tabs: Tab[] = [];
-  private readonly closed: SavedTab[] = [];
   private activeId: TabId | null = null;
   private pageBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private pageRadius = 0;
@@ -141,27 +160,17 @@ export class TabManager {
     return this.tabs.length;
   }
 
-  /** Empties the recently closed list. */
-  forgetAllClosed(): void {
-    this.closed.length = 0;
-  }
-
   /** Drops a page from the recently closed list; it can no longer be reopened. */
   forgetClosed(url: string): void {
-    for (let i = this.closed.length - 1; i >= 0; i--) {
-      if (this.closed[i].url === url) this.closed.splice(i, 1);
+    const closed = this.options.closed;
+    for (let i = closed.length - 1; i >= 0; i--) {
+      if (closed[i].url === url) closed.splice(i, 1);
     }
   }
 
   /** Recently closed web pages, newest first, one per address. */
   recentlyClosed(limit = 5): RecentPage[] {
-    const pages: RecentPage[] = [];
-    for (const tab of [...this.closed].reverse()) {
-      if (!/^https?:/.test(tab.url) || pages.some((page) => page.url === tab.url)) continue;
-      pages.push({ url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl });
-      if (pages.length === limit) break;
-    }
-    return pages;
+    return recentPages(this.options.closed, limit);
   }
 
   state(): Pick<BrowserState, 'tabs' | 'activeTabId' | 'device' | 'zoom'> {
@@ -214,7 +223,7 @@ export class TabManager {
     }
   }
 
-  open(url = NEW_TAB_URL, { activate = true, isPrivate = false } = {}): TabId {
+  open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow } = {}): TabId {
     const tab = this.createRecord({ url }, isPrivate);
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
@@ -278,8 +287,8 @@ export class TabManager {
     const [tab] = this.tabs.splice(index, 1);
 
     if (!tab.isPrivate) {
-      this.closed.push(this.toSaved(tab));
-      if (this.closed.length > MAX_CLOSED_TABS) this.closed.shift();
+      this.options.closed.push(this.toSaved(tab));
+      if (this.options.closed.length > MAX_CLOSED_TABS) this.options.closed.shift();
     }
     this.destroyView(tab);
     if (tab.isPrivate && !this.tabs.some((item) => item.isPrivate)) this.options.onPrivateEnded();
@@ -298,7 +307,7 @@ export class TabManager {
   }
 
   reopenClosed(): void {
-    const saved = this.closed.pop();
+    const saved = this.options.closed.pop();
     if (!saved) return;
     const tab = this.createRecord(saved);
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
@@ -501,8 +510,8 @@ export class TabManager {
     this.activate(this.tabs[index].id);
   }
 
-  /** Restores a saved session with every tab discarded, then loads only the active one. */
-  restore(session: SavedSession): void {
+  /** Restores a saved window with every tab discarded, then loads only the active one. */
+  restore(session: SavedWindow): void {
     for (const saved of session.tabs) {
       this.tabs.push(this.createRecord(saved));
     }
@@ -515,13 +524,52 @@ export class TabManager {
   }
 
   /** Tabs to restore next time; private tabs are left out. */
-  toSession(): SavedSession {
+  toSavedWindow(): SavedWindow {
     const kept = this.tabs.filter((tab) => !tab.isPrivate);
     return {
-      version: 1,
       activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
       tabs: kept.map((tab) => this.toSaved(tab)),
     };
+  }
+
+  /** Whether `contents` is the page of one of this window's tabs. */
+  hasContents(contents: WebContents): boolean {
+    return this.tabs.some((tab) => tab.view?.webContents === contents);
+  }
+
+  get hasPrivateTabs(): boolean {
+    return this.tabs.some((tab) => tab.isPrivate);
+  }
+
+  /**
+   * Takes a tab out of this window with its page still loaded, for another
+   * window to adopt. The last tab is never detached.
+   */
+  detach(id: TabId): DetachedTab | null {
+    const index = this.indexOf(id);
+    const tab = this.tabs[index];
+    if (!tab || this.tabs.length < 2) return null;
+    this.tabs.splice(index, 1);
+    this.unfreeze(tab);
+    tab.detachListeners?.();
+    tab.detachListeners = null;
+    if (tab.view) this.options.window.contentView.removeChildView(tab.view);
+    this.options.onHtmlFullScreenChange(tab.id, false);
+    if (this.activeId === id) {
+      this.activeId = null;
+      this.activate(this.tabs[Math.min(index, this.tabs.length - 1)].id);
+    } else {
+      this.changed(true);
+    }
+    return tab;
+  }
+
+  /** Adds a tab detached from another window and selects it. */
+  adopt(tab: DetachedTab): void {
+    const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
+    this.tabs.splice(index, 0, tab);
+    if (tab.view) this.attachListeners(tab, tab.view);
+    this.activate(tab.id);
   }
 
   get activeIsPrivate(): boolean {
@@ -547,6 +595,7 @@ export class TabManager {
       keepAlive: saved.keepAlive ?? false,
       muted: false,
       isPrivate,
+      detachListeners: null,
       failed: false,
       activatedAt: 0,
       blockedPopups: [],
@@ -696,8 +745,18 @@ export class TabManager {
 
   private attachListeners(tab: Tab, view: WebContentsView): void {
     const contents = view.webContents;
+    // Every listener is recorded, so the tab can move to another window's manager.
+    const disposers: (() => void)[] = [];
+    const listen = ((event: string, listener: (...args: never[]) => void) => {
+      contents.on(event as never, listener);
+      disposers.push(() => contents.off(event as never, listener));
+      return contents;
+    }) as unknown as WebContents['on'];
+    tab.detachListeners = () => {
+      for (const dispose of disposers) dispose();
+    };
 
-    contents.on('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
+    listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
       // Search and "forget" are intercepted by this view, so they must not
       // briefly turn the still-visible new tab into an opaque page.
       const intercepted = url.startsWith(NEW_TAB_SEARCH_URL) || url.startsWith(NEW_TAB_FORGET_URL);
@@ -706,31 +765,31 @@ export class TabManager {
       }
     });
 
-    contents.on('before-input-event', (_event, input) => {
+    listen('before-input-event', (_event, input) => {
       // Esc stops a loading page. It still reaches the page, which may use it too.
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
     });
 
     // Ctrl + wheel or trackpad pinch; Electron leaves zooming to the app.
-    contents.on('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
-    contents.on('did-navigate', (_event, url) => {
+    listen('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
+    listen('did-navigate', (_event, url) => {
       // Chromium forgets zoom levels on restart; apply the remembered one.
       const factor = this.options.zoomFor(url, tab.isPrivate);
       if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
     });
 
-    contents.on('context-menu', (_event, params) => this.options.onContextMenu(contents, params));
+    listen('context-menu', (_event, params) => this.options.onContextMenu(contents, params));
 
-    contents.on('found-in-page', (_event, result) => {
+    listen('found-in-page', (_event, result) => {
       if (tab.id !== this.activeId || result.matches === undefined) return;
       this.options.onFindResult({ active: result.activeMatchOrdinal ?? 0, matches: result.matches });
     });
 
-    contents.on('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));
-    contents.on('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
+    listen('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));
+    listen('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
 
-    contents.on('will-navigate', (event) => {
+    listen('will-navigate', (event) => {
       if (event.url.startsWith(PROCEED_URL)) {
         event.preventDefault();
         // The token only works on the warning page it was issued for.
@@ -774,7 +833,7 @@ export class TabManager {
         contents.reload();
       }
     });
-    contents.on('input-event', (_event, input) => {
+    listen('input-event', (_event, input) => {
       if (isActivation(input.type)) tab.activatedAt = Date.now();
     });
     contents.setWindowOpenHandler(({ url }) => {
@@ -788,35 +847,35 @@ export class TabManager {
       }
       return { action: 'deny' };
     });
-    contents.on('page-title-updated', (_event, title) => {
+    listen('page-title-updated', (_event, title) => {
       if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
       if (tab.title === title) return;
       tab.title = title;
       this.changed(true);
     });
-    contents.on('page-favicon-updated', (_event, favicons) => {
+    listen('page-favicon-updated', (_event, favicons) => {
       const faviconUrl = favicons[0] ?? null;
       if (tab.faviconUrl === faviconUrl) return;
       tab.faviconUrl = faviconUrl;
       this.changed(true);
     });
-    contents.on('did-start-loading', () => {
+    listen('did-start-loading', () => {
       tab.loading = true;
       this.changed();
     });
-    contents.on('did-stop-loading', () => {
+    listen('did-stop-loading', () => {
       tab.loading = false;
       this.options.onVisitTitle(tab.visitId, contents.getTitle());
       // Background tabs are frozen once loaded, not mid-load.
       this.maybeFreeze(tab);
       this.changed();
     });
-    contents.on('audio-state-changed', ({ audible }) => {
+    listen('audio-state-changed', ({ audible }) => {
       if (!audible) this.maybeFreeze(tab);
       this.changed();
     });
-    contents.on('devtools-closed', () => this.maybeFreeze(tab));
-    contents.on('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
+    listen('devtools-closed', () => this.maybeFreeze(tab));
+    listen('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
       if (!isMainFrame || isSameDocument || tab.blockedPopups.length === 0) return;
       tab.blockedPopups = [];
       this.changed();
@@ -832,19 +891,21 @@ export class TabManager {
       // Navigation history can change even when the URL stays the same.
       this.changed(true);
     };
-    contents.debugger.on('detach', () => {
+    const onDebuggerDetach = () => {
       // The protocol session ended (overrides are gone with it); drop the device
       // instead of showing stale bounds.
       if (tab.view !== view || !tab.emulation || contents.isDestroyed()) return;
       tab.emulation = null;
       this.layoutView(tab, view);
       this.changed();
-    });
-    contents.on('did-navigate', updateUrl);
+    };
+    contents.debugger.on('detach', onDebuggerDetach);
+    disposers.push(() => contents.debugger.off('detach', onDebuggerDetach));
+    listen('did-navigate', updateUrl);
     // A failed load commits Chromium's empty error document under the failed
     // address without a did-navigate; show that address and explain the error.
     let failure: string | null = null;
-    contents.on('did-fail-load', (_event, code, name, url, isMainFrame) => {
+    listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
       if (!isMainFrame || code === ERR_ABORTED) return;
       const token = isCertificateError(code) ? this.options.certificateToken(url) : null;
       failure = errorPageScript(code, name, url, token ? `${PROCEED_URL}${token}` : null);
@@ -854,14 +915,14 @@ export class TabManager {
       tab.visitId = null;
       this.changed(true);
     });
-    contents.on('did-finish-load', () => {
+    listen('did-finish-load', () => {
       if (!failure) return;
       const script = failure;
       failure = null;
       void contents.executeJavaScript(script).catch(() => {});
     });
-    contents.on('did-navigate-in-page', updateUrl);
-    contents.on('render-process-gone', () => {
+    listen('did-navigate-in-page', updateUrl);
+    listen('render-process-gone', () => {
       // Keep the tab discarded instead of reloading, so a crashing page cannot
       // cause a reload loop. Selecting it again recreates it from history.
       tab.history = this.captureHistory(tab);

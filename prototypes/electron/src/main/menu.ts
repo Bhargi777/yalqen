@@ -9,8 +9,12 @@ export interface DeviceMenuItem {
 
 export interface MenuActions {
   newTab(): void;
+  newWindow(): void;
+  newPrivateWindow(): void;
   newPrivateTab(): void;
   closeTab(): void;
+  closeWindow(): void;
+  moveTabToNewWindow(): void;
   reopenClosedTab(): void;
   selectNextTab(): void;
   selectPreviousTab(): void;
@@ -69,8 +73,12 @@ export function buildMenu(actions: MenuActions): Menu {
       label: 'Dosya',
       submenu: [
         { label: 'Yeni sekme', accelerator: 'CmdOrCtrl+T', click: actions.newTab },
-        { label: 'Yeni gizli sekme', accelerator: 'CmdOrCtrl+Shift+N', click: actions.newPrivateTab },
+        { label: 'Yeni pencere', accelerator: 'CmdOrCtrl+N', click: actions.newWindow },
+        { label: 'Yeni gizli pencere', accelerator: 'CmdOrCtrl+Shift+N', click: actions.newPrivateWindow },
+        { label: 'Yeni gizli sekme', click: actions.newPrivateTab },
+        { type: 'separator' },
         { label: 'Sekmeyi kapat', accelerator: 'CmdOrCtrl+W', click: actions.closeTab },
+        { label: 'Pencereyi kapat', accelerator: 'CmdOrCtrl+Shift+W', click: actions.closeWindow },
         {
           label: 'Kapatılan sekmeyi aç',
           accelerator: 'CmdOrCtrl+Shift+T',
@@ -114,6 +122,7 @@ export function buildMenu(actions: MenuActions): Menu {
       submenu: [
         { label: 'Sonraki sekme', accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
         { label: 'Önceki sekme', accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },
+        { label: 'Sekmeyi yeni pencereye taşı', click: actions.moveTabToNewWindow },
         // ⌘1–⌘8 select a tab by position and ⌘9 the last one; hidden to keep the menu short.
         ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
           label: i === 8 ? 'Son sekme' : `Sekme ${i + 1}`,

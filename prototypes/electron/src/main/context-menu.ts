@@ -22,6 +22,7 @@ export interface ContextMenuActions {
   /** The page's source can be shown; false for the source view and internal pages. */
   canViewSource: boolean;
   openInNewTab(url: string): void;
+  openInNewWindow(url: string): void;
   copyText(text: string): void;
   copyImage(): void;
   download(url: string): void;
@@ -62,6 +63,7 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
       ...(canOpen(link)
         ? [
             { label: 'Bağlantıyı yeni sekmede aç', click: () => actions.openInNewTab(link) },
+            { label: 'Bağlantıyı yeni pencerede aç', click: () => actions.openInNewWindow(link) },
             { label: 'Bağlantıyı indir', click: () => actions.download(link) },
           ]
         : []),
