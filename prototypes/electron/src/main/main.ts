@@ -22,6 +22,7 @@ import { DownloadStore, uniquePath, type DownloadActions } from './downloads.js'
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
+import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
 import { externalUrls } from './launch.js';
 import { buildMenu } from './menu.js';
 import {
@@ -93,7 +94,8 @@ function startBrowser(): void {
   const downloads = new DownloadStore(userData);
   const bookmarks = new BookmarkStore(userData);
   const store = new SessionStore(userData);
-  const zoom = new ZoomStore(userData);
+  const defaultZoom = () => settings.get().defaultZoom;
+  const zoom = new ZoomStore(userData, defaultZoom);
   const permissions = new PermissionStore(userData);
   const certificates = new CertificateExceptions();
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
@@ -101,7 +103,7 @@ function startBrowser(): void {
   const closedTabs: SavedTab[] = [];
   // Private tabs keep their decisions and zoom levels in memory until the last one closes.
   let privatePermissions = new PermissionStore(null);
-  let privateZoom = new ZoomStore(null);
+  let privateZoom = new ZoomStore(null, defaultZoom);
   const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
 
   // Open windows, oldest first, and the one menu commands go to.
@@ -155,10 +157,16 @@ function startBrowser(): void {
     permissionPrompts = answer.catch(() => {});
     return answer;
   };
-  for (const browsing of [daily, privateBrowsing]) {
-    // Turkish first, then English; macOS uses the system spell checker instead.
-    if (process.platform !== 'darwin') browsing.setSpellCheckerLanguages(['tr', 'en-US']);
-  }
+  // Sites are asked for the preferred language first; spelling is checked in the
+  // same order (macOS uses the system spell checker instead).
+  const applyLanguages = () => {
+    const language = settings.get().pageLanguage;
+    for (const browsing of [daily, privateBrowsing]) {
+      browsing.setUserAgent(browsing.getUserAgent(), acceptLanguages(language));
+      if (process.platform !== 'darwin') browsing.setSpellCheckerLanguages(spellCheckerLanguages(language));
+    }
+  };
+  applyLanguages();
   for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
     browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) {
@@ -383,7 +391,11 @@ function startBrowser(): void {
   const updateSettings = (patch: unknown) => {
     const wasFreezing = settings.get().freezeBackgroundTabs;
     const previousDns = settings.get().secureDns;
+    const previousZoom = settings.get().defaultZoom;
+    const previousLanguage = settings.get().pageLanguage;
     settings.update(patch);
+    if (settings.get().defaultZoom !== previousZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
+    if (settings.get().pageLanguage !== previousLanguage) applyLanguages();
     if (settings.get().secureDns !== previousDns) app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
     nativeTheme.themeSource = settings.get().theme;
     if (settings.get().freezeBackgroundTabs !== wasFreezing) eachWindow((window) => window.tabs.applyFreezeSetting());
@@ -427,7 +439,7 @@ function startBrowser(): void {
       if (windows.some((window) => window.tabs.hasPrivateTabs)) return;
       // Nothing of private browsing outlives its last tab.
       privatePermissions = new PermissionStore(null);
-      privateZoom = new ZoomStore(null);
+      privateZoom = new ZoomStore(null, defaultZoom);
       downloads.removePrivate();
       downloadsChanged();
       void privateBrowsing.clearStorageData();

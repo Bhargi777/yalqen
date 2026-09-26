@@ -7,6 +7,7 @@
     tabs,
     activeTabId,
     zoom,
+    defaultZoom,
     downloads,
     leadingInset,
     trailingInset,
@@ -15,6 +16,8 @@
     activeTabId: TabId | null;
     /** Zoom factor of the active page. */
     zoom: number;
+    /** Zoom of pages without a level of their own; other levels are shown. */
+    defaultZoom: number;
     downloads: DownloadsSummary;
     /** Space kept for macOS window controls when the sidebar is narrow. */
     leadingInset: number;
@@ -123,8 +126,8 @@
               <Icon name="popup-blocked" size={13} />
             </button>
           {/if}
-          {#if Math.round(zoom * 100) !== 100}
-            <button class="zoom" title="Gerçek boyuta dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
+          {#if Math.round(zoom * 100) !== Math.round(defaultZoom * 100)}
+            <button class="zoom" title="Varsayılan yakınlaştırmaya dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
               %{Math.round(zoom * 100)}
             </button>
           {/if}

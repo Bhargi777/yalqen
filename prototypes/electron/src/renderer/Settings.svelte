@@ -26,6 +26,17 @@
     { value: 'new-tab', label: 'Yeni sekmeyle başla' },
   ] as const;
 
+  const fontSizeOptions = [
+    { value: 'small', label: 'Küçük' },
+    { value: 'medium', label: 'Orta' },
+    { value: 'large', label: 'Büyük' },
+    { value: 'xlarge', label: 'Çok büyük' },
+  ] as const;
+  const zoomOptions = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
+  const languageOptions = [
+    { value: 'tr', label: 'Türkçe' },
+    { value: 'en', label: 'English' },
+  ] as const;
   const dnsOptions = [
     { value: 'automatic', label: 'Otomatik' },
     { value: 'cloudflare', label: 'Cloudflare' },
@@ -201,6 +212,46 @@
             aria-pressed={values.theme === option.value}
             onclick={() => update({ theme: option.value })}
           >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="font-size" class="label">
+        <span>Yazı boyutu</span>
+        <span class="hint">Sitenin kendi boyutu yoksa kullanılır. Yeni açılan sekmelerde geçerli olur.</span>
+      </label>
+      <select
+        id="font-size"
+        value={values.fontSize}
+        onchange={(event) => update({ fontSize: event.currentTarget.value as SettingsValues['fontSize'] })}
+      >
+        {#each fontSizeOptions as option (option.value)}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </select>
+    </div>
+    <div class="row">
+      <label for="default-zoom" class="label">
+        <span>Sayfa yakınlaştırma</span>
+        <span class="hint">Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.</span>
+      </label>
+      <select id="default-zoom" value={values.defaultZoom} onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}>
+        {#each zoomOptions as factor (factor)}
+          <option value={factor}>%{Math.round(factor * 100)}</option>
+        {/each}
+      </select>
+    </div>
+    <div class="row">
+      <span class="label">
+        <span>Sayfa dili</span>
+        <span class="hint">Sitelerden önce bu dilde içerik istenir; yazım denetimi de bu sırayı izler.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Sayfa dili">
+        {#each languageOptions as option (option.value)}
+          <button aria-pressed={values.pageLanguage === option.value} onclick={() => update({ pageLanguage: option.value })}>
             {option.label}
           </button>
         {/each}

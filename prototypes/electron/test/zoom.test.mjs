@@ -71,3 +71,16 @@ test('a store without a directory keeps levels in memory only', () => {
   assert.equal(store.get('https://example.com/'), 1.5);
   assert.equal(store.file, null);
 });
+
+test('sites without a level of their own follow the default zoom', () => {
+  let fallback = 1.25;
+  const store = new ZoomStore(null, () => fallback);
+  assert.equal(store.get('https://a.com/'), 1.25);
+  assert.equal(store.get('yalqen://newtab/'), 1.25);
+  store.set('https://a.com/', 1.5);
+  assert.equal(store.has('https://a.com/'), true);
+  store.set('https://a.com/', 1.25);
+  assert.equal(store.has('https://a.com/'), false);
+  fallback = 0.9;
+  assert.equal(store.get('https://a.com/'), 0.9);
+});

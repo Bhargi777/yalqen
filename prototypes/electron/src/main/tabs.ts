@@ -5,6 +5,7 @@ import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDev
 import type { SavedHistory, SavedTab, SavedWindow } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
+import type { WebPreferences } from 'electron';
 import { PROCEED_HTTP_URL } from './https-only.js';
 import { canViewSource } from './page-export.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
@@ -83,6 +84,12 @@ export interface TabManagerOptions {
   onFindResult: (result: FindResult) => void;
   /** Remembered zoom factor for a page address. */
   zoomFor: (url: string, isPrivate: boolean) => number;
+  /** Zoom of pages without a level of their own; also where "actual size" goes. */
+  defaultZoom: () => number;
+  /** Whether the site of `url` has a zoom level of its own. */
+  hasOwnZoom: (url: string, isPrivate: boolean) => boolean;
+  /** Preferences such as the font size, for pages created from now on. */
+  pagePreferences: () => Partial<WebPreferences>;
   /** The user zoomed the page at `url`. */
   onZoom: (url: string, factor: number, isPrivate: boolean) => void;
   /** Whether the user trusted an invalid certificate for `url`'s site. */
@@ -480,7 +487,17 @@ export class TabManager {
     this.active()?.view?.webContents.stop();
   }
 
-  /** Zooms the active page one step in (1) or out (-1), or back to actual size (0). */
+  /** Applies a new default zoom to pages whose site has no level of its own. */
+  applyDefaultZoom(): void {
+    for (const tab of this.tabs) {
+      const contents = tab.view?.webContents;
+      if (!contents || contents.isDestroyed() || this.options.hasOwnZoom(tab.url, tab.isPrivate)) continue;
+      contents.setZoomFactor(this.options.defaultZoom());
+    }
+    this.changed();
+  }
+
+  /** Zooms the active page one step in (1) or out (-1), or back to the default zoom (0). */
   zoom(direction: 1 | -1 | 0): void {
     const tab = this.active();
     if (tab?.view) this.zoomView(tab, tab.view, direction);
@@ -633,6 +650,7 @@ export class TabManager {
 
     const view = new WebContentsView({
       webPreferences: {
+        ...this.options.pagePreferences(),
         session: tab.isPrivate ? this.options.privateSession : this.options.session,
         sandbox: true,
         contextIsolation: true,
@@ -680,7 +698,7 @@ export class TabManager {
 
   private zoomView(tab: Tab, view: WebContentsView, direction: 1 | -1 | 0): void {
     const contents = view.webContents;
-    const factor = direction === 0 ? 1 : stepZoom(contents.getZoomFactor(), direction);
+    const factor = direction === 0 ? this.options.defaultZoom() : stepZoom(contents.getZoomFactor(), direction);
     // Chromium applies the factor to every page of the same host in this session.
     contents.setZoomFactor(factor);
     this.options.onZoom(contents.getURL(), factor, tab.isPrivate);

@@ -29,29 +29,39 @@ interface SavedZoom {
 }
 
 /**
- * Zoom factors people chose for sites; sites at actual size are not stored.
+ * Zoom factors people chose for sites; sites at the default zoom are not stored.
  * Without a directory the factors are kept in memory only, as for private tabs.
  */
 export class ZoomStore {
   readonly file: string | null;
   private readonly sites = new Map<string, number>();
 
-  constructor(directory: string | null) {
+  constructor(
+    directory: string | null,
+    /** Zoom of pages without a factor of their own. */
+    private readonly defaultFactor: () => number = () => 1,
+  ) {
     this.file = directory === null ? null : path.join(directory, 'zoom.json');
     this.load();
   }
 
-  /** The remembered factor for `url`'s site, or 1. */
+  /** The remembered factor for `url`'s site, or the default. */
   get(url: string): number {
     const key = zoomKey(url);
-    return (key === null ? undefined : this.sites.get(key)) ?? 1;
+    return (key === null ? undefined : this.sites.get(key)) ?? this.defaultFactor();
+  }
+
+  /** Whether `url`'s site has a factor of its own. */
+  has(url: string): boolean {
+    const key = zoomKey(url);
+    return key !== null && this.sites.has(key);
   }
 
   set(url: string, factor: number): void {
     const key = zoomKey(url);
     if (!key || !Number.isFinite(factor)) return;
     const clamped = Math.min(MAX_FACTOR, Math.max(MIN_FACTOR, factor));
-    if (Math.abs(clamped - 1) < EPSILON) {
+    if (Math.abs(clamped - this.defaultFactor()) < EPSILON) {
       if (!this.sites.delete(key)) return;
     } else {
       if (this.sites.get(key) === clamped) return;

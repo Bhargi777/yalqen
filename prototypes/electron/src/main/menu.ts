@@ -138,7 +138,7 @@ export function buildMenu(actions: MenuActions): Menu {
       submenu: [
         { label: 'Yenile', accelerator: 'CmdOrCtrl+R', click: actions.reload },
         { type: 'separator' },
-        { label: 'Gerçek boyut', accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
+        { label: 'Varsayılan boyut', accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
         { label: 'Yakınlaştır', accelerator: 'CmdOrCtrl+Plus', click: () => actions.zoom(1) },
         // ⌘= is the unshifted key of ⌘+ on most layouts.
         {

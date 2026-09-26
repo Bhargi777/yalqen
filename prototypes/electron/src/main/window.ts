@@ -22,6 +22,7 @@ import type { HistoryStore } from './history.js';
 import type { HttpsOnly } from './https-only.js';
 import { canViewSource, pdfFileName } from './page-export.js';
 import { pageFrame } from './page-layout.js';
+import { fontPreferences } from './page-preferences.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
 import type { SavedTab, SavedWindow } from './persistence.js';
 import { blockedPopupsTemplate } from './popups.js';
@@ -249,6 +250,9 @@ export class YalqenWindow {
       },
       onFindResult: (result) => this.findBar.showResult(result),
       zoomFor: (url, isPrivate) => app.zoomFor(isPrivate).get(url),
+      defaultZoom: () => app.settings.get().defaultZoom,
+      hasOwnZoom: (url, isPrivate) => app.zoomFor(isPrivate).has(url),
+      pagePreferences: () => fontPreferences(app.settings.get().fontSize),
       onZoom: (url, factor, isPrivate) => app.zoomFor(isPrivate).set(url, factor),
       hasCertificateException: (url) => app.certificates.hasException(url),
       certificateToken: (url) => app.certificates.tokenFor(url),
@@ -344,6 +348,7 @@ export class YalqenWindow {
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       material: this.material(),
+      defaultZoom: this.app.settings.get().defaultZoom,
       downloads: downloadsSummary(this.app.downloads.list()),
     };
   }

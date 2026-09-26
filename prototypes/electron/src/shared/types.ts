@@ -13,6 +13,9 @@ export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brav
 export type ThemeSource = 'system' | 'light' | 'dark';
 /** DNS over HTTPS: off, the system resolver's provider when it has one, or a fixed provider. */
 export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
+export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
+/** Language sites are asked for first, then the other one. */
+export type PageLanguage = 'tr' | 'en';
 /**
  * `dangerous`: https with a certificate the user chose to trust after a warning.
  * `local`: the browser's own pages, files and data, which have no connection to show.
@@ -83,6 +86,8 @@ export interface BrowserState {
   device: DeviceFrame | null;
   /** Zoom factor of the active page; 1 is actual size. */
   zoom: number;
+  /** Zoom of pages without a level of their own; the address bar shows other levels. */
+  defaultZoom: number;
   downloads: DownloadsSummary;
 }
 
@@ -239,6 +244,11 @@ export interface SettingsValues {
   /** Load http pages over https, asking before falling back to http. */
   httpsOnly: boolean;
   secureDns: SecureDnsSetting;
+  /** Default font size of new pages. */
+  fontSize: FontSizeSetting;
+  /** Zoom of pages without a level of their own. */
+  defaultZoom: number;
+  pageLanguage: PageLanguage;
   /** Whether the one-time first launch welcome has been dismissed. */
   welcomeCompleted: boolean;
 }
