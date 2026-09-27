@@ -164,7 +164,6 @@ function onBackdropMouseDown(event: MouseEvent): void {
     padding: 0 16px;
     border-radius: 999px;
     background: rgb(255 255 255 / 0.88);
-    backdrop-filter: blur(20px) saturate(1.2);
     box-shadow:
       0 0 0 0.5px rgb(0 0 0 / 0.12),
       inset 0 1px rgb(255 255 255 / 0.8),
@@ -269,7 +268,6 @@ function onBackdropMouseDown(event: MouseEvent): void {
   @media (prefers-reduced-transparency: reduce) {
     .bar {
       background: #fff;
-      backdrop-filter: none;
     }
   }
 
