@@ -17,6 +17,7 @@ import { stepZoom } from './zoom.js';
 const MAX_CLOSED_TABS = 20;
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_FORGET_URL = `${NEW_TAB_URL}forget`;
+const NEW_TAB_CENTER_CHANNEL = 'yalqen:newtab-center';
 const NEW_TAB_TITLE = 'Yeni sekme';
 const DEVICE_MARGIN = 32;
 const DEVICE_LABEL_HEIGHT = 24;
@@ -122,6 +123,7 @@ export class TabManager {
   private activeId: TabId | null = null;
   private pageBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private pageRadius = 0;
+  private newTabCenterOffset = 0;
 
   constructor(private readonly options: TabManagerOptions) {}
 
@@ -176,6 +178,21 @@ export class TabManager {
     if (!tab?.view) return;
     this.layoutView(tab, tab.view, true);
     if (tab.emulation) this.changed();
+  }
+
+  setNewTabCenterOffset(offset: number): void {
+    if (offset === this.newTabCenterOffset) return;
+    this.newTabCenterOffset = offset;
+    const tab = this.active();
+    if (tab) this.syncNewTabCenter(tab);
+  }
+
+  private syncNewTabCenter(tab: Tab): void {
+    if (tab.url !== NEW_TAB_URL) return;
+    const contents = tab.view?.webContents;
+    if (!contents || contents.isDestroyed()) return;
+    const zoom = contents.getZoomFactor();
+    contents.send(NEW_TAB_CENTER_CHANNEL, tab.emulation ? 0 : this.newTabCenterOffset / zoom);
   }
 
   toggleEmulation(deviceId: DeviceId): void {
@@ -237,6 +254,7 @@ export class TabManager {
     this.unfreeze(next);
     this.layoutView(next, view);
     this.options.window.contentView.addChildView(view);
+    this.syncNewTabCenter(next);
     if (next.url !== 'about:blank') view.webContents.focus();
     this.changed(true);
   }
@@ -484,6 +502,8 @@ export class TabManager {
       if (!contents || contents.isDestroyed() || this.options.hasOwnZoom(tab.url, tab.isPrivate)) continue;
       contents.setZoomFactor(this.options.defaultZoom());
     }
+    const active = this.active();
+    if (active) this.syncNewTabCenter(active);
     this.changed();
   }
 
@@ -682,6 +702,7 @@ export class TabManager {
     const contents = view.webContents;
     const factor = direction === 0 ? this.options.defaultZoom() : stepZoom(contents.getZoomFactor(), direction);
     contents.setZoomFactor(factor);
+    this.syncNewTabCenter(tab);
     this.options.onZoom(contents.getURL(), factor, tab.isPrivate);
     this.changed();
   }
@@ -689,6 +710,7 @@ export class TabManager {
   private setEmulation(tab: Tab, emulation: Emulation | null): void {
     const wasEmulated = tab.emulation !== null;
     tab.emulation = emulation;
+    this.syncNewTabCenter(tab);
     const view = tab.view;
     if (view) {
       const applied = emulation ? this.layoutView(tab, view) : this.clearDevice(tab, view);
@@ -951,6 +973,7 @@ export class TabManager {
       this.changed(true);
     });
     listen('did-finish-load', () => {
+      this.syncNewTabCenter(tab);
       if (!failure) return;
       const script = failure;
       failure = null;

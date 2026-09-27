@@ -92,6 +92,7 @@ export class YalqenWindow {
     chromeHeight: 44,
     pageInset: 8,
     pageRadius: 16,
+    newTabCenterOffset: 0,
   };
   private glassApplied = glassAvailable;
   private htmlFullScreenTabId: string | null = null;
@@ -621,6 +622,7 @@ export class YalqenWindow {
     this.commandBar.fitWindow(this.window);
     const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
     this.tabs.setPageBounds(bounds);
+    this.tabs.setNewTabCenterOffset(this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
     this.tabs.setPageRadius(radius);
     this.pageArea = bounds;
     this.findBar.relayout(this.window);

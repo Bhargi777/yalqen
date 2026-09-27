@@ -91,6 +91,9 @@
       chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
+      newTabCenterOffset: browser.material === 'glass' && !browser.pageFullScreen
+        ? (side === 'right' ? 1 : -1) * Math.max(0, shownWidth - COLLAPSED_WIDTH) / 2
+        : 0,
     });
   });
 

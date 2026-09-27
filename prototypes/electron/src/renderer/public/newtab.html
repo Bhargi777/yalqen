@@ -107,6 +107,11 @@
         align-items: center;
         width: min(720px, 100%);
         padding: 0 24px 10vh;
+        transform: translateX(clamp(
+          min(0px, calc(360px - 50vw)),
+          var(--newtab-center-offset, 0px),
+          max(0px, calc(50vw - 360px))
+        ));
       }
 
       .mark {

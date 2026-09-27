@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ClearDataRequest, SettingsApi, SettingsChannel, SettingsValues, SettingsView } from '../shared/types.js';
 
 const CHANNEL = 'yalqen:page-swipe';
+const NEW_TAB_CENTER_CHANNEL = 'yalqen:newtab-center';
 const THRESHOLD = 90;
 const GAP_MS = 350;
 const COOLDOWN_MS = 650;
@@ -9,6 +10,19 @@ const COOLDOWN_MS = 650;
 let distance = 0;
 let lastAt = 0;
 let navigatedAt = 0;
+
+if (location.href === 'yalqen://newtab/' && window === window.top) {
+  let centerOffset = 0;
+  const applyCenterOffset = () => {
+    document.documentElement?.style.setProperty('--newtab-center-offset', `${centerOffset}px`);
+  };
+  ipcRenderer.on(NEW_TAB_CENTER_CHANNEL, (_event, offset: number) => {
+    if (!Number.isFinite(offset)) return;
+    centerOffset = offset;
+    applyCenterOffset();
+  });
+  window.addEventListener('DOMContentLoaded', applyCenterOffset, { once: true });
+}
 
 function hasHorizontalScroller(event: WheelEvent): boolean {
   for (const target of event.composedPath()) {

@@ -81,6 +81,7 @@ export interface ChromeLayout {
   chromeHeight: number;
   pageInset: number;
   pageRadius: number;
+  newTabCenterOffset: number;
 }
 
 export type UiAction =
