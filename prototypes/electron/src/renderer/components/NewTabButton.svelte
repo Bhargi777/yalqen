@@ -24,7 +24,7 @@
     flex: none;
     align-items: center;
     gap: 8px;
-    height: 30px;
+    height: var(--chrome-control-size);
     padding: 0 11px;
     border: 0;
     overflow: hidden;

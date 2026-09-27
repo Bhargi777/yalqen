@@ -372,7 +372,7 @@
     flex: 0 1 auto;
     min-height: 0;
     margin: 0;
-    padding: 3px;
+    padding: 2px;
     overflow-y: auto;
     border-radius: 18px;
     background: var(--well);
@@ -397,7 +397,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    height: 30px;
+    height: calc(var(--chrome-control-size) - 4px);
     border-radius: 999px;
     transition: background var(--transition);
   }
