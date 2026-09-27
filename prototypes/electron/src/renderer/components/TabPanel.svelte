@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
+  import CircleButton from './CircleButton.svelte';
   import Icon from './Icon.svelte';
+  import NewTabButton from './NewTabButton.svelte';
 
   let {
     tabs,
@@ -115,17 +117,27 @@
     <ul class="favorites" aria-label="Sabitlenenler">
       {#each pinned as tab (tab.id)}
         <li class="favorite" class:active={tab.id === activeTabId} class:discarded={!tab.live}>
-          <button
-            class="tile"
-            title={label(tab)}
-            aria-label={label(tab)}
-            aria-current={tab.id === activeTabId ? 'page' : undefined}
-            onclick={() => send({ type: 'activate-tab', id: tab.id })}
-            onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-          >
-            {@render favicon(tab, collapsed ? 16 : 20)}
-          </button>
-          {#if !collapsed}
+          {#if collapsed}
+            <CircleButton
+              title={label(tab)}
+              ariaLabel={label(tab)}
+              ariaCurrent={tab.id === activeTabId ? 'page' : undefined}
+              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+            >
+              {@render favicon(tab, 16)}
+            </CircleButton>
+          {:else}
+            <button
+              class="tile"
+              title={label(tab)}
+              aria-label={label(tab)}
+              aria-current={tab.id === activeTabId ? 'page' : undefined}
+              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+            >
+              {@render favicon(tab, 20)}
+            </button>
             <button
               class="unpin"
               title="Sabitlemeyi kaldır"
@@ -155,33 +167,41 @@
           ondragend={() => ((dragId = null), (dropIndex = null))}
           ondragover={(e) => onDragOver(e, index)}
         >
-          <button
-            class="select"
-            title={collapsed ? label(tab) : tab.url}
-            aria-label={label(tab)}
-            aria-current={tab.id === activeTabId ? 'page' : undefined}
-            onclick={() => send({ type: 'activate-tab', id: tab.id })}
-            onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-          >
-            {@render favicon(tab, 16)}
-            {#if !collapsed}
+          {#if collapsed}
+            <CircleButton
+              title={label(tab)}
+              ariaLabel={label(tab)}
+              ariaCurrent={tab.id === activeTabId ? 'page' : undefined}
+              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+            >
+              {@render favicon(tab, 16)}
+            </CircleButton>
+          {:else}
+            <button
+              class="select"
+              title={tab.url}
+              aria-label={label(tab)}
+              aria-current={tab.id === activeTabId ? 'page' : undefined}
+              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+            >
+              {@render favicon(tab, 16)}
               <span class="title">{tab.title}</span>
               {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
-            {/if}
-          </button>
-
-          {#if !collapsed && (tab.audible || tab.muted)}
-            <button
-              class="action audio"
-              title={tab.muted ? 'Sesi aç' : 'Sessize al'}
-              aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
-              aria-pressed={tab.muted}
-              onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-            >
-              <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
             </button>
-          {/if}
-          {#if !collapsed}
+
+            {#if tab.audible || tab.muted}
+              <button
+                class="action audio"
+                title={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                aria-pressed={tab.muted}
+                onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+              >
+                <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
+              </button>
+            {/if}
             <span class="actions">
               {#if !tab.isPrivate && /^https?:/.test(tab.url)}
                 <button
@@ -215,10 +235,9 @@
     </ol>
   {/if}
 
-  <button class="new-tab" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-    <Icon name="plus" size={14} />
-    {#if !collapsed}<span>Yeni sekme</span>{/if}
-  </button>
+  <div class="new-tab-position">
+    <NewTabButton compact={collapsed} />
+  </div>
 
   <footer class="footer" class:compact={collapsed}>
     {#if !collapsed}
@@ -288,12 +307,8 @@
   }
 
   .collapsed .favorites {
-    grid-template-columns: 32px;
-    gap: 2px;
-    padding: 3px;
-    border-radius: 20px;
-    background: var(--well);
-    box-shadow: var(--well-rim);
+    grid-template-columns: 34px;
+    gap: 6px;
   }
 
   .favorite {
@@ -316,12 +331,6 @@
   :global([data-material='glass']) .panel:not(.collapsed) .tile {
     background: var(--platter);
     box-shadow: var(--rim);
-  }
-
-  .collapsed .tile {
-    height: 34px;
-    border-radius: 999px;
-    background: transparent;
   }
 
   .tile:hover,
@@ -372,27 +381,16 @@
   }
 
   .collapsed .tabs {
-    width: 38px;
-    border-radius: 20px;
+    width: 42px;
+    padding: 4px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    scrollbar-width: none;
   }
 
-  .collapsed .favorites:has(+ .tabs) {
-    margin-bottom: 0;
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-
-  .collapsed .favorites + .tabs {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-  }
-
-  .collapsed .favorites + .tabs::before {
-    content: '';
-    display: block;
-    height: 1px;
-    margin: 0 6px 3px;
-    background: var(--border);
+  .collapsed .tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tab {
@@ -412,16 +410,20 @@
     margin-top: 1px;
   }
 
-  .tab:hover {
+  .collapsed .tab + .tab {
+    margin-top: 6px;
+  }
+
+  .panel:not(.collapsed) .tab:hover {
     background: var(--well-hover);
   }
 
-  .tab.active {
+  .panel:not(.collapsed) .tab.active {
     background: var(--surface-active);
     box-shadow: var(--shadow);
   }
 
-  :global([data-material='glass']) .tab.active,
+  :global([data-material='glass']) .panel:not(.collapsed) .tab.active,
   :global([data-material='glass']) .favorite.active .tile {
     box-shadow: var(--shadow), var(--rim);
   }
@@ -463,11 +465,6 @@
 
   .tab.active .select {
     color: var(--text);
-  }
-
-  .collapsed .select {
-    justify-content: center;
-    padding: 0;
   }
 
   .favicon {
@@ -547,44 +544,9 @@
     margin-right: 4px;
   }
 
-  .new-tab {
-    display: flex;
+  .new-tab-position {
     flex: none;
-    align-items: center;
-    gap: 8px;
-    height: 30px;
     margin-top: 6px;
-    padding: 0 11px;
-    border: 0;
-    overflow: hidden;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 13px;
-    white-space: nowrap;
-  }
-
-  .new-tab > :global(svg) {
-    flex: none;
-  }
-
-  .new-tab span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .collapsed .new-tab {
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: 50%;
-  }
-
-  .new-tab:hover {
-    background: var(--surface-hover);
-    color: var(--text);
   }
 
   .footer {

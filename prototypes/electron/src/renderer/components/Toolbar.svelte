@@ -2,6 +2,7 @@
   import type { DownloadsSummary, TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
   import Icon from './Icon.svelte';
+  import NewTabButton from './NewTabButton.svelte';
 
   let {
     tabs,
@@ -161,11 +162,7 @@
     {/each}
     </ol>
     <div class="new-tab-slot">
-      <div class="capsule">
-        <button class="icon" title="Yeni sekme (⌘T)" aria-label="Yeni sekme" onclick={() => send({ type: 'new-tab' })}>
-          <Icon name="plus" />
-        </button>
-      </div>
+      <NewTabButton />
     </div>
   </div>
 
