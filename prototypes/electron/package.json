@@ -41,7 +41,7 @@
     ],
     "extraResources": [
       {
-        "from": "../../design/brand/png/fitted/icon-512.png",
+        "from": "../../design/brand/png/dock/icon-512.png",
         "to": "brand/icon-512.png"
       }
     ],
@@ -56,7 +56,7 @@
     ],
     "mac": {
       "target": "dmg",
-      "icon": "yalqen-fitted.icns",
+      "icon": "yalqen-dock.icns",
       "category": "public.app-category.productivity",
       "identity": null
     },
