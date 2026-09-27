@@ -10,7 +10,7 @@ import { PROCEED_HTTP_URL } from './https-only.js';
 import { canViewSource } from './page-export.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { isSameVisit } from './history.js';
-import { shouldDiscard } from './memory-saver.js';
+import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
 
@@ -305,12 +305,13 @@ export class TabManager {
     return true;
   }
 
-  discardInactive(now: number, afterMinutes: number): number {
-    let count = 0;
+  discardCandidates(): (DiscardCandidate & { id: TabId })[] {
+    const candidates: (DiscardCandidate & { id: TabId })[] = [];
     for (const tab of this.tabs) {
       const contents = tab.view?.webContents;
       if (!contents || contents.isDestroyed()) continue;
-      const candidate = {
+      candidates.push({
+        id: tab.id,
         live: true,
         active: tab.id === this.activeId,
         pinned: tab.pinnedUrl !== null,
@@ -319,8 +320,15 @@ export class TabManager {
         devToolsOpen: contents.isDevToolsOpened(),
         edited: tab.edited,
         inactiveSince: tab.inactiveSince,
-      };
-      if (shouldDiscard(candidate, now, afterMinutes) && this.discard(tab.id)) count++;
+      });
+    }
+    return candidates;
+  }
+
+  discardInactive(now: number, afterMinutes: number): number {
+    let count = 0;
+    for (const candidate of this.discardCandidates()) {
+      if (shouldDiscard(candidate, now, afterMinutes) && this.discard(candidate.id)) count++;
     }
     return count;
   }

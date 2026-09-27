@@ -419,7 +419,7 @@
     <div class="row last">
       <span class="label">
         <span>Kullanılmayan sekmeleri bellekten çıkar</span>
-        <span class="hint">Bu süre boyunca açılmayan sekmeler belleği boşaltır, tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmelere dokunulmaz.</span>
+        <span class="hint">Bu süre boyunca açılmayan sekmeler belleği boşaltır; sistem belleği azalınca en eski arka plan sekmeleri daha erken boşaltılır. Tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmelere dokunulmaz.</span>
       </span>
       <div class="segmented" role="group" aria-label="Kullanılmayan sekmeleri bellekten çıkar">
         {#each discardOptions as option (option.value)}

@@ -27,7 +27,7 @@ import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
 import { blockThirdPartyCookies } from './third-party-cookies.js';
 import { FindBar } from './find-bar.js';
 import { externalUrls } from './launch.js';
-import { DISCARD_CHECK_MS } from './memory-saver.js';
+import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-saver.js';
 import { buildMenu } from './menu.js';
 import {
   PermissionStore,
@@ -595,9 +595,20 @@ function startBrowser(): void {
     return settingsView();
   });
 
+  const discardUnderPressure = (count: number) => {
+    for (let i = 0; i < count; i++) {
+      const candidates = windows.flatMap((window) => window.tabs.discardCandidates().map((tab) => ({ ...tab, window })));
+      const victim = pressureVictim(candidates, Date.now());
+      if (!victim?.window.tabs.discard(victim.id)) return;
+    }
+  };
   const discardTimer = setInterval(() => {
     const minutes = settings.get().discardAfterMinutes;
-    if (minutes > 0) eachWindow((window) => window.tabs.discardInactive(Date.now(), minutes));
+    if (minutes === 0) return;
+    eachWindow((window) => window.tabs.discardInactive(Date.now(), minutes));
+    void readMemoryPressure().then((pressure) => {
+      if (pressure !== 'normal') discardUnderPressure(pressure === 'critical' ? 3 : 1);
+    });
   }, DISCARD_CHECK_MS);
 
   app.on('before-quit', () => {
