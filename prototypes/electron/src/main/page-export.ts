@@ -10,6 +10,7 @@ export function pdfFileName(title: string, url: string): string {
     }
   }
   const safe = name
+    // eslint-disable-next-line no-control-regex -- control characters are not allowed in file names
     .replace(/[\u0000-\u001f\\/:*?"<>|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/^[.\s]+|[.\s]+$/g, '')

@@ -13,17 +13,27 @@ function gesturePage() {
       Object.assign(this, { overflowX, scrollWidth, clientWidth });
     }
   }
+  const window = {
+    addEventListener: (name, callback) => {
+      if (name === 'wheel') onWheel = callback;
+    },
+  };
+  window.top = window;
   const context = {
     exports: {},
-    require: () => ({ ipcRenderer: { send: (...args) => sent.push(args) } }),
-    window: { addEventListener: (_name, callback) => { onWheel = callback; } },
+    require: () => ({
+      ipcRenderer: { send: (...args) => sent.push(args), on() {}, sendSync() {} },
+      contextBridge: { exposeInMainWorld() {} },
+    }),
+    location: { href: 'https://example.com/' },
+    window,
     document: { scrollingElement: new Element() },
     Element,
     WheelEvent: { DOM_DELTA_PIXEL: 0 },
     getComputedStyle: (element) => ({ overflowX: element.overflowX }),
     performance: { now: () => now },
   };
-  const code = readFileSync(path.join(import.meta.dirname, '../dist/preload/page-gesture.js'), 'utf8');
+  const code = readFileSync(path.join(import.meta.dirname, '../dist/preload/page-preload.js'), 'utf8');
   vm.runInNewContext(code, context);
   return {
     sent,

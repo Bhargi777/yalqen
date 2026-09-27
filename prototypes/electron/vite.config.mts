@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     outDir: '../../dist/renderer',
     emptyOutDir: true,
-    target: 'chrome140',
+    target: 'chrome152',
     rolldownOptions: {
       input: {
         index: page('index.html'),

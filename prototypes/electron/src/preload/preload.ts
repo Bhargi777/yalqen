@@ -1,20 +1,12 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type {
-  BrowserState,
-  ChromeLayout,
-  IpcChannel,
-  UiAction,
-  Wallpaper,
-  YalqenApi,
+import {
+  IpcChannel as channel,
+  type BrowserState,
+  type ChromeLayout,
+  type UiAction,
+  type Wallpaper,
+  type YalqenApi,
 } from '../shared/types.js';
-
-const channel: typeof IpcChannel = {
-  getState: 'yalqen:get-state',
-  state: 'yalqen:state',
-  setLayout: 'yalqen:set-layout',
-  action: 'yalqen:action',
-  wallpaper: 'yalqen:wallpaper',
-};
 
 function subscribe<T>(name: string, listener: (value: T) => void): () => void {
   const handler = (_event: IpcRendererEvent, value: T) => listener(value);

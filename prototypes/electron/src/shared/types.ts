@@ -110,6 +110,16 @@ export type UiAction =
   | { type: 'open-history' }
   | { type: 'open-settings' };
 
+export const PageChannel = {
+  swipe: 'yalqen:page-swipe',
+  newTabCenter: 'yalqen:newtab-center',
+} as const;
+
+export interface NewTabCenter {
+  offset: number;
+  width: number | null;
+}
+
 export const IpcChannel = {
   getState: 'yalqen:get-state',
   state: 'yalqen:state',

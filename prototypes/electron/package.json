@@ -6,23 +6,31 @@
   "description": "Phase 0 Electron + TypeScript + Svelte prototype",
   "main": "dist/main/main.js",
   "scripts": {
-    "build": "npm run build:main && npm run build:renderer",
-    "build:main": "tsc -p tsconfig.main.json",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "build:main": "node -e \"for (const dir of ['dist/main', 'dist/shared']) require('node:fs').rmSync(dir, { recursive: true, force: true })\" && tsc -p tsconfig.main.json",
+    "build:preload": "node scripts/build-preload.mjs",
     "build:renderer": "vite build",
-    "typecheck": "tsc -p tsconfig.main.json --noEmit && svelte-check --tsconfig ./tsconfig.renderer.json",
-    "test": "npm run build:main && node --test \"test/*.test.mjs\"",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json && svelte-check --tsconfig ./tsconfig.renderer.json",
+    "lint": "eslint .",
+    "test": "npm run build:main && npm run build:preload && node --test test/*.test.mjs",
+    "check": "npm run lint && npm run typecheck && npm test",
     "start": "npm run build && node scripts/launch-branded.mjs",
-    "package:mac": "npm run build && electron-builder --mac dmg"
+    "package:mac": "npm run build && electron-builder --mac"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
-    "@types/node": "^22.20.4",
+    "@types/node": "^24.19.0",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
+    "eslint": "^10.11.0",
+    "eslint-plugin-svelte": "^3.23.0",
+    "globals": "^17.12.0",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
     "vite": "^8.3.1"
   },
   "optionalDependencies": {
@@ -36,7 +44,11 @@
       "buildResources": "../../design/brand"
     },
     "files": [
-      "dist/**/*",
+      "dist/main/**/*",
+      "dist/preload/**/*",
+      "dist/renderer/**/*",
+      "dist/shared/**/*",
+      "!**/*.map",
       "package.json"
     ],
     "extraResources": [
@@ -55,17 +67,41 @@
       }
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "yalqen-dock.icns",
       "category": "public.app-category.productivity",
-      "identity": null
-    },
-    "dmg": {
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Web siteleri izin verdiğinizde kameranızı kullanabilir.",
+        "NSMicrophoneUsageDescription": "Web siteleri izin verdiğinizde mikrofonunuzu kullanabilir.",
+        "NSLocationUsageDescription": "Web siteleri izin verdiğinizde konumunuzu öğrenebilir.",
+        "NSLocationWhenInUseUsageDescription": "Web siteleri izin verdiğinizde konumunuzu öğrenebilir."
+      },
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    },
+    "electronLanguages": [
+      "tr",
+      "en"
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "resetAdHocDarwinSignature": true
     }
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.18.2",
     "tldts": "^7.4.15"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

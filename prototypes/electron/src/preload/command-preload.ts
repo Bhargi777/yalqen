@@ -1,17 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type {
-  CommandBarAction,
-  CommandBarApi,
-  CommandBarChannel,
-  CommandBarOpen,
-  CommandBarSuggestions,
+import {
+  CommandBarChannel as channel,
+  type CommandBarAction,
+  type CommandBarApi,
+  type CommandBarOpen,
+  type CommandBarSuggestions,
 } from '../shared/types.js';
-
-const channel: typeof CommandBarChannel = {
-  open: 'yalqen-command:open',
-  suggestions: 'yalqen-command:suggestions',
-  action: 'yalqen-command:action',
-};
 
 const api: CommandBarApi = {
   onOpen: (listener) => {

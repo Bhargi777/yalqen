@@ -1,8 +1,16 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { ClearDataRequest, SettingsApi, SettingsChannel, SettingsValues, SettingsView } from '../shared/types.js';
+import {
+  NEW_TAB_URL,
+  PageChannel,
+  SETTINGS_URL,
+  SettingsChannel as settingsChannel,
+  type ClearDataRequest,
+  type NewTabCenter,
+  type SettingsApi,
+  type SettingsValues,
+  type SettingsView,
+} from '../shared/types.js';
 
-const CHANNEL = 'yalqen:page-swipe';
-const NEW_TAB_CENTER_CHANNEL = 'yalqen:newtab-center';
 const THRESHOLD = 90;
 const GAP_MS = 350;
 const COOLDOWN_MS = 650;
@@ -12,8 +20,7 @@ let distance = 0;
 let lastAt = 0;
 let navigatedAt = 0;
 
-if (location.href === 'yalqen://newtab/' && window === window.top) {
-  type NewTabCenter = { offset: number; width: number | null };
+if (location.href === NEW_TAB_URL && window === window.top) {
   let centerOffset = 0;
   let pending: NewTabCenter | null = null;
   let pendingTimer = 0;
@@ -40,8 +47,8 @@ if (location.href === 'yalqen://newtab/' && window === window.top) {
   window.addEventListener('resize', () => {
     if (pending) receive(pending);
   });
-  ipcRenderer.on(NEW_TAB_CENTER_CHANNEL, (_event, center: NewTabCenter) => receive(center));
-  receive(ipcRenderer.sendSync(NEW_TAB_CENTER_CHANNEL));
+  ipcRenderer.on(PageChannel.newTabCenter, (_event, center: NewTabCenter) => receive(center));
+  receive(ipcRenderer.sendSync(PageChannel.newTabCenter));
   window.addEventListener('DOMContentLoaded', applyCenterOffset, { once: true });
 }
 
@@ -71,20 +78,12 @@ window.addEventListener('wheel', (event) => {
   distance += event.deltaX;
   if (Math.abs(distance) < THRESHOLD) return;
 
-  ipcRenderer.send(CHANNEL, distance < 0 ? 'back' : 'forward');
+  ipcRenderer.send(PageChannel.swipe, distance < 0 ? 'back' : 'forward');
   navigatedAt = now;
   distance = 0;
 }, { capture: true, passive: true });
 
-const settingsChannel: typeof SettingsChannel = {
-  get: 'yalqen-settings:get',
-  update: 'yalqen-settings:update',
-  changed: 'yalqen-settings:changed',
-  clearData: 'yalqen-settings:clear-data',
-  makeDefault: 'yalqen-settings:make-default',
-};
-
-if (location.origin === 'yalqen://settings' && window === window.top) {
+if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
   const api: SettingsApi = {
     get: () => ipcRenderer.invoke(settingsChannel.get) as Promise<SettingsView>,
     update: (patch: Partial<SettingsValues>) =>

@@ -1,11 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { FindBarAction, FindBarApi, FindBarChannel, FindResult } from '../shared/types.js';
-
-const channel: typeof FindBarChannel = {
-  open: 'yalqen-find:open',
-  result: 'yalqen-find:result',
-  action: 'yalqen-find:action',
-};
+import { FindBarChannel as channel, type FindBarAction, type FindBarApi, type FindResult } from '../shared/types.js';
 
 const api: FindBarApi = {
   onOpen: (listener) => {

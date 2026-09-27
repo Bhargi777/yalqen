@@ -7,6 +7,7 @@ interface LiquidGlass {
 function loadLiquidGlass(): LiquidGlass | null {
   if (process.platform !== 'darwin') return null;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional native module, loaded only on macOS
     const module = require('electron-liquid-glass') as { default?: LiquidGlass } & LiquidGlass;
     return module.default ?? module;
   } catch (error) {
