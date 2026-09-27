@@ -9,6 +9,7 @@ import type { WebPreferences } from 'electron';
 import { PROCEED_HTTP_URL } from './https-only.js';
 import { canViewSource } from './page-export.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
+import { isSameVisit } from './history.js';
 import { shouldDiscard } from './memory-saver.js';
 import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
@@ -903,13 +904,13 @@ export class TabManager {
         else load();
       });
     });
-    const updateUrl = () => {
+    const updateUrl = (newVisit: boolean) => {
       tab.url = contents.getURL();
       tab.failed = false;
       tab.upgrade = null;
       const title = contents.getTitle();
       if (title && title !== tab.title) tab.title = title;
-      tab.visitId = tab.isPrivate ? null : this.options.onVisit(tab.url, tab.url);
+      if (newVisit) tab.visitId = tab.isPrivate ? null : this.options.onVisit(tab.url, tab.url);
       this.changed(true);
     };
     const onDebuggerDetach = () => {
@@ -920,7 +921,7 @@ export class TabManager {
     };
     contents.debugger.on('detach', onDebuggerDetach);
     disposers.push(() => contents.debugger.off('detach', onDebuggerDetach));
-    listen('did-navigate', updateUrl);
+    listen('did-navigate', () => updateUrl(true));
     let failure: string | null = null;
     listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
       if (!isMainFrame || code === ERR_ABORTED) return;
@@ -943,7 +944,9 @@ export class TabManager {
       failure = null;
       void contents.executeJavaScript(script).catch(() => {});
     });
-    listen('did-navigate-in-page', updateUrl);
+    listen('did-navigate-in-page', (_event, url, isMainFrame) => {
+      if (isMainFrame) updateUrl(!isSameVisit(tab.url, url));
+    });
     listen('render-process-gone', () => {
       tab.history = this.captureHistory(tab);
       setImmediate(() => {

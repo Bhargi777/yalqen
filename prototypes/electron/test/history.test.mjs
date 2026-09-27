@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import historyModule from '../dist/main/history.js';
 import internalPages from '../dist/main/internal-pages.js';
 
-const { HistoryStore } = historyModule;
+const { HistoryStore, isSameVisit } = historyModule;
 const { renderHistory } = internalPages;
 
 test('visits survive restart, can be searched, removed, and cleared', () => {
@@ -70,4 +70,12 @@ test('the suggestion index follows every change to the visits', () => {
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('in-page moves to another fragment stay in the same visit', () => {
+  assert.equal(isSameVisit('https://a.com/doc', 'https://a.com/doc#part'), true);
+  assert.equal(isSameVisit('https://a.com/doc#one', 'https://a.com/doc#two'), true);
+  assert.equal(isSameVisit('https://a.com/doc', 'https://a.com/doc'), true);
+  assert.equal(isSameVisit('https://a.com/doc', 'https://a.com/other'), false);
+  assert.equal(isSameVisit('https://a.com/doc?page=1', 'https://a.com/doc?page=2'), false);
 });

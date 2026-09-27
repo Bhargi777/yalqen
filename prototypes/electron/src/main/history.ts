@@ -99,6 +99,10 @@ export class HistoryStore {
   }
 }
 
+export function isSameVisit(previousUrl: string, nextUrl: string): boolean {
+  return previousUrl.split('#')[0] === nextUrl.split('#')[0];
+}
+
 function isWebUrl(url: string): boolean {
   try {
     return ['http:', 'https:'].includes(new URL(url).protocol);
