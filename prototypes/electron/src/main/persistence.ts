@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { NavigationEntry } from 'electron';
 import type { TabId } from '../shared/types.js';
+import { JsonFile } from './json-file.js';
 
 export interface SavedHistory {
   entries: NavigationEntry[];
@@ -35,12 +36,12 @@ function isSavedWindow(value: unknown): value is SavedWindow {
 
 export class SessionStore {
   private readonly file: string;
-  private timer: NodeJS.Timeout | null = null;
-  private generation = 0;
+  private readonly json: JsonFile;
   private closed = false;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'tabs.json');
+    this.json = new JsonFile(this.file, 'session');
   }
 
   load(): SavedSession | null {
@@ -59,42 +60,12 @@ export class SessionStore {
     }
   }
 
-  scheduleSave(snapshot: () => SavedSession, delayMs = 500): void {
-    if (this.closed) return;
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.saveInBackground(snapshot());
-    }, delayMs);
-  }
-
-  private async saveInBackground(session: SavedSession): Promise<void> {
-    const generation = ++this.generation;
-    const temp = `${this.file}.${generation}.tmp`;
-    try {
-      await fs.promises.mkdir(path.dirname(this.file), { recursive: true });
-      await fs.promises.writeFile(temp, JSON.stringify(session));
-      if (this.closed || generation !== this.generation) {
-        await fs.promises.rm(temp, { force: true });
-        return;
-      }
-      fs.renameSync(temp, this.file);
-    } catch (error) {
-      console.warn('[session] could not save tabs:', error);
-      await fs.promises.rm(temp, { force: true }).catch(() => {});
-    }
+  scheduleSave(snapshot: () => SavedSession, delayMs?: number): void {
+    if (!this.closed) this.json.schedule(snapshot, delayMs);
   }
 
   saveNow(session: SavedSession): void {
     this.closed = true;
-    this.generation++;
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
-    const temp = `${this.file}.tmp`;
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    fs.writeFileSync(temp, JSON.stringify(session));
-    fs.renameSync(temp, this.file);
+    this.json.flush(() => session);
   }
 }

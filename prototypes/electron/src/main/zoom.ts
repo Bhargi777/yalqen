@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { JsonFile } from './json-file.js';
 
 export const ZOOM_FACTORS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
 const MIN_FACTOR = ZOOM_FACTORS[0];
@@ -27,6 +28,7 @@ interface SavedZoom {
 
 export class ZoomStore {
   readonly file: string | null;
+  private readonly json: JsonFile | null;
   private readonly sites = new Map<string, number>();
 
   constructor(
@@ -34,6 +36,7 @@ export class ZoomStore {
     private readonly defaultFactor: () => number = () => 1,
   ) {
     this.file = directory === null ? null : path.join(directory, 'zoom.json');
+    this.json = this.file === null ? null : new JsonFile(this.file, 'zoom');
     this.load();
   }
 
@@ -74,16 +77,11 @@ export class ZoomStore {
     }
   }
 
+  saveNow(): void {
+    this.json?.flush();
+  }
+
   private save(): void {
-    if (this.file === null) return;
-    const data: SavedZoom = { version: 1, sites: Object.fromEntries(this.sites) };
-    const temp = `${this.file}.tmp`;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(temp, JSON.stringify(data));
-      fs.renameSync(temp, this.file);
-    } catch (error) {
-      console.warn('[zoom] could not save zoom levels:', error);
-    }
+    this.json?.schedule((): SavedZoom => ({ version: 1, sites: Object.fromEntries(this.sites) }));
   }
 }

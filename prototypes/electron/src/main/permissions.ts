@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { JsonFile } from './json-file.js';
 
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
 export type Decision = 'allow' | 'deny';
@@ -55,11 +56,13 @@ interface SavedPermissions {
 
 export class PermissionStore {
   readonly file: string | null;
+  private readonly json: JsonFile | null;
   private readonly sites = new Map<string, Map<SitePermission, Decision>>();
   private readonly once = new Set<string>();
 
   constructor(directory: string | null) {
     this.file = directory === null ? null : path.join(directory, 'permissions.json');
+    this.json = this.file === null ? null : new JsonFile(this.file, 'permissions');
     this.load();
   }
 
@@ -119,19 +122,14 @@ export class PermissionStore {
     }
   }
 
+  saveNow(): void {
+    this.json?.flush();
+  }
+
   private save(): void {
-    if (this.file === null) return;
-    const data: SavedPermissions = {
+    this.json?.schedule((): SavedPermissions => ({
       version: 1,
       sites: Object.fromEntries([...this.sites].map(([origin, site]) => [origin, Object.fromEntries(site)])),
-    };
-    const temp = `${this.file}.tmp`;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(temp, JSON.stringify(data));
-      fs.renameSync(temp, this.file);
-    } catch (error) {
-      console.warn('[permissions] could not save site permissions:', error);
-    }
+    }));
   }
 }

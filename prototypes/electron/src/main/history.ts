@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { JsonFile } from './json-file.js';
 import { indexHistory, type HistoryIndex } from './suggestions.js';
 
 const MAX_VISITS = 5000;
@@ -16,11 +17,12 @@ export interface HistoryEntry {
 export class HistoryStore {
   private readonly file: string;
   private entries: HistoryEntry[] = [];
-  private timer: NodeJS.Timeout | null = null;
+  private readonly json: JsonFile;
   private cachedIndex: HistoryIndex | null = null;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'history.json');
+    this.json = new JsonFile(this.file, 'history');
     try {
       const data: unknown = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       if (Array.isArray(data)) {
@@ -77,37 +79,23 @@ export class HistoryStore {
 
   clear(): void {
     this.entries = [];
-    this.cachedIndex = null;
+    this.changed();
     this.saveNow();
   }
 
   clearSince(since: number): void {
     this.entries = since > 0 ? this.entries.filter((entry) => entry.visitedAt < since) : [];
-    this.cachedIndex = null;
+    this.changed();
     this.saveNow();
   }
 
   saveNow(): void {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = null;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.tmp`;
-      fs.writeFileSync(temp, JSON.stringify(this.entries));
-      fs.renameSync(temp, this.file);
-    } catch (error) {
-      console.warn('[history] could not save visits:', error);
-    }
+    this.json.flush();
   }
 
   private changed(): void {
     this.cachedIndex = null;
-    this.scheduleSave();
-  }
-
-  private scheduleSave(): void {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.saveNow(), 500);
+    this.json.schedule(() => this.entries);
   }
 }
 

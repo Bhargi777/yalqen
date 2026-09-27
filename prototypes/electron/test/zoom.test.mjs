@@ -33,6 +33,7 @@ test('zoom levels are remembered per site and persist', () => {
     store.set('https://other.org/', 0.8);
     store.set('yalqen://newtab/', 2);
     assert.equal(store.get('https://example.com/b'), 1.25);
+    store.saveNow();
 
     const reloaded = new ZoomStore(dir);
     assert.equal(reloaded.get('https://example.com/'), 1.25);
@@ -41,6 +42,7 @@ test('zoom levels are remembered per site and persist', () => {
 
     reloaded.set('https://example.com/', 1);
     reloaded.set('https://other.org/', 9);
+    reloaded.saveNow();
     const saved = JSON.parse(fs.readFileSync(path.join(dir, 'zoom.json'), 'utf8'));
     assert.deepEqual(saved, { version: 1, sites: { 'other.org': 5 } });
   } finally {

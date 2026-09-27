@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { BOOKMARKS_URL } from '../shared/types.js';
+import { JsonFile } from './json-file.js';
 
 export interface Bookmark {
   id: string;
@@ -37,12 +38,14 @@ function cleanTitle(title: string, fallback: string): string {
 
 export class BookmarkStore {
   readonly file: string;
+  private readonly json: JsonFile;
   private folderList: BookmarkFolder[] = [];
   private bookmarkList: Bookmark[] = [];
   private urls: Set<string> | null = null;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'bookmarks.json');
+    this.json = new JsonFile(this.file, 'bookmarks');
     try {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedBookmarks;
       if (data.version !== 1) return;
@@ -136,17 +139,13 @@ export class BookmarkStore {
     this.save();
   }
 
+  saveNow(): void {
+    this.json.flush();
+  }
+
   private save(): void {
     this.urls = null;
-    const data: SavedBookmarks = { version: 1, folders: this.folderList, bookmarks: this.bookmarkList };
-    const temp = `${this.file}.tmp`;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(temp, JSON.stringify(data));
-      fs.renameSync(temp, this.file);
-    } catch (error) {
-      console.warn('[bookmarks] could not save bookmarks:', error);
-    }
+    this.json.schedule((): SavedBookmarks => ({ version: 1, folders: this.folderList, bookmarks: this.bookmarkList }));
   }
 }
 

@@ -51,6 +51,7 @@ test('decisions are asked for, saved per site and survive a restart', () => {
     store.set(SITE, ['microphone'], 'deny');
     assert.equal(store.decide(SITE, ['camera', 'microphone']), 'deny');
     assert.equal(store.decide('https://other.example.com', ['camera']), 'ask');
+    store.saveNow();
 
     const reloaded = new PermissionStore(dir);
     assert.deepEqual(reloaded.list(SITE), [
@@ -59,6 +60,7 @@ test('decisions are asked for, saved per site and survive a restart', () => {
     ]);
     reloaded.set(SITE, ['camera', 'microphone'], null);
     assert.deepEqual(reloaded.list(SITE), []);
+    reloaded.saveNow();
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'permissions.json'), 'utf8')), { version: 1, sites: {} });
   });
 });
@@ -71,6 +73,7 @@ test('one-time grants are not saved', () => {
     assert.equal(new PermissionStore(dir).decide(SITE, ['geolocation']), 'ask');
     store.set(SITE, ['geolocation'], null);
     assert.equal(store.decide(SITE, ['geolocation']), 'ask');
+    store.saveNow();
   });
 });
 

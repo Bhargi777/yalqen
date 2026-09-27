@@ -64,6 +64,7 @@ test('history and finished downloads are cleared from a point in time', () => {
     list.add({ ...base, id: 'running', filename: 'running', state: 'progressing', startedAt: 30 });
     list.removeSince(15);
     assert.deepEqual(list.list().map((entry) => entry.id), ['running', 'old']);
+    assert.deepEqual(new downloads.DownloadStore(dir).list().map((entry) => entry.id), ['running', 'old']);
     list.removeSince(0);
     assert.deepEqual(list.list().map((entry) => entry.id), ['running']);
   });

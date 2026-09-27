@@ -39,6 +39,7 @@ test('bookmarks are added once, edited, moved and persisted', () => {
     store.move(b.id, 'unknown');
     assert.deepEqual(store.bookmarks('iş').length, 0);
     assert.deepEqual(store.bookmarks('b.com').map((item) => item.title), ['B']);
+    store.saveNow();
 
     const reloaded = new BookmarkStore(dir);
     assert.deepEqual(reloaded.folders().map((item) => item.title), ['İş']);
@@ -49,6 +50,7 @@ test('bookmarks are added once, edited, moved and persisted', () => {
     assert.equal(reloaded.find('https://a.com/').folderId, null);
     reloaded.remove(a.id);
     assert.equal(reloaded.find('https://a.com/'), undefined);
+    reloaded.saveNow();
   });
 });
 
@@ -60,6 +62,7 @@ test('bookmarked addresses are known after every change', () => {
     assert.equal(store.has('https://example.com/'), true);
     store.remove(bookmark.id);
     assert.equal(store.has('https://example.com/'), false);
+    store.saveNow();
   });
 });
 

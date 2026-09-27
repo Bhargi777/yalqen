@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { DOWNLOADS_URL, type DownloadsSummary } from '../shared/types.js';
+import { JsonFile } from './json-file.js';
 
 export type DownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted';
 
@@ -86,10 +87,12 @@ function isEntry(value: unknown): value is DownloadEntry {
 
 export class DownloadStore {
   readonly file: string;
+  private readonly json: JsonFile;
   private entries: DownloadEntry[] = [];
 
   constructor(directory: string) {
     this.file = path.join(directory, 'downloads.json');
+    this.json = new JsonFile(this.file, 'downloads');
     try {
       const data: unknown = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       if (Array.isArray(data)) {
@@ -138,6 +141,7 @@ export class DownloadStore {
   removeSince(since: number): void {
     this.entries = this.entries.filter((entry) => isActive(entry) || entry.startedAt < since);
     this.save();
+    this.saveNow();
   }
 
   removePrivate(): void {
@@ -150,18 +154,11 @@ export class DownloadStore {
   }
 
   saveNow(): void {
-    this.save();
+    this.json.flush();
   }
 
   private save(): void {
-    const temp = `${this.file}.tmp`;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(temp, JSON.stringify(this.entries.filter((entry) => !entry.private)));
-      fs.renameSync(temp, this.file);
-    } catch (error) {
-      console.warn('[downloads] could not save the download list:', error);
-    }
+    this.json.schedule(() => this.entries.filter((entry) => !entry.private));
   }
 }
 

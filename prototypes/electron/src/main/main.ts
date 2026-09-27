@@ -613,6 +613,9 @@ function startBrowser(): void {
     settingsWindow.close();
     history.saveNow();
     downloads.saveNow();
+    bookmarks.saveNow();
+    zoom.saveNow();
+    permissions.saveNow();
   });
   app.on('activate', () => {
     if (windows.length === 0 && !quitting) openWindow({});

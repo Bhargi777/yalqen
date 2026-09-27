@@ -69,11 +69,13 @@ test('the list persists and running downloads come back as failed', () => {
     store.update('running', { receivedBytes: 20 });
     assert.equal(store.get('running').receivedBytes, 20);
     assert.deepEqual(store.list().map((item) => item.id), ['running', 'done']);
+    store.saveNow();
 
     const reloaded = new DownloadStore(dir);
     assert.deepEqual(reloaded.list().map((item) => [item.id, item.state]), [['running', 'interrupted'], ['done', 'completed']]);
     reloaded.remove('done');
     reloaded.clearFinished();
+    reloaded.saveNow();
     assert.deepEqual(new DownloadStore(dir).list(), []);
   });
 });
@@ -119,6 +121,7 @@ test('downloads of private tabs are listed but never saved', () => {
     store.add(entry({ id: 'normal' }));
     store.add(entry({ id: 'secret', private: true }));
     assert.deepEqual(store.list().map((item) => item.id), ['secret', 'normal']);
+    store.saveNow();
     assert.deepEqual(new DownloadStore(dir).list().map((item) => item.id), ['normal']);
     store.removePrivate();
     assert.deepEqual(store.list().map((item) => item.id), ['normal']);
