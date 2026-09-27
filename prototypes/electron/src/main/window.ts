@@ -367,6 +367,7 @@ export class YalqenWindow {
 
   openAddress(): void {
     const url = this.tabs.activeUrl;
+    if (url === NEW_TAB_URL && this.focusNewTabSearch()) return;
     this.preconnector.opened(this.app.searchEngine());
     this.commandBar.open(this.commandHost, {
       placeholder: this.app.searchEngine().placeholder,
@@ -374,6 +375,16 @@ export class YalqenWindow {
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
     });
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
+  }
+
+  private focusNewTabSearch(): boolean {
+    const contents = this.tabs.activeContents();
+    if (!contents || contents.isDestroyed()) return false;
+    contents.focus();
+    contents
+      .executeJavaScript("{ const field = document.getElementById('q'); field?.focus(); field?.select(); }")
+      .catch(() => undefined);
+    return true;
   }
 
   openFind(forward?: boolean): void {
