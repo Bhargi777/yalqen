@@ -153,7 +153,7 @@
   {/if}
 
   {#if listed.length > 0}
-    <ol class="tabs" ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
+    <ol class="tabs" class:single={listed.length === 1} ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
       {#each listed as tab, index (tab.id)}
         <li
           class="tab"
@@ -380,6 +380,13 @@
     list-style: none;
   }
 
+  .panel:not(.collapsed) .tabs.single {
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+  }
+
   .collapsed .tabs {
     width: calc(var(--chrome-control-size) + 8px);
     padding: 4px;
@@ -397,13 +404,9 @@
     position: relative;
     display: flex;
     align-items: center;
-    height: calc(var(--chrome-control-size) - 4px);
+    height: var(--chrome-control-size);
     border-radius: 999px;
     transition: background var(--transition);
-  }
-
-  .collapsed .tab {
-    height: var(--chrome-control-size);
   }
 
   .tab + .tab {
@@ -421,6 +424,10 @@
   .panel:not(.collapsed) .tab.active {
     background: var(--surface-active);
     box-shadow: var(--shadow);
+  }
+
+  .panel:not(.collapsed) .tabs.single .tab.active {
+    background: var(--surface);
   }
 
   :global([data-material='glass']) .panel:not(.collapsed) .tab.active,
