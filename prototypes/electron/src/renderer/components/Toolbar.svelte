@@ -226,6 +226,7 @@
 
   .trailing .capsule {
     justify-content: space-between;
+    padding: 3px;
   }
 
   .tab-group {
