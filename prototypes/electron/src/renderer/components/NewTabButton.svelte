@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Icon from './Icon.svelte';
-  import CircleButton from './CircleButton.svelte';
+  import Button from './ui/Button.svelte';
+  import IconButton from './ui/IconButton.svelte';
 
   let { compact = true }: { compact?: boolean } = $props();
 
@@ -8,48 +8,17 @@
 </script>
 
 {#if compact}
-  <CircleButton title="Yeni sekme (⌘T)" ariaLabel="Yeni sekme" onclick={() => send({ type: 'new-tab' })}>
-    <Icon name="plus" size={16} />
-  </CircleButton>
+  <IconButton size="lg" variant="surface" icon="plus" label="Yeni sekme" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })} />
 {:else}
-  <button type="button" title="Yeni sekme (⌘T)" aria-label="Yeni sekme" onclick={() => send({ type: 'new-tab' })}>
-    <Icon name="plus" size={16} />
-    <span>Yeni sekme</span>
-  </button>
+  <Button size="lg" icon="plus" class="new-tab-wide" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+    Yeni sekme
+  </Button>
 {/if}
 
 <style>
-  button {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 8px;
-    height: var(--chrome-control-size);
-    padding: 0 11px;
-    border: 0;
-    overflow: hidden;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 13px;
-    white-space: nowrap;
-    transition: background var(--transition), color var(--transition);
-    -webkit-app-region: no-drag;
+  :global(.btn.new-tab-wide) {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 10px;
   }
-
-  button > :global(svg) {
-    flex: none;
-  }
-
-  span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  button:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
 </style>

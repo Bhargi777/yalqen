@@ -7,6 +7,7 @@ import type { ChangeFeed } from './change-feed.js';
 import { renderDownloads, type DownloadEntry } from './downloads.js';
 import type { HistoryEntry } from './history.js';
 import type { AddressSuggestion } from '../shared/types.js';
+import { searchFieldMarkup } from './search-field-markup.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
@@ -22,6 +23,7 @@ const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
 const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
 const DOWNLOADS_MARKER = '__YALQEN_DOWNLOADS_SLOT__';
 const BOOKMARKS_MARKER = '__YALQEN_BOOKMARKS_SLOT__';
+const CONTROLS_MARKER = '__YALQEN_CONTROLS_SLOT__';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
@@ -54,7 +56,7 @@ export function renderRecent(pages: RecentPage[]): string {
       const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
       return (
         `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(hostOf(page.url))}</span></a>` +
-        `<a class="forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır: ${escapeHtml(hostOf(page.url))}">${SMALL_FORGET_ICON}</a></li>`
+        `<a class="icon-btn sm tone-muted forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır: ${escapeHtml(hostOf(page.url))}">${SMALL_FORGET_ICON}</a></li>`
       );
     })
     .join('');
@@ -92,7 +94,7 @@ function renderTips(): string {
 
 export function renderHistory(entries: HistoryEntry[], query: string): string {
   const search = query.trim().slice(0, 200);
-  const form = `<form action="${HISTORY_URL}" method="get"><input name="q" type="search" placeholder="Geçmişte ara" aria-label="Geçmişte ara" value="${escapeHtml(search)}" autofocus /></form>`;
+  const form = searchFieldMarkup({ action: HISTORY_URL, label: 'Geçmişte ara', valueHtml: escapeHtml(search), autofocus: true });
   if (entries.length === 0) {
     const message = search ? 'Eşleşen sayfa bulunamadı.' : 'Henüz ziyaret edilen bir sayfa yok.';
     return `${form}<p class="empty">${message}</p>`;
@@ -105,7 +107,7 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
     const time = new Date(entry.visitedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     const host = hostOf(entry.url);
     const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
-    return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
+    return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
   }).join('');
   const clear = search ? '' : `<a class="clear" href="${HISTORY_URL}confirm-clear">Tüm geçmişi temizle</a>`;
   return `${form}<div class="results"><div class="summary"><span>${entries.length} ziyaret</span>${clear}</div><ol>${rows}</ol></div>`;
@@ -148,13 +150,15 @@ export function serveInternalPages(
   showWelcome: () => boolean,
   suggestions: (query: string) => AddressSuggestion[],
 ): void {
-  const page = fs.readFileSync(newTabFile, 'utf8');
+  const controlsCss = fs.readFileSync(path.join(path.dirname(newTabFile), 'controls.css'), 'utf8');
+  const readPage = (file: string) => fs.readFileSync(file, 'utf8').replace(CONTROLS_MARKER, controlsCss);
+  const page = readPage(newTabFile);
   const newTabScript = fs.readFileSync(newTabScriptFile, 'utf8');
   const newTabMark = fs.readFileSync(path.join(path.dirname(newTabFile), 'newtab-mark.png'));
-  const historyPage = fs.readFileSync(historyFile, 'utf8');
-  const downloadsPage = fs.readFileSync(downloadsFile, 'utf8');
+  const historyPage = readPage(historyFile);
+  const downloadsPage = readPage(downloadsFile);
   const downloadsScript = fs.readFileSync(path.join(path.dirname(downloadsFile), 'downloads.js'), 'utf8');
-  const bookmarksPage = fs.readFileSync(bookmarksFile, 'utf8');
+  const bookmarksPage = readPage(bookmarksFile);
   const settingsPage = fs.readFileSync(settingsFile, 'utf8');
   const settingsAssets = path.join(path.dirname(settingsFile), 'assets');
   const htmlHeaders = {
@@ -215,7 +219,7 @@ export function serveInternalPages(
         const query = url.searchParams.get('q') ?? '';
         content = renderHistory(visits(query), query);
       } else if (url.pathname === '/confirm-clear') {
-        content = `<div class="confirm"><h2>Tüm geçmiş temizlensin mi?</h2><p>Bu işlem ziyaret kayıtlarını kalıcı olarak siler.</p><div class="confirm-actions"><a href="${HISTORY_URL}">Vazgeç</a><a class="danger" href="${HISTORY_URL}clear">Geçmişi temizle</a></div></div>`;
+        content = `<div class="confirm"><h2>Tüm geçmiş temizlensin mi?</h2><p>Bu işlem ziyaret kayıtlarını kalıcı olarak siler.</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">Vazgeç</a><a class="btn lg primary danger" href="${HISTORY_URL}clear">Geçmişi temizle</a></div></div>`;
       } else {
         return new Response('Not found', { status: 404 });
       }

@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { AddressSuggestion, CommandBarAction } from '../shared/types';
   import Icon from './components/Icon.svelte';
+  import SearchField from './components/ui/SearchField.svelte';
 
   const KIND_ICON = { tab: 'sidebar', bookmark: 'star', history: 'history' } as const;
 
@@ -92,14 +93,11 @@ function onBackdropMouseDown(event: MouseEvent): void {
 <div class="backdrop">
   <div class="box">
     <form class="bar" role="search" onsubmit={submit}>
-      <span class="icon"><Icon name="search" size={18} /></span>
-      <input
-        bind:this={input}
+      <SearchField
+        size="lg"
+        bind:ref={input}
         bind:value
         oninput={onInput}
-        type="text"
-        spellcheck="false"
-        autocomplete="off"
         {placeholder}
         aria-label="Ara veya adres yaz"
         role="combobox"
@@ -156,24 +154,8 @@ function onBackdropMouseDown(event: MouseEvent): void {
   }
 
   .bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    height: 52px;
-    padding: 0 16px;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 0.88);
-    box-shadow:
-      0 0 0 0.5px rgb(0 0 0 / 0.12),
-      inset 0 1px rgb(255 255 255 / 0.8),
-      0 12px 40px rgb(0 0 0 / 0.22);
-  }
-
-  .icon {
-    display: grid;
-    place-items: center;
-    color: var(--text-muted);
+    --search-field-bg: rgb(255 255 255 / 0.88);
+    --search-field-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12), inset 0 1px rgb(255 255 255 / 0.8), 0 12px 40px rgb(0 0 0 / 0.22);
   }
 
   .suggestions {
@@ -230,50 +212,26 @@ function onBackdropMouseDown(event: MouseEvent): void {
     white-space: nowrap;
   }
 
-  input {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--text);
-    font: inherit;
-    font-size: 17px;
-    user-select: text;
-  }
-
-  input::placeholder {
-    color: var(--text-muted);
-  }
-
-  input:focus {
-    outline: none;
-  }
-
   @media (prefers-color-scheme: dark) {
     .backdrop {
       background: rgb(0 0 0 / 0.35);
     }
 
     .bar {
-      background: rgb(38 37 40 / 0.9);
-      box-shadow:
-        0 0 0 0.5px rgb(255 255 255 / 0.14),
-        inset 0 1px rgb(255 255 255 / 0.14),
-        0 12px 40px rgb(0 0 0 / 0.5);
+      --search-field-bg: rgb(38 37 40 / 0.9);
+      --search-field-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), inset 0 1px rgb(255 255 255 / 0.14), 0 12px 40px rgb(0 0 0 / 0.5);
     }
   }
 
   @media (prefers-reduced-transparency: reduce) {
     .bar {
-      background: #fff;
+      --search-field-bg: #fff;
     }
   }
 
   @media (prefers-color-scheme: dark) and (prefers-reduced-transparency: reduce) {
     .bar {
-      background: #26282c;
+      --search-field-bg: #26282c;
     }
   }
 </style>

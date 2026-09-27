@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { FindResult } from '../shared/types';
-  import Icon from './components/Icon.svelte';
+  import IconButton from './components/ui/IconButton.svelte';
+  import SearchField from './components/ui/SearchField.svelte';
 
   let input: HTMLInputElement | undefined = $state();
   let value = $state('');
@@ -47,27 +48,15 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="bar" role="search">
-  <input
-    bind:this={input}
-    bind:value
-    oninput={search}
-    type="text"
-    spellcheck="false"
-    autocomplete="off"
-    placeholder="Sayfada bul"
-    aria-label="Sayfada bul"
-  />
-  <span class="status" class:empty={result?.matches === 0} aria-live="polite">{status}</span>
-  <button title="Önceki (⇧↩)" aria-label="Önceki" disabled={!result?.matches} onclick={() => step(false)}>
-    <Icon name="up" size={14} />
-  </button>
-  <button title="Sonraki (↩)" aria-label="Sonraki" disabled={!result?.matches} onclick={() => step(true)}>
-    <Icon name="down" size={14} />
-  </button>
-  <button title="Kapat (Esc)" aria-label="Kapat" onclick={() => window.yalqenFind.send({ type: 'close' })}>
-    <Icon name="close" size={14} />
-  </button>
+<div class="find" role="search">
+  <SearchField bind:value bind:ref={input} oninput={search} placeholder="Sayfada bul" aria-label="Sayfada bul">
+    {#snippet trailing()}
+      <span class="status" class:empty={result?.matches === 0} aria-live="polite">{status}</span>
+      <IconButton icon="up" label="Önceki" title="Önceki (⇧↩)" disabled={!result?.matches} onclick={() => step(false)} />
+      <IconButton icon="down" label="Sonraki" title="Sonraki (↩)" disabled={!result?.matches} onclick={() => step(true)} />
+      <IconButton icon="close" label="Kapat" title="Kapat (Esc)" onclick={() => window.yalqenFind.send({ type: 'close' })} />
+    {/snippet}
+  </SearchField>
 </div>
 
 <style>
@@ -75,43 +64,12 @@
     background: transparent;
   }
 
-  .bar {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    height: 40px;
+  .find {
     margin: 4px 8px;
-    padding: 0 6px 0 14px;
-    border-radius: 999px;
-    background: var(--surface);
-    box-shadow:
-      0 0 0 0.5px rgb(0 0 0 / 0.12),
-      0 6px 16px rgb(0 0 0 / 0.14);
-  }
-
-  input {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--text);
-    font: inherit;
-    font-size: 14px;
-    user-select: text;
-  }
-
-  input::placeholder {
-    color: var(--text-muted);
-  }
-
-  input:focus {
-    outline: none;
+    --search-field-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 6px 16px rgb(0 0 0 / 0.14);
   }
 
   .status {
-    flex: none;
     padding: 0 6px;
     color: var(--text-muted);
     font-size: 12px;
@@ -122,34 +80,9 @@
     color: var(--warn);
   }
 
-  button {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text);
-    transition: background var(--transition);
-  }
-
-  button:hover:not(:disabled) {
-    background: var(--surface-hover);
-  }
-
-  button:disabled {
-    color: var(--text-muted);
-    opacity: 0.5;
-  }
-
   @media (prefers-color-scheme: dark) {
-    .bar {
-      box-shadow:
-        0 0 0 0.5px rgb(255 255 255 / 0.14),
-        0 6px 16px rgb(0 0 0 / 0.4);
+    .find {
+      --search-field-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 6px 16px rgb(0 0 0 / 0.4);
     }
   }
 </style>

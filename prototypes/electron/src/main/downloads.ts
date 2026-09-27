@@ -223,7 +223,7 @@ export function renderDownloads(entries: readonly DownloadEntry[]): string {
   const rows = entries
     .map((entry) => {
       const commands = downloadCommands(entry)
-        .map(([action, label]) => `<a href="${DOWNLOADS_URL}${action}?id=${encodeURIComponent(entry.id)}">${label}</a>`)
+        .map(([action, label]) => `<a class="btn tonal" href="${DOWNLOADS_URL}${action}?id=${encodeURIComponent(entry.id)}">${label}</a>`)
         .join('');
       return (
         `<li class="${entry.state}"><div class="file"><strong>${escapeHtml(entry.filename)}</strong>` +

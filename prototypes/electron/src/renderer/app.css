@@ -1,3 +1,5 @@
+@import './public/controls.css';
+
 :root {
   --bg: #e6e8eb;
   --surface: #ffffff;

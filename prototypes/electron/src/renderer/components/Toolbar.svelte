@@ -4,6 +4,8 @@
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
+  import Button from './ui/Button.svelte';
+  import IconButton from './ui/IconButton.svelte';
 
   let {
     tabs,
@@ -60,20 +62,12 @@
 
   <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
     <Capsule as="nav" ariaLabel="Gezinme">
-      <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
-        <Icon name="back" />
-      </button>
-      <button class="icon" title="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })}>
-        <Icon name="forward" />
-      </button>
+      <IconButton icon="back" label="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })} />
+      <IconButton icon="forward" label="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })} />
       {#if activeTab?.loading}
-        <button class="icon" title="Durdur (Esc)" aria-label="Durdur" onclick={() => send({ type: 'stop' })}>
-          <Icon name="close" />
-        </button>
+        <IconButton icon="close" label="Durdur" title="Durdur (Esc)" onclick={() => send({ type: 'stop' })} />
       {:else}
-        <button class="icon" title="Yenile (⌘R)" aria-label="Yenile" onclick={() => send({ type: 'reload' })}>
-          <Icon name="reload" />
-        </button>
+        <IconButton icon="reload" label="Yenile" title="Yenile (⌘R)" onclick={() => send({ type: 'reload' })} />
       {/if}
     </Capsule>
     <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
@@ -81,17 +75,16 @@
       {@const active = tab.id === activeTabId}
       <li class="chip" class:active>
         {#if active && tab.security !== 'local'}
-          <button
-            class="site"
-            class:insecure={tab.security === 'insecure'}
-            class:dangerous={tab.security === 'dangerous'}
+          <Button
+            size="sm"
+            icon={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'}
+            class={['site', tab.security]}
             title="Site bilgisi"
             aria-label={tab.security === 'secure' ? 'Bağlantı güvenli, site bilgisi' : 'Güvenli değil, site bilgisi'}
             onclick={() => send({ type: 'open-site-info' })}
           >
-            <Icon name={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'} size={13} />
-            {#if tab.security === 'insecure' || tab.security === 'dangerous'}<span>Güvenli değil</span>{/if}
-          </button>
+            {#if tab.security === 'insecure' || tab.security === 'dangerous'}Güvenli değil{/if}
+          </Button>
         {/if}
         {#if active}
           {#if tab.isPrivate}
@@ -104,31 +97,32 @@
             <span class="label">{siteLabel(tab)}</span>
           </button>
           {#if tab.url.startsWith('http') || tab.url.startsWith('file:')}
-            <button
+            <IconButton
+              size="sm"
+              icon="star"
+              tone={tab.bookmarked ? 'accent' : 'muted'}
               class="star"
-              class:on={tab.bookmarked}
+              label={tab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
               title={tab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
-              aria-label={tab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
               aria-pressed={tab.bookmarked}
               onclick={() => send({ type: 'toggle-bookmark' })}
-            >
-              <Icon name="star" size={13} />
-            </button>
+            />
           {/if}
           {#if tab.blockedPopups > 0}
-            <button
-              class="popups"
+            <IconButton
+              size="sm"
+              icon="popup-blocked"
+              variant="tonal"
+              tone="warn"
+              label="{tab.blockedPopups} açılır pencere engellendi"
               title="Açılır pencere engellendi"
-              aria-label="{tab.blockedPopups} açılır pencere engellendi"
               onclick={() => send({ type: 'open-blocked-popups' })}
-            >
-              <Icon name="popup-blocked" size={13} />
-            </button>
+            />
           {/if}
           {#if Math.round(zoom * 100) !== Math.round(defaultZoom * 100)}
-            <button class="zoom" title="Varsayılan yakınlaştırmaya dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
+            <Button size="sm" variant="tonal" class="zoom" title="Varsayılan yakınlaştırmaya dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
               %{Math.round(zoom * 100)}
-            </button>
+            </Button>
           {/if}
         {:else}
           <button
@@ -143,19 +137,16 @@
           </button>
         {/if}
         {#if tab.audible || tab.muted}
-          <button
-            class="icon small"
-            title={tab.muted ? 'Sesi aç' : 'Sessize al'}
-            aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+          <IconButton
+            size="sm"
+            icon={tab.muted ? 'muted' : 'sound'}
+            tone="muted"
+            label={tab.muted ? 'Sesi aç' : 'Sessize al'}
             aria-pressed={tab.muted}
             onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-          >
-            <Icon name={tab.muted ? 'muted' : 'sound'} size={12} />
-          </button>
+          />
         {/if}
-        <button class="icon small close" title="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })}>
-          <Icon name="close" size={12} />
-        </button>
+        <IconButton size="sm" icon="close" tone="muted" class="close" label="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })} />
         {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
       </li>
     {/each}
@@ -167,32 +158,23 @@
 
   <div class="side trailing" style:margin-right="{-trailingOverhang}px">
     <Capsule spread>
-      <button class="icon" title="Yer imleri" aria-label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })}>
-        <Icon name="bookmarks" />
-      </button>
-      <button class="icon" title="Geçmiş (⌘Y)" aria-label="Geçmiş" onclick={() => send({ type: 'open-history' })}>
-        <Icon name="history" />
-      </button>
-      <button class="icon" title="Profil" aria-label="Profil" onclick={() => send({ type: 'open-profile-menu' })}>
-        <Icon name="profile" />
-      </button>
-      <button class="icon" title="Ayarlar (⌘,)" aria-label="Ayarlar" onclick={() => send({ type: 'open-settings' })}>
-        <Icon name="settings" />
-      </button>
-      <button
-        class="icon downloads"
-        class:active={downloads.active > 0}
+      <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
+      <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
+      <IconButton icon="profile" label="Profil" onclick={() => send({ type: 'open-profile-menu' })} />
+      <IconButton icon="settings" label="Ayarlar" title="Ayarlar (⌘,)" onclick={() => send({ type: 'open-settings' })} />
+      <IconButton
+        icon="download"
+        tone={downloads.active > 0 ? 'accent' : 'default'}
+        label={downloads.active > 0 ? `İndirilenler, ${downloads.active} indirme sürüyor` : 'İndirilenler'}
         title="İndirilenler"
-        aria-label={downloads.active > 0 ? `İndirilenler, ${downloads.active} indirme sürüyor` : 'İndirilenler'}
         onclick={() => send({ type: 'open-downloads' })}
       >
-        <Icon name="download" />
         {#if downloads.active > 0}
           <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">
             <circle cx="14" cy="14" r="12.5" pathLength="100" stroke-dasharray="{downloads.progress === null ? 25 : Math.max(2, downloads.progress * 100)} 100" />
           </svg>
         {/if}
-      </button>
+      </IconButton>
     </Capsule>
   </div>
 </header>
@@ -247,40 +229,6 @@
     box-shadow: var(--shadow), var(--rim);
   }
 
-  .icon {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text);
-    transition: background var(--transition);
-    -webkit-app-region: no-drag;
-  }
-
-  .icon:hover:not(:disabled) {
-    background: var(--surface-hover);
-  }
-
-  .icon:disabled {
-    color: var(--text-muted);
-    opacity: 0.5;
-  }
-
-  .icon.small {
-    width: 22px;
-    height: 22px;
-    color: var(--text-muted);
-  }
-
-  .icon.small:hover {
-    color: var(--text);
-  }
-
   .strip {
     display: flex;
     flex: 0 1 auto;
@@ -324,7 +272,7 @@
     box-shadow: var(--shadow);
   }
 
-  .chip:not(.active) .close {
+  .chip:not(.active) :global(.close) {
     position: absolute;
     right: 5px;
     opacity: 0;
@@ -332,8 +280,8 @@
     transition: opacity var(--transition);
   }
 
-  .chip:not(.active):hover .close,
-  .chip .close:focus-visible {
+  .chip:not(.active):hover :global(.close),
+  .chip :global(.close:focus-visible) {
     opacity: 1;
     pointer-events: auto;
   }
@@ -376,8 +324,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 24px;
-    height: 24px;
+    width: var(--control-sm);
+    height: var(--control-sm);
     margin-left: 4px;
     border-radius: 50%;
     background: var(--text);
@@ -388,47 +336,29 @@
     font-style: italic;
   }
 
-  .site {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 4px;
-    height: 24px;
+  .chip :global(.site) {
     margin-left: 4px;
-    padding: 0 6px;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 11px;
-    white-space: nowrap;
-    transition: background var(--transition), color var(--transition);
   }
 
-  .site:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .site.insecure {
+  .chip :global(.site.insecure) {
     color: var(--warn);
   }
 
-  .site.dangerous {
+  .chip :global(.site.dangerous) {
     color: #d93025;
     font-weight: 600;
   }
 
+  .chip :global(.star[aria-pressed='true'] path) {
+    fill: currentColor;
+  }
+
+  .chip :global(.zoom) {
+    font-variant-numeric: tabular-nums;
+  }
+
   .address.after-site {
     padding-left: 6px;
-  }
-
-  .downloads {
-    position: relative;
-  }
-
-  .downloads.active {
-    color: var(--accent);
   }
 
   .ring {
@@ -465,62 +395,6 @@
     .ring.indeterminate {
       animation: none;
     }
-  }
-
-  .star {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text-muted);
-  }
-
-  .star:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .star.on {
-    color: var(--accent);
-  }
-
-  .star.on :global(path) {
-    fill: currentColor;
-  }
-
-  .popups {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 24px;
-    height: 22px;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: var(--surface-hover);
-    color: var(--warn);
-  }
-
-  .zoom {
-    flex: none;
-    height: 22px;
-    padding: 0 7px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--surface-hover);
-    color: var(--text-muted);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    transition: color var(--transition);
-  }
-
-  .zoom:hover {
-    color: var(--text);
   }
 
   .favicon {

@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
   import Capsule from './Capsule.svelte';
-  import CircleButton from './CircleButton.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
+  import IconButton from './ui/IconButton.svelte';
 
   let {
     tabs,
@@ -121,15 +121,16 @@
       {#each pinned as tab (tab.id)}
         <li class="favorite" class:active={tab.id === activeTabId} class:discarded={!tab.live}>
           {#if collapsed}
-            <CircleButton
-              title={label(tab)}
-              ariaLabel={label(tab)}
-              ariaCurrent={tab.id === activeTabId ? 'page' : undefined}
+            <IconButton
+              size="lg"
+              variant="surface"
+              label={label(tab)}
+              aria-current={tab.id === activeTabId ? 'page' : undefined}
               onclick={() => send({ type: 'activate-tab', id: tab.id })}
               onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
             >
               {@render favicon(tab, 16)}
-            </CircleButton>
+            </IconButton>
           {:else}
             <button
               class="tile"
@@ -141,14 +142,16 @@
             >
               {@render favicon(tab, 20)}
             </button>
-            <button
+            <IconButton
+              size="sm"
+              variant="surface"
+              tone="muted"
+              icon="close"
               class="unpin"
+              label="Sabitlemeyi kaldır: {tab.title}"
               title="Sabitlemeyi kaldır"
-              aria-label="Sabitlemeyi kaldır: {tab.title}"
               onclick={() => send({ type: 'toggle-pin', id: tab.id })}
-            >
-              <Icon name="close" size={10} />
-            </button>
+            />
           {/if}
         </li>
       {/each}
@@ -171,15 +174,16 @@
           ondragover={(e) => onDragOver(e, index)}
         >
           {#if collapsed}
-            <CircleButton
-              title={label(tab)}
-              ariaLabel={label(tab)}
-              ariaCurrent={tab.id === activeTabId ? 'page' : undefined}
+            <IconButton
+              size="lg"
+              variant="surface"
+              label={label(tab)}
+              aria-current={tab.id === activeTabId ? 'page' : undefined}
               onclick={() => send({ type: 'activate-tab', id: tab.id })}
               onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
             >
               {@render favicon(tab, 16)}
-            </CircleButton>
+            </IconButton>
           {:else}
             <Capsule layout="tab" tone={tab.id === activeTabId ? (listed.length === 1 ? 'surface' : 'active') : 'bare'}>
               <button
@@ -196,42 +200,24 @@
               </button>
 
               {#if tab.audible || tab.muted}
-                <button
-                  class="action audio"
-                  title={tab.muted ? 'Sesi aç' : 'Sessize al'}
-                  aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                <IconButton
+                  size="sm"
+                  tone="muted"
+                  icon={tab.muted ? 'muted' : 'sound'}
+                  class="audio"
+                  label={tab.muted ? 'Sesi aç' : 'Sessize al'}
                   aria-pressed={tab.muted}
                   onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-                >
-                  <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
-                </button>
+                />
               {/if}
               <span class="actions">
                 {#if !tab.isPrivate && /^https?:/.test(tab.url)}
-                  <button
-                    class="action extra"
-                    title="Sabitle"
-                    onclick={() => send({ type: 'toggle-pin', id: tab.id })}
-                  >
-                    <Icon name="pin" size={13} />
-                  </button>
+                  <IconButton size="sm" tone="muted" icon="pin" class="extra" label="Sabitle" onclick={() => send({ type: 'toggle-pin', id: tab.id })} />
                 {/if}
                 {#if tab.live && tab.id !== activeTabId}
-                  <button
-                    class="action extra"
-                    title="Bellekten çıkar"
-                    onclick={() => send({ type: 'discard-tab', id: tab.id })}
-                  >
-                    <Icon name="moon" size={13} />
-                  </button>
+                  <IconButton size="sm" tone="muted" icon="moon" class="extra" label="Bellekten çıkar" onclick={() => send({ type: 'discard-tab', id: tab.id })} />
                 {/if}
-                <button
-                  class="action"
-                  title="Kapat"
-                  onclick={() => send({ type: 'close-tab', id: tab.id })}
-                >
-                  <Icon name="close" size={12} />
-                </button>
+                <IconButton size="sm" tone="muted" icon="close" label="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })} />
               </span>
             </Capsule>
           {/if}
@@ -248,15 +234,15 @@
     {#if !collapsed}
       <span class="tab-count">{tabs.length} sekme</span>
     {/if}
-    <button
-      class="panel-toggle"
+    <IconButton
+      size="lg"
+      tone="muted"
+      icon={side === 'left' ? (collapsed ? 'panel-expand' : 'panel-close') : (collapsed ? 'panel-expand-right' : 'panel-close-right')}
+      label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
       title={collapsed ? 'Yan paneli genişlet (⌘S)' : 'Yan paneli daralt (⌘S)'}
-      aria-label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
       aria-expanded={!collapsed}
       onclick={() => send({ type: 'toggle-panel' })}
-    >
-      <Icon name={side === 'left' ? (collapsed ? 'panel-expand' : 'panel-close') : (collapsed ? 'panel-expand-right' : 'panel-close-right')} size={16} />
-    </button>
+    />
   </footer>
 </aside>
 
@@ -351,26 +337,6 @@
 
   :global([data-material='glass']) .panel:not(.collapsed) .favorite.active .tile {
     box-shadow: var(--shadow), var(--rim);
-  }
-
-  .unpin {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    display: none;
-    place-items: center;
-    width: 16px;
-    height: 16px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    color: var(--text-muted);
-  }
-
-  .favorite:hover .unpin {
-    display: grid;
   }
 
   .tabs {
@@ -499,26 +465,20 @@
     padding-right: 4px;
   }
 
-  .tab:not(:hover, :focus-within) .extra,
-  .tab:not(.active, :hover, :focus-within) .actions {
+  .favorite :global(.unpin) {
+    position: absolute;
+    top: -6px;
+    right: -6px;
     display: none;
   }
 
-  .action {
-    display: grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text-muted);
+  .favorite:hover :global(.unpin) {
+    display: inline-flex;
   }
 
-  .action:hover {
-    background: var(--surface-hover);
-    color: var(--text);
+  .tab:not(:hover, :focus-within) :global(.extra),
+  .tab:not(.active, :hover, :focus-within) .actions {
+    display: none;
   }
 
   .private-mark {
@@ -533,11 +493,7 @@
     font-style: italic;
   }
 
-  .audio {
-    flex: none;
-  }
-
-  .tab:not(.active, :hover, :focus-within) .audio {
+  .tab:not(.active, :hover, :focus-within) :global(.audio) {
     margin-right: 4px;
   }
 
@@ -559,31 +515,6 @@
   .footer.compact {
     justify-content: center;
     padding: 0;
-  }
-
-  .panel-toggle {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: var(--chrome-control-size);
-    height: var(--chrome-control-size);
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    -webkit-app-region: no-drag;
-  }
-
-  .panel-toggle:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .panel-toggle:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
   }
 
   .tab-count {

@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { ClearDataRange, SettingsValues, SettingsView } from '../shared/types';
-  import Icon, { type IconName } from './components/Icon.svelte';
+  import type { IconName } from './components/Icon.svelte';
+  import Button from './components/ui/Button.svelte';
+  import SegmentedControl from './components/ui/SegmentedControl.svelte';
+  import Select from './components/ui/Select.svelte';
+  import TextField from './components/ui/TextField.svelte';
 
   const api = window.yalqenSettings;
 
@@ -149,7 +153,9 @@
     <h1>Ayarlar</h1>
     <div class="panes" role="tablist" aria-label="Ayarlar bölümleri">
       {#each panes as item (item.id)}
-        <button
+        <Button
+          size="lg"
+          icon={item.icon}
           role="tab"
           id="tab-{item.id}"
           aria-controls="pane"
@@ -158,9 +164,8 @@
           onclick={() => (pane = item.id)}
           onkeydown={movePane}
         >
-          <Icon name={item.icon} />
-          <span>{item.label}</span>
-        </button>
+          {item.label}
+        </Button>
       {/each}
     </div>
     <div id="pane" class="pane" role="tabpanel" aria-labelledby="tab-{pane}">
@@ -171,7 +176,7 @@
             <span>Arama motoru</span>
             <span class="hint">Adres çubuğuna adres dışında bir şey yazıldığında kullanılır.</span>
           </label>
-          <select
+          <Select
             id="engine"
             value={values.searchEngine}
             onchange={(event) =>
@@ -181,7 +186,7 @@
               <option value={engine.id}>{engine.label}</option>
             {/each}
             <option value="custom">Özel</option>
-          </select>
+          </Select>
         </div>
         {#if isCustom}
           <div class="row stacked">
@@ -189,14 +194,13 @@
               <span>Arama adresi</span>
               <span class="hint">Aranan metin %s yerine yazılır. Geçerli bir adres girilene kadar Google kullanılır.</span>
             </label>
-            <input
+            <TextField
               id="engine-url"
               type="url"
               spellcheck="false"
               autocomplete="off"
               placeholder="https://ornek.com/search?q=%s"
-              class:invalid={templateInvalid}
-              aria-invalid={templateInvalid}
+              invalid={templateInvalid}
               bind:value={templateDraft}
               onfocus={() => (editingTemplate = true)}
               onchange={commitTemplate}
@@ -215,7 +219,7 @@
             <span class="hint">Diğer uygulamalardaki bağlantılar varsayılan tarayıcıda açılır.</span>
           </span>
           {#if !view.defaultBrowser}
-            <button class="primary" onclick={async () => (view = await api.makeDefault())}>Varsayılan yap</button>
+            <Button variant="primary" onclick={async () => (view = await api.makeDefault())}>Varsayılan yap</Button>
           {/if}
         </div>
 
@@ -225,7 +229,7 @@
             <span>Tarayıcı açıldığında</span>
             <span class="hint">Yeni sekmeyle başla seçilirse, tarayıcı kapandığında açık sekmeler kaydedilmez.</span>
           </span>
-          <select
+          <Select
             aria-label="Tarayıcı açıldığında"
             value={values.startupBehavior}
             onchange={(event) =>
@@ -234,7 +238,7 @@
             {#each startupOptions as option (option.value)}
               <option value={option.value}>{option.label}</option>
             {/each}
-          </select>
+          </Select>
         </div>
 
         <h2>Dil</h2>
@@ -243,28 +247,13 @@
             <span>Sayfa dili</span>
             <span class="hint">Sitelerden önce bu dilde içerik istenir; yazım denetimi de bu sırayı izler.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Sayfa dili">
-            {#each languageOptions as option (option.value)}
-              <button aria-pressed={values.pageLanguage === option.value} onclick={() => update({ pageLanguage: option.value })}>
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Sayfa dili" options={languageOptions} value={values.pageLanguage} onchange={(value) => update({ pageLanguage: value })} />
         </div>
       {:else if pane === 'appearance'}
         <h2>Tema</h2>
         <div class="row">
           <span class="label">Renk düzeni</span>
-          <div class="segmented" role="group" aria-label="Tema">
-            {#each themeOptions as option (option.value)}
-              <button
-                aria-pressed={values.theme === option.value}
-                onclick={() => update({ theme: option.value })}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Tema" options={themeOptions} value={values.theme} onchange={(value) => update({ theme: value })} />
         </div>
 
         <h2>Sayfalar</h2>
@@ -273,7 +262,7 @@
             <span>Yazı boyutu</span>
             <span class="hint">Sitenin kendi boyutu yoksa kullanılır. Yeni açılan sekmelerde geçerli olur.</span>
           </label>
-          <select
+          <Select
             id="font-size"
             value={values.fontSize}
             onchange={(event) => update({ fontSize: event.currentTarget.value as SettingsValues['fontSize'] })}
@@ -281,80 +270,47 @@
             {#each fontSizeOptions as option (option.value)}
               <option value={option.value}>{option.label}</option>
             {/each}
-          </select>
+          </Select>
         </div>
         <div class="row">
           <label for="default-zoom" class="label">
             <span>Sayfa yakınlaştırma</span>
             <span class="hint">Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.</span>
           </label>
-          <select id="default-zoom" value={values.defaultZoom} onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}>
+          <Select id="default-zoom" value={values.defaultZoom} onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}>
             {#each zoomOptions as factor (factor)}
               <option value={factor}>%{Math.round(factor * 100)}</option>
             {/each}
-          </select>
+          </Select>
         </div>
         <h2>Menüler</h2>
         <div class="row">
           <span class="label">Yan menü</span>
-          <div class="segmented" role="group" aria-label="Yan menü görünürlüğü">
-            {#each visibilityOptions as option (option.value)}
-              <button aria-pressed={values.sidebarVisible === option.value} onclick={() => update({ sidebarVisible: option.value })}>
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Yan menü görünürlüğü" options={visibilityOptions} value={values.sidebarVisible} onchange={(value) => update({ sidebarVisible: value })} />
         </div>
         <div class="row">
           <span class="label">
             <span>Üst menü</span>
             <span class="hint">İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Üst menü görünürlüğü">
-            {#each visibilityOptions as option (option.value)}
-              <button aria-pressed={values.toolbarVisible === option.value} onclick={() => update({ toolbarVisible: option.value })}>
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Üst menü görünürlüğü" options={visibilityOptions} value={values.toolbarVisible} onchange={(value) => update({ toolbarVisible: value })} />
         </div>
         <div class="row">
           <span class="label">
             <span>Üst menüdeki sekmeler</span>
             <span class="hint">Yalnızca açık sayfanın adresini göstererek üst menüyü sadeleştirir.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Üst menüdeki sekmeler">
-            {#each toolbarTabOptions as option (option.value)}
-              <button aria-pressed={values.toolbarTabs === option.value} onclick={() => update({ toolbarTabs: option.value })}>
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Üst menüdeki sekmeler" options={toolbarTabOptions} value={values.toolbarTabs} onchange={(value) => update({ toolbarTabs: value })} />
         </div>
 
         <h2>Sekme paneli</h2>
         <div class="row">
           <span class="label">Görünüm</span>
-          <div class="segmented" role="group" aria-label="Panel görünümü">
-            {#each panelOptions as option (option.label)}
-              <button
-                aria-pressed={values.panelCollapsed === option.value}
-                onclick={() => update({ panelCollapsed: option.value })}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Panel görünümü" options={panelOptions} value={values.panelCollapsed} onchange={(value) => update({ panelCollapsed: value })} />
         </div>
         <div class="row">
           <span class="label">Konum</span>
-          <div class="segmented" role="group" aria-label="Panel konumu">
-            {#each sideOptions as option (option.value)}
-              <button aria-pressed={values.panelSide === option.value} onclick={() => update({ panelSide: option.value })}>
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Panel konumu" options={sideOptions} value={values.panelSide} onchange={(value) => update({ panelSide: value })} />
         </div>
       {:else if pane === 'privacy'}
         <h2>Koruma</h2>
@@ -363,16 +319,7 @@
             <span>Reklam engelleyici</span>
             <span class="hint">EasyList ve uBlock Origin filtreleriyle reklamları engeller. Değişiklik yeni yüklenen sayfalarda geçerli olur.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Reklam engelleyici">
-            {#each onOffOptions as option (option.label)}
-              <button
-                aria-pressed={values.adBlocking === option.value}
-                onclick={() => update({ adBlocking: option.value })}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Reklam engelleyici" options={onOffOptions} value={values.adBlocking} onchange={(value) => update({ adBlocking: value })} />
         </div>
 
         <div class="row">
@@ -380,36 +327,21 @@
             <span>Yalnızca HTTPS</span>
             <span class="hint">HTTP sayfalarını HTTPS ile açar; site desteklemiyorsa HTTP ile devam etmeden önce sorar. Yerel adresler ve IP adresleri hariç.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Yalnızca HTTPS">
-            {#each onOffOptions as option (option.label)}
-              <button aria-pressed={values.httpsOnly === option.value} onclick={() => update({ httpsOnly: option.value })}>
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Yalnızca HTTPS" options={onOffOptions} value={values.httpsOnly} onchange={(value) => update({ httpsOnly: value })} />
         </div>
         <div class="row">
           <span class="label">
             <span>Üçüncü taraf çerezleri engelle</span>
             <span class="hint">Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma ve yorum alanları çalışmayabilir.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Üçüncü taraf çerezleri engelle">
-            {#each onOffOptions as option (option.label)}
-              <button
-                aria-pressed={values.blockThirdPartyCookies === option.value}
-                onclick={() => update({ blockThirdPartyCookies: option.value })}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Üçüncü taraf çerezleri engelle" options={onOffOptions} value={values.blockThirdPartyCookies} onchange={(value) => update({ blockThirdPartyCookies: value })} />
         </div>
         <div class="row">
           <label for="secure-dns" class="label">
             <span>Güvenli DNS</span>
             <span class="hint">Site adlarını şifreli sorgularla çözer. Otomatik, sistemin DNS sağlayıcısı destekliyorsa kullanır.</span>
           </label>
-          <select
+          <Select
             id="secure-dns"
             value={values.secureDns}
             onchange={(event) => update({ secureDns: event.currentTarget.value as SettingsValues['secureDns'] })}
@@ -417,7 +349,7 @@
             {#each dnsOptions as option (option.value)}
               <option value={option.value}>{option.label}</option>
             {/each}
-          </select>
+          </Select>
         </div>
         <h2>Tarama verileri</h2>
         <div class="row stacked">
@@ -426,11 +358,11 @@
             <span class="hint">Geçmiş ve indirme listesi seçilen aralıktan silinir. Çerezler, site verileri ve önbellek her zaman tümüyle silinir.</span>
           </span>
           <div class="clear">
-            <select aria-label="Zaman aralığı" bind:value={clearRange} onchange={() => (cleared = false)}>
+            <Select aria-label="Zaman aralığı" bind:value={clearRange} onchange={() => (cleared = false)}>
               {#each rangeOptions as option (option.value)}
                 <option value={option.value}>{option.label}</option>
               {/each}
-            </select>
+            </Select>
             {#each clearOptions as option (option.key)}
               <label class="check">
                 <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
@@ -438,9 +370,9 @@
               </label>
             {/each}
             <div class="clear-actions">
-              <button class="primary" disabled={!clearSelected || clearing} onclick={clearData}>
+              <Button variant="primary" disabled={!clearSelected || clearing} onclick={clearData}>
                 {clearing ? 'Temizleniyor…' : 'Verileri temizle'}
-              </button>
+              </Button>
               {#if cleared}<span class="hint" role="status">Temizlendi.</span>{/if}
             </div>
           </div>
@@ -452,32 +384,14 @@
             <span>Arka plan sekmelerini dondur</span>
             <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Arka plan sekmelerini dondur">
-            {#each onOffOptions as option (option.label)}
-              <button
-                aria-pressed={values.freezeBackgroundTabs === option.value}
-                onclick={() => update({ freezeBackgroundTabs: option.value })}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Arka plan sekmelerini dondur" options={onOffOptions} value={values.freezeBackgroundTabs} onchange={(value) => update({ freezeBackgroundTabs: value })} />
         </div>
         <div class="row">
           <span class="label">
             <span>Kullanılmayan sekmeleri bellekten çıkar</span>
             <span class="hint">Bu süre boyunca açılmayan sekmeler belleği boşaltır; sistem belleği azalınca en eski arka plan sekmeleri daha erken boşaltılır. Tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmelere dokunulmaz.</span>
           </span>
-          <div class="segmented" role="group" aria-label="Kullanılmayan sekmeleri bellekten çıkar">
-            {#each discardOptions as option (option.value)}
-              <button
-                aria-pressed={values.discardAfterMinutes === option.value}
-                onclick={() => update({ discardAfterMinutes: option.value })}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </div>
+          <SegmentedControl label="Kullanılmayan sekmeleri bellekten çıkar" options={discardOptions} value={values.discardAfterMinutes} onchange={(value) => update({ discardAfterMinutes: value })} />
         </div>
       {/if}
     </div>
@@ -506,36 +420,6 @@
     display: flex;
     gap: 4px;
     margin-bottom: 16px;
-  }
-
-  .panes button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-muted);
-    font: inherit;
-    transition: background var(--transition), color var(--transition);
-  }
-
-  .panes button:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .panes button[aria-selected='true'] {
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    color: var(--text);
-  }
-
-  .panes button:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: -2px;
   }
 
   .pane {
@@ -590,26 +474,6 @@
     font-size: var(--font-size-small);
   }
 
-  select,
-  input {
-    height: 28px;
-    padding: 0 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--text);
-    font: inherit;
-  }
-
-  input {
-    font-size: 12px;
-    user-select: text;
-  }
-
-  input.invalid {
-    border-color: var(--warn);
-  }
-
   .error {
     color: var(--warn);
     font-size: var(--font-size-small);
@@ -629,9 +493,7 @@
   }
 
   .check input {
-    height: auto;
     margin: 0;
-    padding: 0;
   }
 
   .clear-actions {
@@ -641,44 +503,4 @@
     margin-top: 4px;
   }
 
-  .primary {
-    height: 28px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 6px;
-    background: var(--accent);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .primary:disabled {
-    opacity: 0.5;
-  }
-
-  .segmented {
-    display: flex;
-    flex-shrink: 0;
-    gap: 2px;
-    padding: 2px;
-    border-radius: var(--radius);
-    background: var(--surface-hover);
-  }
-
-  .segmented button {
-    height: 26px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 12px;
-    transition: background var(--transition);
-  }
-
-  .segmented button[aria-pressed='true'] {
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    color: var(--text);
-  }
 </style>

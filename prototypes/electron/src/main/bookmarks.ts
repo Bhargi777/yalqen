@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { BOOKMARKS_URL } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
+import { searchFieldMarkup } from './search-field-markup.js';
 
 export interface Bookmark {
   id: string;
@@ -198,8 +199,8 @@ function hostOf(url: string): string {
 export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: readonly Bookmark[], query: string): string {
   const search = query.trim().slice(0, 200);
   const header =
-    `<form class="search" action="${BOOKMARKS_URL}" method="get"><input name="q" type="search" placeholder="Yer imlerinde ara" aria-label="Yer imlerinde ara" value="${escapeHtml(search)}" /></form>` +
-    (search ? '' : `<form class="new-folder" action="${BOOKMARKS_URL}new-folder" method="get"><input name="title" placeholder="Yeni klasör adı" aria-label="Yeni klasör adı" required /><button>Klasör ekle</button></form>`);
+    searchFieldMarkup({ action: BOOKMARKS_URL, label: 'Yer imlerinde ara', valueHtml: escapeHtml(search) }) +
+    (search ? '' : `<form class="new-folder" action="${BOOKMARKS_URL}new-folder" method="get"><input class="field lg" name="title" placeholder="Yeni klasör adı" aria-label="Yeni klasör adı" required /><button class="btn lg primary">Klasör ekle</button></form>`);
 
   const folderOptions = (current: string | null) =>
     [`<option value=""${current === null ? ' selected' : ''}>Klasör yok</option>`,
@@ -210,9 +211,9 @@ export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: r
     return (
       `<li><a class="visit" href="${escapeHtml(bookmark.url)}"><strong>${escapeHtml(bookmark.title)}</strong><span>${escapeHtml(hostOf(bookmark.url))}</span></a>` +
       `<details><summary>Düzenle</summary>` +
-      `<form action="${BOOKMARKS_URL}rename" method="get"><input type="hidden" name="id" value="${id}" /><input name="title" value="${escapeHtml(bookmark.title)}" aria-label="Ad" required /><button>Kaydet</button></form>` +
+      `<form action="${BOOKMARKS_URL}rename" method="get"><input type="hidden" name="id" value="${id}" /><input class="field" name="title" value="${escapeHtml(bookmark.title)}" aria-label="Ad" required /><button class="btn tonal">Kaydet</button></form>` +
       (folders.length > 0
-        ? `<form action="${BOOKMARKS_URL}move" method="get"><input type="hidden" name="id" value="${id}" /><select name="folder" aria-label="Klasör">${folderOptions(bookmark.folderId)}</select><button>Taşı</button></form>`
+        ? `<form action="${BOOKMARKS_URL}move" method="get"><input type="hidden" name="id" value="${id}" /><select class="field" name="folder" aria-label="Klasör">${folderOptions(bookmark.folderId)}</select><button class="btn tonal">Taşı</button></form>`
         : '') +
       `<a class="danger" href="${BOOKMARKS_URL}remove?id=${encodeURIComponent(bookmark.id)}">Sil</a></details></li>`
     );
@@ -230,7 +231,7 @@ export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: r
     const children = bookmarks.filter((bookmark) => bookmark.folderId === folder.id);
     return (
       `<section><div class="folder"><h2>${escapeHtml(folder.title)}</h2><details><summary>Düzenle</summary>` +
-      `<form action="${BOOKMARKS_URL}rename-folder" method="get"><input type="hidden" name="id" value="${escapeHtml(folder.id)}" /><input name="title" value="${escapeHtml(folder.title)}" aria-label="Klasör adı" required /><button>Kaydet</button></form>` +
+      `<form action="${BOOKMARKS_URL}rename-folder" method="get"><input type="hidden" name="id" value="${escapeHtml(folder.id)}" /><input class="field" name="title" value="${escapeHtml(folder.title)}" aria-label="Klasör adı" required /><button class="btn tonal">Kaydet</button></form>` +
       `<a class="danger" href="${BOOKMARKS_URL}remove-folder?id=${encodeURIComponent(folder.id)}">Klasörü sil</a></details></div>` +
       (children.length > 0 ? `<ol>${children.map(row).join('')}</ol>` : '<p class="empty-folder">Bu klasör boş.</p>') +
       '</section>'
