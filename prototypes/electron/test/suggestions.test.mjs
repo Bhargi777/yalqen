@@ -19,6 +19,19 @@ const sources = {
   ],
 };
 
+test('suggestions carry the latest favicon seen for their host', () => {
+  const list = suggest('git', {
+    ...sources,
+    history: [
+      { title: 'GitHub repo', url: 'https://github.com/org/repo', visitedAt: 40, faviconUrl: 'https://github.com/new.ico' },
+      { title: 'GitHub', url: 'https://github.com/', visitedAt: 35, faviconUrl: 'https://github.com/old.ico' },
+      ...sources.history,
+    ],
+  });
+  assert.equal(list.find((item) => item.url === 'https://github.com/').faviconUrl, 'https://github.com/new.ico');
+  assert.equal(list.find((item) => item.url === 'https://gitlab.com/').faviconUrl, undefined);
+});
+
 test('nothing is suggested for empty input', () => {
   assert.deepEqual(suggest('  ', sources), []);
 });

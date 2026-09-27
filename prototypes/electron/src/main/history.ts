@@ -9,6 +9,7 @@ export interface HistoryEntry {
   url: string;
   title: string;
   visitedAt: number;
+  faviconUrl?: string;
 }
 
 export class HistoryStore {
@@ -49,6 +50,14 @@ export class HistoryStore {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry || entry.title === title) return;
     entry.title = title;
+    this.scheduleSave();
+  }
+
+  setFavicon(id: string | null, faviconUrl: string): void {
+    if (!id || !faviconUrl.startsWith('https:')) return;
+    const entry = this.entries.find((item) => item.id === id);
+    if (!entry || entry.faviconUrl === faviconUrl) return;
+    entry.faviconUrl = faviconUrl;
     this.scheduleSave();
   }
 
@@ -101,5 +110,6 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
   const entry = value as Partial<HistoryEntry>;
   return typeof entry.id === 'string' && typeof entry.url === 'string' &&
     isWebUrl(entry.url) && typeof entry.title === 'string' &&
-    typeof entry.visitedAt === 'number' && Number.isFinite(entry.visitedAt);
+    typeof entry.visitedAt === 'number' && Number.isFinite(entry.visitedAt) &&
+    (entry.faviconUrl === undefined || typeof entry.faviconUrl === 'string');
 }

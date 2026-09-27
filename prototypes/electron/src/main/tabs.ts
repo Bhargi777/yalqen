@@ -26,7 +26,7 @@ interface Tab {
   url: string;
   title: string;
   faviconUrl: string | null;
-  keepAlive: boolean;
+  pinnedUrl: string | null;
   muted: boolean;
   isPrivate: boolean;
   detachListeners: (() => void) | null;
@@ -56,6 +56,7 @@ export interface TabManagerOptions {
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
   onVisitTitle: (id: string | null, title: string) => void;
+  onVisitFavicon: (id: string | null, faviconUrl: string) => void;
   onHistoryDelete: (id: string) => void;
   onHistoryClear: () => void;
   onFindResult: (result: FindResult) => void;
@@ -243,6 +244,11 @@ export class TabManager {
   close(id: TabId): void {
     const index = this.indexOf(id);
     if (index < 0) return;
+    const { pinnedUrl } = this.tabs[index];
+    if (pinnedUrl) {
+      this.unloadPinned(this.tabs[index], pinnedUrl);
+      return;
+    }
     const [tab] = this.tabs.splice(index, 1);
 
     if (!tab.isPrivate) {
@@ -295,18 +301,41 @@ export class TabManager {
   discardBackground(): number {
     let count = 0;
     for (const tab of this.tabs) {
-      if (!tab.keepAlive && this.discard(tab.id)) count++;
+      if (!tab.pinnedUrl && this.discard(tab.id)) count++;
     }
     return count;
   }
 
-  toggleKeepAlive(id: TabId): void {
+  togglePin(id: TabId): void {
     const tab = this.find(id);
     if (!tab) return;
-    tab.keepAlive = !tab.keepAlive;
-    if (tab.keepAlive) this.unfreeze(tab);
-    else this.maybeFreeze(tab);
+    if (tab.pinnedUrl) {
+      tab.pinnedUrl = null;
+      this.maybeFreeze(tab);
+    } else {
+      if (tab.isPrivate || !/^https?:/.test(tab.url)) return;
+      tab.pinnedUrl = tab.url;
+      this.unfreeze(tab);
+    }
     this.changed(true);
+  }
+
+  private unloadPinned(tab: Tab, pinnedUrl: string): void {
+    this.destroyView(tab);
+    tab.url = pinnedUrl;
+    tab.history = null;
+    tab.failed = false;
+    tab.upgrade = null;
+    tab.blockedPopups = [];
+    if (this.activeId !== tab.id) {
+      this.changed(true);
+      return;
+    }
+    const index = this.indexOf(tab.id);
+    const others = [...this.tabs.slice(index + 1), ...this.tabs.slice(0, index).reverse()];
+    const next = others.find((item) => !item.pinnedUrl) ?? others[0];
+    if (next) this.activate(next.id);
+    else this.open();
   }
 
   blockedPopups(): string[] {
@@ -537,7 +566,7 @@ export class TabManager {
       url: saved.url,
       title: saved.title ?? NEW_TAB_TITLE,
       faviconUrl: saved.faviconUrl ?? null,
-      keepAlive: saved.keepAlive ?? false,
+      pinnedUrl: saved.pinnedUrl ?? (saved.keepAlive ? saved.url : null),
       muted: false,
       isPrivate,
       detachListeners: null,
@@ -688,13 +717,6 @@ export class TabManager {
       for (const dispose of disposers) dispose();
     };
 
-    listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
-      const intercepted = url.startsWith(NEW_TAB_SEARCH_URL) || url.startsWith(NEW_TAB_FORGET_URL);
-      if (isMainFrame && !isSameDocument && !intercepted) {
-        view.setBackgroundColor(url === NEW_TAB_URL ? '#00000000' : '#ffffff');
-      }
-    });
-
     listen('before-input-event', (_event, input) => {
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
@@ -707,6 +729,7 @@ export class TabManager {
 
     listen('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
     listen('did-navigate', (_event, url) => {
+      view.setBackgroundColor(url === NEW_TAB_URL ? '#00000000' : '#ffffff');
       const factor = this.options.zoomFor(url, tab.isPrivate);
       if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
     });
@@ -799,6 +822,7 @@ export class TabManager {
     });
     listen('page-favicon-updated', (_event, favicons) => {
       const faviconUrl = favicons[0] ?? null;
+      if (faviconUrl && tab.url === contents.getURL()) this.options.onVisitFavicon(tab.visitId, faviconUrl);
       if (tab.faviconUrl === faviconUrl) return;
       tab.faviconUrl = faviconUrl;
       this.changed(true);
@@ -892,7 +916,7 @@ export class TabManager {
   private maybeFreeze(tab: Tab): void {
     const contents = tab.view?.webContents;
     if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
-    if (!this.options.freezeBackground() || tab.id === this.activeId || tab.keepAlive) return;
+    if (!this.options.freezeBackground() || tab.id === this.activeId || tab.pinnedUrl) return;
     if (contents.isCurrentlyAudible() || contents.isDevToolsOpened()) return;
     tab.frozen = true;
     this.setLifecycleState(tab, 'frozen');
@@ -950,7 +974,7 @@ export class TabManager {
       url: tab.url,
       title: tab.title,
       faviconUrl: tab.faviconUrl,
-      keepAlive: tab.keepAlive,
+      pinnedUrl: tab.pinnedUrl,
       history: this.captureHistory(tab),
     };
   }
@@ -965,7 +989,7 @@ export class TabManager {
       live: tab.view !== null,
       frozen: tab.frozen,
       loading: tab.loading,
-      keepAlive: tab.keepAlive,
+      pinned: tab.pinnedUrl !== null,
       isPrivate: tab.isPrivate,
       bookmarked: this.options.isBookmarked(tab.url),
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),

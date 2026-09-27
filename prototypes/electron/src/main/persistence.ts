@@ -13,7 +13,8 @@ export interface SavedTab {
   url: string;
   title: string;
   faviconUrl: string | null;
-  keepAlive: boolean;
+  pinnedUrl?: string | null;
+  keepAlive?: boolean;
   history: SavedHistory | null;
 }
 

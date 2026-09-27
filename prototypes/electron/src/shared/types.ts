@@ -22,7 +22,7 @@ export interface TabSnapshot {
   live: boolean;
   frozen: boolean;
   loading: boolean;
-  keepAlive: boolean;
+  pinned: boolean;
   security: SecurityState;
   isPrivate: boolean;
   bookmarked: boolean;
@@ -55,11 +55,13 @@ export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
   pageFullScreen: boolean;
+  windowFullScreen: boolean;
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;
   sidebarVisible: boolean;
   toolbarVisible: boolean;
+  toolbarTabs: boolean;
   material: WindowMaterial;
   device: DeviceFrame | null;
   zoom: number;
@@ -85,7 +87,7 @@ export type UiAction =
   | { type: 'activate-tab'; id: TabId }
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
-  | { type: 'toggle-keep-alive'; id: TabId }
+  | { type: 'toggle-pin'; id: TabId }
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }
@@ -111,11 +113,18 @@ export const IpcChannel = {
   state: 'yalqen:state',
   setLayout: 'yalqen:set-layout',
   action: 'yalqen:action',
+  wallpaper: 'yalqen:wallpaper',
 } as const;
+
+export interface Wallpaper {
+  dataUrl: string;
+  split: boolean;
+}
 
 export interface YalqenApi {
   getState(): Promise<BrowserState>;
   onState(listener: (state: BrowserState) => void): () => void;
+  onWallpaper(listener: (wallpaper: Wallpaper | null) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
 }
@@ -131,6 +140,7 @@ export interface AddressSuggestion {
   title: string;
   url: string;
   tabId?: TabId;
+  faviconUrl?: string;
 }
 
 export interface CommandBarSuggestions {
@@ -186,6 +196,7 @@ export interface SettingsValues {
   panelSide: PanelSide;
   sidebarVisible: boolean;
   toolbarVisible: boolean;
+  toolbarTabs: boolean;
   freezeBackgroundTabs: boolean;
   adBlocking: boolean;
   httpsOnly: boolean;

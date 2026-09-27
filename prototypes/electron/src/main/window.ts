@@ -26,6 +26,7 @@ import { permissionOrigin, type PermissionStore } from './permissions.js';
 import type { SavedTab, SavedWindow } from './persistence.js';
 import { blockedPopupsTemplate } from './popups.js';
 import { Preconnector } from './preconnect.js';
+import { loadWallpaper } from './wallpaper.js';
 import { buildSearchUrl, type SearchEngine } from './search.js';
 import type { SettingsStore } from './settings.js';
 import type { SettingsWindow } from './settings-window.js';
@@ -212,6 +213,7 @@ export class YalqenWindow {
       },
       onVisit: (url, title) => app.history.visit(url, title),
       onVisitTitle: (id, title) => app.history.setTitle(id, title),
+      onVisitFavicon: (id, faviconUrl) => app.history.setFavicon(id, faviconUrl),
       onHistoryDelete: (id) => app.history.remove(id),
       onHistoryClear: () => app.history.clear(),
       isBookmarked: (url) => app.bookmarks.find(url) !== undefined,
@@ -259,8 +261,15 @@ export class YalqenWindow {
       });
     }
     this.window.on('resize', () => this.applyLayout());
-    this.window.on('enter-full-screen', () => this.applyLayout());
-    this.window.on('leave-full-screen', () => this.applyLayout());
+    const onFullScreenChange = () => {
+      this.applyLayout();
+      this.pushState();
+    };
+    this.window.on('enter-full-screen', () => {
+      onFullScreenChange();
+      void this.sendWallpaper();
+    });
+    this.window.on('leave-full-screen', onFullScreenChange);
     this.applyLayout();
 
     nativeTheme.on('updated', this.pushState);
@@ -311,6 +320,11 @@ export class YalqenWindow {
     if (!this.window.isDestroyed()) this.window.focus();
   }
 
+  private async sendWallpaper(): Promise<void> {
+    const wallpaper = await loadWallpaper(path.join(app.getPath('userData'), 'wallpaper'));
+    if (!this.ui.webContents.isDestroyed()) this.ui.webContents.send(IpcChannel.wallpaper, wallpaper);
+  }
+
   readonly pushState = (): void => {
     if (!this.ui.webContents.isDestroyed()) {
       this.ui.webContents.send(IpcChannel.state, this.state());
@@ -321,11 +335,13 @@ export class YalqenWindow {
     return {
       ...this.tabs.state(),
       pageFullScreen: this.isPageFullScreen(),
+      windowFullScreen: this.window.isFullScreen(),
       addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       sidebarVisible: this.app.settings.get().sidebarVisible,
       toolbarVisible: this.app.settings.get().toolbarVisible,
+      toolbarTabs: this.app.settings.get().toolbarTabs,
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: downloadsSummary(this.app.downloads.list()),
@@ -410,8 +426,8 @@ export class YalqenWindow {
       case 'discard-tab':
         tabs.discard(action.id);
         break;
-      case 'toggle-keep-alive':
-        tabs.toggleKeepAlive(action.id);
+      case 'toggle-pin':
+        tabs.togglePin(action.id);
         break;
       case 'toggle-mute':
         tabs.toggleMute(action.id);

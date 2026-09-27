@@ -56,7 +56,15 @@ async function update() {
       link.addEventListener('mousedown', (event) => event.preventDefault());
       const kind = document.createElement('span');
       kind.className = 'kind';
-      kind.textContent = suggestion.kind === 'bookmark' ? '★' : '◷';
+      const glyph = suggestion.kind === 'bookmark' ? '★' : '◷';
+      kind.textContent = glyph;
+      if (suggestion.faviconUrl?.startsWith('https:')) {
+        const icon = document.createElement('img');
+        icon.src = suggestion.faviconUrl;
+        icon.alt = '';
+        icon.addEventListener('error', () => kind.replaceChildren(glyph));
+        kind.replaceChildren(icon);
+      }
       const title = document.createElement('span');
       title.className = 'title';
       title.textContent = suggestion.title || hostOf(suggestion.url);

@@ -344,12 +344,22 @@
   }
 
   .chip:not(.active) .close {
-    display: none;
+    position: absolute;
+    right: 5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
   }
 
   .chip:not(.active):hover .close,
   .chip .close:focus-visible {
-    display: grid;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .chip:not(.active):hover .label,
+  .chip:not(.active):focus-within .label {
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent calc(100% - 8px));
   }
 
   .select,

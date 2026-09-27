@@ -20,11 +20,13 @@
     tabs: [],
     activeTabId: null,
     pageFullScreen: false,
+    windowFullScreen: false,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     panelSide: 'left',
     sidebarVisible: true,
     toolbarVisible: true,
+    toolbarTabs: true,
     material: 'opaque',
     device: null,
     zoom: 1,
@@ -50,6 +52,7 @@
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = browser.material;
+    document.documentElement.toggleAttribute('data-fullscreen', browser.windowFullScreen);
   });
 
   $effect(() => {
@@ -69,8 +72,16 @@
   onMount(() => {
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
+    const offWallpaper = window.yalqen.onWallpaper((wallpaper) => {
+      const root = document.documentElement;
+      root.toggleAttribute('data-wallpaper', wallpaper !== null);
+      root.toggleAttribute('data-wallpaper-split', wallpaper?.split ?? false);
+      if (wallpaper) root.style.setProperty('--wallpaper', `url("${wallpaper.dataUrl}")`);
+      else root.style.removeProperty('--wallpaper');
+    });
     return () => {
       offState();
+      offWallpaper();
     };
   });
 </script>
@@ -97,7 +108,7 @@
     {/if}
     {#if browser.toolbarVisible}
       <Toolbar
-        tabs={browser.tabs}
+        tabs={browser.toolbarTabs ? browser.tabs : browser.tabs.filter((tab) => tab.id === browser.activeTabId)}
         activeTabId={browser.activeTabId}
         zoom={browser.zoom}
         defaultZoom={browser.defaultZoom}

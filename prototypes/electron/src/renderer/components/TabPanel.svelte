@@ -28,8 +28,8 @@
 
   const send = window.yalqen.send;
 
-  const favorites = $derived(tabs.filter((tab) => tab.keepAlive));
-  const listed = $derived(tabs.filter((tab) => !tab.keepAlive));
+  const pinned = $derived(tabs.filter((tab) => tab.pinned));
+  const listed = $derived(tabs.filter((tab) => !tab.pinned));
 
   function label(tab: TabSnapshot): string {
     const states = [
@@ -37,7 +37,7 @@
       tab.isPrivate ? 'gizli' : null,
       tab.live ? null : 'bellekten çıkarılmış',
       tab.frozen ? 'dondurulmuş' : null,
-      tab.keepAlive ? 'canlı tutuluyor' : null,
+      tab.pinned ? 'sabitlendi' : null,
       tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
@@ -111,9 +111,9 @@
 
   <div class="top" style:height="{topInset}px"></div>
 
-  {#if favorites.length > 0}
-    <ul class="favorites" aria-label="Favoriler">
-      {#each favorites as tab (tab.id)}
+  {#if pinned.length > 0}
+    <ul class="favorites" aria-label="Sabitlenenler">
+      {#each pinned as tab (tab.id)}
         <li class="favorite" class:active={tab.id === activeTabId} class:discarded={!tab.live}>
           <button
             class="tile"
@@ -123,13 +123,14 @@
             onclick={() => send({ type: 'activate-tab', id: tab.id })}
             onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
           >
-            {@render favicon(tab, 16)}
+            {@render favicon(tab, collapsed ? 16 : 20)}
           </button>
           {#if !collapsed}
             <button
               class="unpin"
-              title="Favorilerden çıkar"
-              onclick={() => send({ type: 'toggle-keep-alive', id: tab.id })}
+              title="Sabitlemeyi kaldır"
+              aria-label="Sabitlemeyi kaldır: {tab.title}"
+              onclick={() => send({ type: 'toggle-pin', id: tab.id })}
             >
               <Icon name="close" size={10} />
             </button>
@@ -182,13 +183,15 @@
           {/if}
           {#if !collapsed}
             <span class="actions">
-              <button
-                class="action extra"
-                title="Favorilere ekle (canlı tut)"
-                onclick={() => send({ type: 'toggle-keep-alive', id: tab.id })}
-              >
-                <Icon name="pin" size={13} />
-              </button>
+              {#if !tab.isPrivate && /^https?:/.test(tab.url)}
+                <button
+                  class="action extra"
+                  title="Sabitle"
+                  onclick={() => send({ type: 'toggle-pin', id: tab.id })}
+                >
+                  <Icon name="pin" size={13} />
+                </button>
+              {/if}
               {#if tab.live && tab.id !== activeTabId}
                 <button
                   class="action extra"
@@ -275,9 +278,9 @@
   .favorites {
     display: grid;
     flex: none;
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-    gap: 4px;
-    margin: 0 0 8px;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 6px;
+    margin: 0 0 10px;
     padding: 0;
     list-style: none;
   }
@@ -299,12 +302,18 @@
     display: grid;
     place-items: center;
     width: 100%;
-    height: 34px;
+    height: 46px;
     padding: 0;
     border: 0;
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--well);
-    transition: background var(--transition);
+    box-shadow: var(--well-rim);
+    transition: background var(--transition), box-shadow var(--transition);
+  }
+
+  :global([data-material='glass']) .panel:not(.collapsed) .tile {
+    background: var(--platter);
+    box-shadow: var(--rim);
   }
 
   .collapsed .tile {
@@ -313,23 +322,29 @@
     background: transparent;
   }
 
-  .tile:hover {
+  .tile:hover,
+  :global([data-material='glass']) .panel:not(.collapsed) .tile:hover {
     background: var(--well-hover);
   }
 
-  .favorite.active .tile {
-    background: var(--surface);
+  .favorite.active .tile,
+  :global([data-material='glass']) .panel:not(.collapsed) .favorite.active .tile {
+    background: var(--surface-active);
     box-shadow: var(--shadow);
+  }
+
+  :global([data-material='glass']) .panel:not(.collapsed) .favorite.active .tile {
+    box-shadow: var(--shadow), var(--rim);
   }
 
   .unpin {
     position: absolute;
-    top: -3px;
-    right: -3px;
+    top: -4px;
+    right: -4px;
     display: none;
     place-items: center;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     padding: 0;
     border: 0;
     border-radius: 50%;
@@ -470,8 +485,8 @@
     border-radius: 4px;
   }
 
-  .discarded .favicon img,
-  .discarded .favicon > :global(svg) {
+  .tab.discarded .favicon img,
+  .tab.discarded .favicon > :global(svg) {
     opacity: 0.45;
     filter: grayscale(1);
   }

@@ -3,11 +3,28 @@ import type { AddressSuggestion } from '../shared/types.js';
 export interface SuggestionSources {
   tabs: readonly { id: string; title: string; url: string }[];
   bookmarks: readonly { title: string; url: string }[];
-  history: readonly { title: string; url: string; visitedAt: number }[];
+  history: readonly { title: string; url: string; visitedAt: number; faviconUrl?: string }[];
 }
 
 export const MAX_SUGGESTIONS = 6;
 const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { tab: 0, bookmark: 1, history: 2 };
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function faviconsByHost(history: SuggestionSources['history']): Map<string, string> {
+  const favicons = new Map<string, string>();
+  for (const visit of history) {
+    const host = hostOf(visit.url);
+    if (visit.faviconUrl && host && !favicons.has(host)) favicons.set(host, visit.faviconUrl);
+  }
+  return favicons;
+}
 
 function bareUrl(url: string): string {
   return url.replace(/^[a-z][a-z\d+\-.]*:\/\/(www\.)?/i, '').toLocaleLowerCase('tr');
@@ -70,6 +87,7 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
     }
   }
 
+  const favicons = faviconsByHost(sources.history);
   return [...byUrl.values()]
     .sort(
       (a, b) =>
@@ -79,5 +97,10 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
         b.lastVisit - a.lastVisit,
     )
     .slice(0, limit)
-    .map(({ kind, title, url, tabId }) => (tabId ? { kind, title, url, tabId } : { kind, title, url }));
+    .map(({ kind, title, url, tabId }) => {
+      const suggestion: AddressSuggestion = tabId ? { kind, title, url, tabId } : { kind, title, url };
+      const faviconUrl = favicons.get(hostOf(url));
+      if (faviconUrl) suggestion.faviconUrl = faviconUrl;
+      return suggestion;
+    });
 }

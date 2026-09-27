@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { protocol, type Session } from 'electron';
 import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
 import { renderBookmarks, type Bookmark, type BookmarkFolder } from './bookmarks.js';
@@ -8,15 +9,17 @@ import type { AddressSuggestion } from '../shared/types.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
-const NEW_TAB_CSP = `${INTERNAL_CSP}; script-src 'self'; connect-src 'self'`;
+const NEW_TAB_CSP =
+  "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
 const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
-const WELCOME_ACTION_MARKER = '__YALQEN_WELCOME_ACTION_SLOT__';
+const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
 const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
 const DOWNLOADS_MARKER = '__YALQEN_DOWNLOADS_SLOT__';
 const BOOKMARKS_MARKER = '__YALQEN_BOOKMARKS_SLOT__';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
+const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
 
 export function registerInternalScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -41,29 +44,31 @@ export function renderRecent(pages: RecentPage[]): string {
   const items = pages
     .map((page) => {
       const icon = page.faviconUrl?.startsWith('https:')
-        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="18" height="18" />`
+        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="16" height="16" />`
         : '<span class="dot"></span>';
       const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
       return (
         `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(hostOf(page.url))}</span></a>` +
-        `<a class="forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır">${FORGET_ICON}</a></li>`
+        `<a class="forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır: ${escapeHtml(hostOf(page.url))}">${SMALL_FORGET_ICON}</a></li>`
       );
     })
     .join('');
-  return `<h2>Son kapatılanlar</h2><ul class="recent">${items}</ul>`;
+  return `<section class="recent" aria-labelledby="recent-title"><h2 id="recent-title">Son kapatılanlar</h2><ul>${items}</ul></section>`;
 }
 
 function renderWelcome(): string {
   return `<section class="welcome" aria-labelledby="welcome-title">
-    <p class="eyebrow">YALQEN</p>
-    <h1 id="welcome-title">Merhaba, hoş geldin.</h1>
-    <p class="welcome-copy">İnternette kendi yolunu aç. Aramak ya da bir adres yazmak için başlayabilirsin.</p>
-    <ul class="tips">
-      <li><span class="tip-icon">↔</span><span><strong>Sekmelerin elinin altında</strong><small>Açık sayfalarını soldaki panelde düzenle.</small></span></li>
-      <li><span class="tip-icon">⌑</span><span><strong>Sık kullandıklarını sabitle</strong><small>Bir sekmeyi canlı tutmak için iğne simgesine bas.</small></span></li>
-      <li><span class="tip-icon">◈</span><span><strong>Daha az reklam</strong><small>Reklam engelleme varsayılan olarak açık.</small></span></li>
-    </ul>
+    <h1 id="welcome-title">Yalqen'e hoş geldin.</h1>
+    <p>İnternette kendi yolunu aç. Aramak ya da bir adres yazmak için başlayabilirsin.</p>
   </section>`;
+}
+
+function renderTips(): string {
+  return `<ul class="tips" aria-label="İpuçları">
+    <li><strong>Sekmeler solda</strong><small>Açık sayfalarını yan panelde düzenle.</small></li>
+    <li><strong>Sık kullandıklarını sabitle</strong><small>Bir sekmeyi canlı tutmak için iğneye bas.</small></li>
+    <li><strong>Daha az reklam</strong><small>Reklam engelleme varsayılan olarak açık.</small></li>
+  </ul>`;
 }
 
 export function renderHistory(entries: HistoryEntry[], query: string): string {
@@ -103,6 +108,7 @@ export function serveInternalPages(
 ): void {
   const page = fs.readFileSync(newTabFile, 'utf8');
   const newTabScript = fs.readFileSync(newTabScriptFile, 'utf8');
+  const newTabMark = fs.readFileSync(path.join(path.dirname(newTabFile), 'newtab-mark.png'));
   const historyPage = fs.readFileSync(historyFile, 'utf8');
   const downloadsPage = fs.readFileSync(downloadsFile, 'utf8');
   const bookmarksPage = fs.readFileSync(bookmarksFile, 'utf8');
@@ -118,6 +124,9 @@ export function serveInternalPages(
       return new Response(newTabScript, {
         headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
       });
+    }
+    if (url.host === 'newtab' && url.pathname === '/mark.png') {
+      return new Response(newTabMark, { headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' } });
     }
     if (url.host === 'newtab' && url.pathname === '/suggestions') {
       return Response.json(suggestions(url.searchParams.get('q') ?? ''), {
@@ -164,14 +173,10 @@ export function serveInternalPages(
       return new Response('Not found', { status: 404 });
     }
     const welcomeVisible = showWelcome();
-    const welcome = welcomeVisible ? renderWelcome() : '';
-    const welcomeAction = welcomeVisible
-      ? '<button class="welcome-start" type="submit" form="search-form">Aramaya başla <span aria-hidden="true">↗</span></button>'
-      : '';
     return new Response(
       page
-        .replace(WELCOME_MARKER, welcome)
-        .replace(WELCOME_ACTION_MARKER, welcomeAction)
+        .replace(WELCOME_MARKER, welcomeVisible ? renderWelcome() : '')
+        .replace(TIPS_MARKER, welcomeVisible ? renderTips() : '')
         .replace(RECENT_MARKER, renderRecent(recent())),
       { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': NEW_TAB_CSP } },
     );

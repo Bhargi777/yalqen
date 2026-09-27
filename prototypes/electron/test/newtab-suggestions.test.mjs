@@ -40,4 +40,8 @@ test('the new tab serves matching local suggestions and its script', async () =>
   const script = await handle(new Request('yalqen://newtab/suggestions.js'));
   assert.match(script.headers.get('content-type'), /^application\/javascript/);
   assert.match(await script.text(), /fetch\(/);
+
+  const mark = await handle(new Request('yalqen://newtab/mark.png'));
+  assert.equal(mark.headers.get('content-type'), 'image/png');
+  assert.ok((await mark.arrayBuffer()).byteLength > 0);
 });

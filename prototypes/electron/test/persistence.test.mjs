@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import persistence from '../dist/main/persistence.js';
 
 const { SessionStore } = persistence;
-const tab = (url) => ({ id: 'tab', url, title: url, faviconUrl: null, keepAlive: false, history: null });
+const tab = (url) => ({ id: 'tab', url, title: url, faviconUrl: null, pinnedUrl: null, history: null });
 const session = (url) => ({ version: 2, windows: [{ activeTabId: null, tabs: [tab(url)] }] });
 
 test('frequent changes are coalesced into one background save', async () => {

@@ -19,10 +19,13 @@ test('visits survive restart, can be searched, removed, and cleared', () => {
     const second = store.visit('https://example.com/two', 'İkinci sayfa');
     assert.ok(first && second);
     store.setTitle(second, 'Güncel başlık');
+    store.setFavicon(second, 'http://example.com/insecure.ico');
+    store.setFavicon(second, 'https://example.com/favicon.ico');
     store.saveNow();
 
     const restored = new HistoryStore(directory);
     assert.deepEqual(restored.list().map(({ id }) => id), [second, first]);
+    assert.deepEqual(restored.list().map(({ faviconUrl }) => faviconUrl), ['https://example.com/favicon.ico', undefined]);
     assert.equal(restored.list('GÜNCEL').length, 1);
     assert.equal(restored.list('example.com').length, 2);
     restored.remove(first);

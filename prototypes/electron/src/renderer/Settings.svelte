@@ -20,6 +20,10 @@
     { value: true, label: 'Görünür' },
     { value: false, label: 'Gizli' },
   ] as const;
+  const toolbarTabOptions = [
+    { value: true, label: 'Tüm sekmeler' },
+    { value: false, label: 'Yalnızca açık sayfa' },
+  ] as const;
   const themeOptions = [
     { value: 'system', label: 'Sistem' },
     { value: 'light', label: 'Açık' },
@@ -206,6 +210,19 @@
         {/each}
       </div>
     </div>
+    <div class="row">
+      <span class="label">
+        <span>Üst menüdeki sekmeler</span>
+        <span class="hint">Yalnızca açık sayfanın adresini göstererek üst menüyü sadeleştirir.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Üst menüdeki sekmeler">
+        {#each toolbarTabOptions as option (option.value)}
+          <button aria-pressed={values.toolbarTabs === option.value} onclick={() => update({ toolbarTabs: option.value })}>
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
 
     <h2>Sekme paneli</h2>
     <div class="row">
@@ -379,7 +396,7 @@
     <div class="row last">
       <span class="label">
         <span>Arka plan sekmelerini dondur</span>
-        <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve canlı tutulan sekmeler dondurulmaz.</span>
+        <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span>
       </span>
       <div class="segmented" role="group" aria-label="Arka plan sekmelerini dondur">
         {#each onOffOptions as option (option.label)}
