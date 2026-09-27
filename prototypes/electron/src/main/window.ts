@@ -14,7 +14,7 @@ import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
-import { downloadsMenuTemplate, downloadsSummary, type DownloadActions, type DownloadStore } from './downloads.js';
+import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from './downloads.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from './history.js';
@@ -97,6 +97,7 @@ export class YalqenWindow {
   };
   private glassApplied = glassAvailable;
   private htmlFullScreenTabId: string | null = null;
+  private pushQueued = false;
   private findTarget: { tabId: string; url: string } | null = null;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
@@ -216,7 +217,7 @@ export class YalqenWindow {
       onVisitFavicon: (id, faviconUrl) => app.history.setFavicon(id, faviconUrl),
       onHistoryDelete: (id) => app.history.remove(id),
       onHistoryClear: () => app.history.clear(),
-      isBookmarked: (url) => app.bookmarks.find(url) !== undefined,
+      isBookmarked: (url) => app.bookmarks.has(url),
       onPageCommand: (page, command, params) => {
         if (page === 'bookmarks') app.runBookmarksCommand(command, params);
         else app.runDownloadsCommand(command, params);
@@ -334,9 +335,12 @@ export class YalqenWindow {
   }
 
   readonly pushState = (): void => {
-    if (!this.ui.webContents.isDestroyed()) {
-      this.ui.webContents.send(IpcChannel.state, this.state());
-    }
+    if (this.pushQueued) return;
+    this.pushQueued = true;
+    setImmediate(() => {
+      this.pushQueued = false;
+      if (!this.ui.webContents.isDestroyed()) this.ui.webContents.send(IpcChannel.state, this.state());
+    });
   };
 
   state(): BrowserState {
@@ -352,7 +356,7 @@ export class YalqenWindow {
       toolbarTabs: this.app.settings.get().toolbarTabs,
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
-      downloads: downloadsSummary(this.app.downloads.list()),
+      downloads: this.app.downloads.summary(),
     };
   }
 

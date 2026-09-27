@@ -39,6 +39,7 @@ export class BookmarkStore {
   readonly file: string;
   private folderList: BookmarkFolder[] = [];
   private bookmarkList: Bookmark[] = [];
+  private urls: Set<string> | null = null;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'bookmarks.json');
@@ -69,6 +70,11 @@ export class BookmarkStore {
     return this.bookmarkList
       .filter((bookmark) => !term || `${bookmark.title} ${bookmark.url}`.toLocaleLowerCase('tr').includes(term))
       .map((bookmark) => ({ ...bookmark }));
+  }
+
+  has(url: string): boolean {
+    this.urls ??= new Set(this.bookmarkList.map((bookmark) => bookmark.url));
+    return this.urls.has(url);
   }
 
   find(url: string): Bookmark | undefined {
@@ -131,6 +137,7 @@ export class BookmarkStore {
   }
 
   private save(): void {
+    this.urls = null;
     const data: SavedBookmarks = { version: 1, folders: this.folderList, bookmarks: this.bookmarkList };
     const temp = `${this.file}.tmp`;
     try {

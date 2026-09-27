@@ -106,6 +106,10 @@ export class DownloadStore {
     return this.entries.map((entry) => ({ ...entry }));
   }
 
+  summary(): DownloadsSummary {
+    return downloadsSummary(this.entries);
+  }
+
   get(id: string): DownloadEntry | undefined {
     const entry = this.entries.find((item) => item.id === id);
     return entry && { ...entry };

@@ -52,6 +52,17 @@ test('bookmarks are added once, edited, moved and persisted', () => {
   });
 });
 
+test('bookmarked addresses are known after every change', () => {
+  withDir((dir) => {
+    const store = new BookmarkStore(dir);
+    assert.equal(store.has('https://example.com/'), false);
+    const bookmark = store.add('https://example.com/', 'Örnek');
+    assert.equal(store.has('https://example.com/'), true);
+    store.remove(bookmark.id);
+    assert.equal(store.has('https://example.com/'), false);
+  });
+});
+
 test('damaged entries are dropped and missing folders are cleared', () => {
   withDir((dir) => {
     fs.writeFileSync(
