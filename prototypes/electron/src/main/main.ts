@@ -25,6 +25,7 @@ import { HttpsOnly, hostResolverOptions } from './https-only.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
 import { blockThirdPartyCookies } from './third-party-cookies.js';
 import { externalUrls } from './launch.js';
+import { DISCARD_CHECK_MS } from './memory-saver.js';
 import { buildMenu } from './menu.js';
 import {
   PermissionStore,
@@ -581,12 +582,18 @@ function startBrowser(): void {
     return settingsView();
   });
 
+  const discardTimer = setInterval(() => {
+    const minutes = settings.get().discardAfterMinutes;
+    if (minutes > 0) eachWindow((window) => window.tabs.discardInactive(Date.now(), minutes));
+  }, DISCARD_CHECK_MS);
+
   app.on('before-quit', () => {
     if (quitting) return;
     quitting = true;
     store.saveNow(sessionSnapshot());
   });
   app.on('will-quit', () => {
+    clearInterval(discardTimer);
     adBlocker.destroy();
     settingsWindow.close();
     history.saveNow();

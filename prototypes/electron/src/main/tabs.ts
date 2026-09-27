@@ -9,6 +9,7 @@ import type { WebPreferences } from 'electron';
 import { PROCEED_HTTP_URL } from './https-only.js';
 import { canViewSource } from './page-export.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
+import { shouldDiscard } from './memory-saver.js';
 import { securityState } from './site-info.js';
 import { stepZoom } from './zoom.js';
 
@@ -33,6 +34,8 @@ interface Tab {
   upgrade: { https: string; http: string } | null;
   failed: boolean;
   activatedAt: number;
+  inactiveSince: number;
+  edited: boolean;
   blockedPopups: string[];
   loading: boolean;
   frozen: boolean;
@@ -225,7 +228,10 @@ export class TabManager {
     }
 
     this.activeId = id;
-    if (previous && previous.id !== id) this.maybeFreeze(previous);
+    if (previous && previous.id !== id) {
+      previous.inactiveSince = Date.now();
+      this.maybeFreeze(previous);
+    }
     const view = this.ensureLive(next);
     this.unfreeze(next);
     this.layoutView(next, view);
@@ -296,6 +302,26 @@ export class TabManager {
     this.destroyView(tab);
     this.changed(true);
     return true;
+  }
+
+  discardInactive(now: number, afterMinutes: number): number {
+    let count = 0;
+    for (const tab of this.tabs) {
+      const contents = tab.view?.webContents;
+      if (!contents || contents.isDestroyed()) continue;
+      const candidate = {
+        live: true,
+        active: tab.id === this.activeId,
+        pinned: tab.pinnedUrl !== null,
+        loading: tab.loading,
+        audible: contents.isCurrentlyAudible(),
+        devToolsOpen: contents.isDevToolsOpened(),
+        edited: tab.edited,
+        inactiveSince: tab.inactiveSince,
+      };
+      if (shouldDiscard(candidate, now, afterMinutes) && this.discard(tab.id)) count++;
+    }
+    return count;
   }
 
   discardBackground(): number {
@@ -579,6 +605,8 @@ export class TabManager {
       upgrade: null,
       failed: false,
       activatedAt: 0,
+      inactiveSince: Date.now(),
+      edited: false,
       blockedPopups: [],
       loading: false,
       frozen: false,
@@ -735,6 +763,7 @@ export class TabManager {
 
     listen('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
     listen('did-navigate', (_event, url) => {
+      tab.edited = false;
       view.setBackgroundColor(url === NEW_TAB_URL ? '#00000000' : '#ffffff');
       const factor = this.options.zoomFor(url, tab.isPrivate);
       if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
@@ -809,6 +838,7 @@ export class TabManager {
     });
     listen('input-event', (_event, input) => {
       if (isActivation(input.type)) tab.activatedAt = Date.now();
+      if (input.type === 'char') tab.edited = true;
     });
     contents.setWindowOpenHandler(({ url }) => {
       if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {

@@ -19,6 +19,7 @@ test('unknown or mistyped fields fall back', () => {
       toolbarVisible: 0,
       toolbarTabs: 'no',
       freezeBackgroundTabs: 1,
+      discardAfterMinutes: 45,
       adBlocking: 'no',
       httpsOnly: 'yes',
       blockThirdPartyCookies: 1,
@@ -39,6 +40,7 @@ test('unknown or mistyped fields fall back', () => {
       toolbarVisible: true,
       toolbarTabs: true,
       freezeBackgroundTabs: true,
+      discardAfterMinutes: 30,
       adBlocking: true,
       httpsOnly: false,
       blockThirdPartyCookies: false,
@@ -67,6 +69,7 @@ test('updates keep valid fields and persist', () => {
       toolbarVisible: false,
       toolbarTabs: false,
       freezeBackgroundTabs: false,
+      discardAfterMinutes: 0,
       adBlocking: false,
       httpsOnly: true,
       blockThirdPartyCookies: true,
@@ -88,6 +91,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.toolbarVisible, false);
     assert.equal(reloaded.toolbarTabs, false);
     assert.equal(reloaded.freezeBackgroundTabs, false);
+    assert.equal(reloaded.discardAfterMinutes, 0);
     assert.equal(reloaded.adBlocking, false);
     assert.equal(reloaded.httpsOnly, true);
     assert.equal(reloaded.blockThirdPartyCookies, true);

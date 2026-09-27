@@ -198,6 +198,7 @@ export interface SettingsValues {
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   freezeBackgroundTabs: boolean;
+  discardAfterMinutes: number;
   adBlocking: boolean;
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { FontSizeSetting, PageLanguage, PanelSide, SecureDnsSetting, SettingsValues, ThemeSource } from '../shared/types.js';
+import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from './memory-saver.js';
 import { DEFAULT_ZOOM_FACTORS, FONT_SIZES } from './page-preferences.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from './search.js';
 
@@ -20,6 +21,7 @@ const DEFAULTS: Settings = {
   toolbarVisible: true,
   toolbarTabs: true,
   freezeBackgroundTabs: true,
+  discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   adBlocking: true,
   httpsOnly: false,
   blockThirdPartyCookies: false,
@@ -49,6 +51,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     toolbarVisible,
     toolbarTabs,
     freezeBackgroundTabs,
+    discardAfterMinutes,
     adBlocking,
     httpsOnly,
     blockThirdPartyCookies,
@@ -81,6 +84,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     toolbarTabs: typeof toolbarTabs === 'boolean' ? toolbarTabs : base.toolbarTabs,
     freezeBackgroundTabs:
       typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
+    discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
     httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
     blockThirdPartyCookies:

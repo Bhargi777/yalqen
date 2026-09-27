@@ -24,6 +24,13 @@
     { value: true, label: 'Tüm sekmeler' },
     { value: false, label: 'Yalnızca açık sayfa' },
   ] as const;
+  const discardOptions = [
+    { value: 0, label: 'Kapalı' },
+    { value: 15, label: '15 dk' },
+    { value: 30, label: '30 dk' },
+    { value: 60, label: '1 sa' },
+    { value: 120, label: '2 sa' },
+  ] as const;
   const themeOptions = [
     { value: 'system', label: 'Sistem' },
     { value: 'light', label: 'Açık' },
@@ -393,7 +400,7 @@
     </div>
 
     <h2>Bellek</h2>
-    <div class="row last">
+    <div class="row">
       <span class="label">
         <span>Arka plan sekmelerini dondur</span>
         <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span>
@@ -403,6 +410,22 @@
           <button
             aria-pressed={values.freezeBackgroundTabs === option.value}
             onclick={() => update({ freezeBackgroundTabs: option.value })}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row last">
+      <span class="label">
+        <span>Kullanılmayan sekmeleri bellekten çıkar</span>
+        <span class="hint">Bu süre boyunca açılmayan sekmeler belleği boşaltır, tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmelere dokunulmaz.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Kullanılmayan sekmeleri bellekten çıkar">
+        {#each discardOptions as option (option.value)}
+          <button
+            aria-pressed={values.discardAfterMinutes === option.value}
+            onclick={() => update({ discardAfterMinutes: option.value })}
           >
             {option.label}
           </button>
