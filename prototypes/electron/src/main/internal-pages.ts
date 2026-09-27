@@ -12,6 +12,7 @@ const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src htt
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
 const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
+const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
 const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
 const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
@@ -54,6 +55,20 @@ export function renderRecent(pages: RecentPage[]): string {
     })
     .join('');
   return `<section class="recent" aria-labelledby="recent-title"><h2 id="recent-title">Son kapatılanlar</h2><ul>${items}</ul></section>`;
+}
+
+export function renderPinned(pages: RecentPage[]): string {
+  if (pages.length === 0) return '';
+  const items = pages
+    .map((page) => {
+      const host = hostOf(page.url);
+      const icon = page.faviconUrl?.startsWith('https:')
+        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="24" height="24" />`
+        : `<span class="letter">${escapeHtml(host.charAt(0).toLocaleUpperCase('tr'))}</span>`;
+      return `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title || host)}"><span class="tile">${icon}</span><span class="name">${escapeHtml(host)}</span></a></li>`;
+    })
+    .join('');
+  return `<nav class="pinned" aria-label="Sabitlenenler"><ul>${items}</ul></nav>`;
 }
 
 function renderWelcome(): string {
@@ -100,6 +115,7 @@ export function serveInternalPages(
   downloadsFile: string,
   bookmarksFile: string,
   recent: () => RecentPage[],
+  pinned: () => RecentPage[],
   visits: (query: string) => HistoryEntry[],
   downloads: () => DownloadEntry[],
   bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] },
@@ -176,6 +192,7 @@ export function serveInternalPages(
     return new Response(
       page
         .replace(WELCOME_MARKER, welcomeVisible ? renderWelcome() : '')
+        .replace(PINNED_MARKER, renderPinned(pinned()))
         .replace(TIPS_MARKER, welcomeVisible ? renderTips() : '')
         .replace(RECENT_MARKER, renderRecent(recent())),
       { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': NEW_TAB_CSP } },

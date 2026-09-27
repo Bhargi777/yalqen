@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { BrowserState } from '../shared/types';
   import { isNewTab } from './format';
   import TabPanel from './components/TabPanel.svelte';
@@ -15,6 +15,7 @@
   const WINDOW_CONTROLS_END = 88;
   const PREFS_KEY = 'yalqen:panel:2';
   const DEVICE_BEZEL = 10;
+  const PANEL_ANIMATION_MS = 240;
 
   let browser: BrowserState = $state({
     tabs: [],
@@ -48,6 +49,32 @@
   const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(browser.sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : width) : PAGE_INSET);
   const side = $derived(browser.panelSide);
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let shownWidth = $state(DEFAULT_WIDTH);
+  let panelMode = '';
+  let animateModeChanges = false;
+  let panelAnimation = 0;
+  const panelSettled = $derived(shownWidth === panelWidth);
+
+  $effect(() => {
+    const target = panelWidth;
+    const mode = `${collapsed}|${browser.sidebarVisible}`;
+    const modeChanged = mode !== panelMode;
+    panelMode = mode;
+    cancelAnimationFrame(panelAnimation);
+    const from = untrack(() => shownWidth);
+    if (!modeChanged || !animateModeChanges || reducedMotion.matches || from === target) {
+      shownWidth = target;
+      return;
+    }
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / PANEL_ANIMATION_MS);
+      shownWidth = Math.round(from + (target - from) * (1 - (1 - progress) ** 4));
+      if (progress < 1) panelAnimation = requestAnimationFrame(step);
+    };
+    panelAnimation = requestAnimationFrame(step);
+  });
   const topInset = $derived(browser.toolbarVisible || windowControls ? CHROME_HEIGHT : 0);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
@@ -57,12 +84,15 @@
 
   $effect(() => {
     window.yalqen.setLayout({
-      panelWidth,
+      panelWidth: shownWidth,
       panelSide: side,
       chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
     });
+  });
+
+  $effect(() => {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
@@ -70,7 +100,10 @@
   });
 
   onMount(() => {
-    void window.yalqen.getState().then((next) => (browser = next));
+    void window.yalqen.getState().then((next) => {
+      browser = next;
+      requestAnimationFrame(() => (animateModeChanges = true));
+    });
     const offState = window.yalqen.onState((next) => (browser = next));
     const offWallpaper = window.yalqen.onWallpaper((wallpaper) => {
       const root = document.documentElement;
@@ -90,7 +123,7 @@
   class="shell"
   class:right={side === 'right'}
   class:fullscreen={browser.pageFullScreen}
-  style:grid-template-columns={browser.pageFullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${panelWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${panelWidth}px`}
+  style:grid-template-columns={browser.pageFullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${shownWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${shownWidth}px`}
   style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !browser.pageFullScreen}
@@ -98,7 +131,7 @@
       <TabPanel
         tabs={browser.tabs}
         activeTabId={browser.activeTabId}
-        {collapsed}
+        collapsed={collapsed && panelSettled}
         {side}
         bind:width
         minWidth={MIN_WIDTH}
@@ -113,7 +146,7 @@
         zoom={browser.zoom}
         defaultZoom={browser.defaultZoom}
         downloads={browser.downloads}
-        leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - panelWidth) : WINDOW_CONTROLS_END : 0}
+        leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - shownWidth) : WINDOW_CONTROLS_END : 0}
         trailingInset={PAGE_INSET}
       />
     {:else}

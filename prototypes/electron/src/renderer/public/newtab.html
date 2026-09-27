@@ -11,12 +11,15 @@
         --muted: #50545b;
         --faint: rgb(40 42 48 / 0.5);
         --surface: rgb(255 255 255 / 0.82);
+        --glass: rgb(255 255 255 / 0.76);
+        --glass-edge: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08),
+          inset 0 0 0 0.5px rgb(255 255 255 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.5);
+        --lift: 0 12px 32px rgb(16 18 24 / 0.07);
         --chip: rgb(255 255 255 / 0.5);
         --well: rgb(16 18 24 / 0.06);
         --hover: rgb(0 0 0 / 0.04);
         --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.6);
         --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.12), 0 5px 18px rgb(16 18 24 / 0.1);
-        --card-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.12), 0 2px 6px rgb(16 18 24 / 0.05), 0 18px 48px rgb(16 18 24 / 0.14);
         --mark-shadow: drop-shadow(0 10px 18px rgb(214 92 34 / 0.28));
         --accent: #f28c28;
         color-scheme: light;
@@ -28,12 +31,15 @@
           --muted: #c2c3c9;
           --faint: rgb(236 238 241 / 0.45);
           --surface: rgb(39 38 41 / 0.82);
+          --glass: rgb(255 255 255 / 0.12);
+          --glass-edge: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2),
+            inset 0 0 0 0.5px rgb(255 255 255 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.12);
+          --lift: 0 12px 32px rgb(0 0 0 / 0.22);
           --chip: rgb(255 255 255 / 0.07);
           --well: rgb(255 255 255 / 0.08);
           --hover: rgb(255 255 255 / 0.05);
           --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.1);
           --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.18), 0 6px 18px rgb(0 0 0 / 0.24);
-          --card-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 2px 6px rgb(0 0 0 / 0.2), 0 18px 48px rgb(0 0 0 / 0.45);
           --mark-shadow: drop-shadow(0 10px 20px rgb(0 0 0 / 0.4));
           color-scheme: dark;
         }
@@ -43,6 +49,7 @@
         :root {
           --page: #e6e8eb;
           --surface: #fff;
+          --glass: #fff;
           --chip: #f3f4f6;
           --well: #dcdfe3;
           --muted: #4a4e54;
@@ -55,6 +62,7 @@
         :root {
           --page: #141517;
           --surface: #26282c;
+          --glass: #2d2f34;
           --chip: #2d2f34;
           --well: #1e2023;
           --muted: #c2c3c9;
@@ -134,13 +142,10 @@
       }
 
       #search-form {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        padding: 18px 14px 12px 20px;
-        border-radius: 24px;
-        background: var(--surface);
-        box-shadow: var(--rim), var(--card-shadow);
+        padding: 10px 10px 10px 20px;
+        border-radius: 999px;
+        background: var(--glass);
+        box-shadow: var(--glass-edge), var(--lift);
       }
 
       .query {
@@ -178,43 +183,12 @@
         outline: none;
       }
 
-      .tools {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .chip {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        height: 32px;
-        padding: 0 12px 0 10px;
-        border-radius: 999px;
-        background: var(--chip);
-        box-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.12);
-        color: var(--muted);
-        font-size: 13px;
-        transition: background-color 120ms ease-out, color 120ms ease-out;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .chip {
-          box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.12);
-        }
-      }
-
-      .chip:hover {
-        background: var(--well);
-        color: var(--text);
-      }
-
       .submit {
         display: grid;
         place-items: center;
         width: 34px;
         height: 34px;
-        margin-left: auto;
+        flex: none;
         padding: 0;
         border: 0;
         border-radius: 50%;
@@ -299,6 +273,65 @@
         overflow: hidden;
         color: var(--muted);
         font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .pinned ul {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px 14px;
+        max-width: min(640px, 100%);
+        margin: 26px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .pinned a {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        width: 72px;
+      }
+
+      .pinned .tile {
+        display: grid;
+        place-items: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        background: var(--glass);
+        box-shadow: var(--glass-edge);
+        transition: transform 150ms ease-out, background-color 150ms ease-out;
+      }
+
+      .pinned a:hover .tile {
+        background: var(--surface);
+      }
+
+      .pinned a:active .tile {
+        transform: scale(0.96);
+      }
+
+      .pinned img {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+      }
+
+      .pinned .letter {
+        color: var(--muted);
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .pinned .name {
+        max-width: 100%;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
@@ -428,14 +461,6 @@
         .tips {
           grid-template-columns: 1fr;
         }
-
-        .chip span {
-          display: none;
-        }
-
-        .chip {
-          padding: 0 9px;
-        }
       }
     </style>
   </head>
@@ -466,27 +491,6 @@
               aria-expanded="false"
               aria-controls="suggestions"
             />
-          </div>
-          <div class="tools">
-            <a class="chip" href="yalqen://bookmarks/" aria-label="Yer imleri">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 2.5h8v11L8 10.5l-4 3Z" />
-              </svg>
-              <span>Yer imleri</span>
-            </a>
-            <a class="chip" href="yalqen://history/" aria-label="Geçmiş">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-                <circle cx="8" cy="8" r="5.8" />
-                <path d="M8 4.8V8l2.2 1.4" />
-              </svg>
-              <span>Geçmiş</span>
-            </a>
-            <a class="chip" href="yalqen://downloads/" aria-label="İndirilenler">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8 2.5v8M4.8 7.5 8 10.7l3.2-3.2M3 13.5h10" />
-              </svg>
-              <span>İndirilenler</span>
-            </a>
             <button class="submit" type="submit" aria-label="Git">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" />
@@ -496,6 +500,7 @@
         </form>
         <ul id="suggestions" class="suggestions" role="listbox" aria-label="Öneriler" hidden></ul>
       </div>
+      __YALQEN_PINNED_SLOT__
       __YALQEN_TIPS_SLOT__
       __YALQEN_RECENT_SLOT__
     </main>

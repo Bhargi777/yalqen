@@ -517,6 +517,12 @@ export class TabManager {
     return this.tabs.some((tab) => tab.view?.webContents === contents);
   }
 
+  get pinnedPages(): RecentPage[] {
+    return this.tabs.flatMap((tab) =>
+      tab.pinnedUrl ? [{ url: tab.pinnedUrl, title: tab.title, faviconUrl: tab.faviconUrl }] : [],
+    );
+  }
+
   get hasPrivateTabs(): boolean {
     return this.tabs.some((tab) => tab.isPrivate);
   }

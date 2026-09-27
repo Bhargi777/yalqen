@@ -21,6 +21,7 @@ test('the new tab serves matching local suggestions and its script', async () =>
     () => [],
     () => [],
     () => [],
+    () => [],
     () => ({ folders: [], bookmarks: [] }),
     () => false,
     (query) => suggest(query, {
@@ -44,4 +45,15 @@ test('the new tab serves matching local suggestions and its script', async () =>
   const mark = await handle(new Request('yalqen://newtab/mark.png'));
   assert.equal(mark.headers.get('content-type'), 'image/png');
   assert.ok((await mark.arrayBuffer()).byteLength > 0);
+});
+
+test('pinned sites render as escaped tiles with a letter fallback', () => {
+  const html = internalPages.renderPinned([
+    { url: 'https://github.com/', title: 'GitHub', faviconUrl: 'https://github.com/favicon.ico' },
+    { url: 'https://example.com/?q="x"', title: '<b>Örnek</b>', faviconUrl: null },
+  ]);
+  assert.match(html, /<img src="https:\/\/github\.com\/favicon\.ico"/);
+  assert.match(html, /<span class="letter">E<\/span>/);
+  assert.doesNotMatch(html, /<b>/);
+  assert.equal(internalPages.renderPinned([]), '');
 });

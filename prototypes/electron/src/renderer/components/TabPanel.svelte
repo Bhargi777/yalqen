@@ -242,8 +242,10 @@
     display: flex;
     grid-area: panel;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
     padding: 0 8px 8px;
+    overflow-x: clip;
   }
 
   .panel.collapsed {
@@ -553,10 +555,22 @@
     margin-top: 6px;
     padding: 0 11px;
     border: 0;
+    overflow: hidden;
     border-radius: 11px;
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .new-tab > :global(svg) {
+    flex: none;
+  }
+
+  .new-tab span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .collapsed .new-tab {
@@ -613,6 +627,9 @@
   }
 
   .tab-count {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--text-muted);
     font-size: var(--font-size-small);
     white-space: nowrap;

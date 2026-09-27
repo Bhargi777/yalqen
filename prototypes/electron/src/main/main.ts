@@ -467,6 +467,7 @@ function startBrowser(): void {
       path.join(__dirname, '../renderer/downloads.html'),
       path.join(__dirname, '../renderer/bookmarks.html'),
       () => recentPages(closedTabs),
+      () => [...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values()],
       (query) => history.list(query),
       () => downloads.list(),
       (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
