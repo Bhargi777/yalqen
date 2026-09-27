@@ -11,6 +11,7 @@
   const DEFAULT_WIDTH = 220;
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
+  const PANEL_ROW_INSET = PAGE_INSET + 3;
   const PAGE_RADIUS = 16;
   const WINDOW_CONTROLS_END = 88;
   const PREFS_KEY = 'yalqen:panel:2';
@@ -55,6 +56,7 @@
   let animateModeChanges = false;
   let panelAnimation = 0;
   const panelSettled = $derived(shownWidth === panelWidth);
+  const rightPanel = $derived(side === 'right' && browser.sidebarVisible);
 
   $effect(() => {
     const target = panelWidth;
@@ -148,7 +150,8 @@
         downloads={browser.downloads}
         leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - shownWidth) : WINDOW_CONTROLS_END : 0}
         trailingInset={PAGE_INSET}
-        trailingOverhang={side === 'right' && browser.sidebarVisible ? shownWidth : 0}
+        trailingOverhang={rightPanel ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET) : 0}
+        trailingSpan={rightPanel && !collapsed ? shownWidth - 2 * PANEL_ROW_INSET : 0}
       />
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>

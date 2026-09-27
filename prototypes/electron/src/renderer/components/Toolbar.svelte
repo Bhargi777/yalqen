@@ -12,6 +12,7 @@
     leadingInset,
     trailingInset,
     trailingOverhang = 0,
+    trailingSpan = 0,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
@@ -21,6 +22,7 @@
     leadingInset: number;
     trailingInset: number;
     trailingOverhang?: number;
+    trailingSpan?: number;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -53,15 +55,10 @@
 {/snippet}
 
 
-<header
-  class="toolbar"
-  style:padding-left="{leadingInset}px"
-  style:padding-right="{trailingInset}px"
-  style:margin-right="{-trailingOverhang}px"
->
+<header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading" aria-hidden="true"></div>
 
-  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset - trailingOverhang) / 2}px)">
+  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
     <nav class="capsule navigation" aria-label="Gezinme">
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />
@@ -172,8 +169,8 @@
     </div>
   </div>
 
-  <div class="side trailing">
-    <div class="capsule">
+  <div class="side trailing" style:margin-right="{-trailingOverhang}px">
+    <div class="capsule" style:min-width={trailingSpan > 0 ? `${trailingSpan}px` : null}>
       <button class="icon" title="Yer imleri" aria-label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })}>
         <Icon name="bookmarks" />
       </button>
@@ -228,6 +225,10 @@
 
   .trailing {
     justify-content: flex-end;
+  }
+
+  .trailing .capsule {
+    justify-content: space-between;
   }
 
   .tab-group {

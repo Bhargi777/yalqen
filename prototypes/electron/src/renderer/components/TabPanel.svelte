@@ -291,7 +291,7 @@
     grid-template-columns: 32px;
     gap: 2px;
     padding: 3px;
-    border-radius: 14px;
+    border-radius: 20px;
     background: var(--well);
     box-shadow: var(--well-rim);
   }
@@ -320,7 +320,7 @@
 
   .collapsed .tile {
     height: 34px;
-    border-radius: 11px;
+    border-radius: 999px;
     background: transparent;
   }
 
@@ -365,7 +365,7 @@
     margin: 0;
     padding: 3px;
     overflow-y: auto;
-    border-radius: 14px;
+    border-radius: 18px;
     background: var(--well);
     box-shadow: var(--well-rim);
     list-style: none;
@@ -373,6 +373,7 @@
 
   .collapsed .tabs {
     width: 38px;
+    border-radius: 20px;
   }
 
   .collapsed .favorites:has(+ .tabs) {
@@ -399,7 +400,7 @@
     display: flex;
     align-items: center;
     height: 30px;
-    border-radius: 11px;
+    border-radius: 999px;
     transition: background var(--transition);
   }
 
@@ -453,7 +454,7 @@
     height: 100%;
     padding: 0 8px 0 10px;
     border: 0;
-    border-radius: 11px;
+    border-radius: 999px;
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
@@ -556,7 +557,7 @@
     padding: 0 11px;
     border: 0;
     overflow: hidden;
-    border-radius: 11px;
+    border-radius: 999px;
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
@@ -609,7 +610,7 @@
     height: 32px;
     padding: 0;
     border: 0;
-    border-radius: 10px;
+    border-radius: 50%;
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
