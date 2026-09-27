@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
-import { BOOKMARKS_URL, DOWNLOADS_URL, HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, type CommandPage, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
+import { BOOKMARKS_URL, DOWNLOADS_URL, HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, SETTINGS_URL, type CommandPage, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
@@ -47,7 +47,7 @@ interface Tab {
 
 export interface TabManagerOptions {
   window: BaseWindow;
-  gesturePreload: string;
+  pagePreload: string;
   closed: SavedTab[];
   privateWindow: boolean;
   session: Session;
@@ -426,6 +426,10 @@ export class TabManager {
     this.openSingle(BOOKMARKS_URL);
   }
 
+  openSettings(): void {
+    this.openSingle(SETTINGS_URL);
+  }
+
   activeContents(): WebContents | null {
     const contents = this.active()?.view?.webContents;
     return contents && !contents.isDestroyed() ? contents : null;
@@ -635,7 +639,7 @@ export class TabManager {
     const view = new WebContentsView({
       webPreferences: {
         ...this.options.pagePreferences(),
-        preload: this.options.gesturePreload,
+        preload: this.options.pagePreload,
         session: tab.isPrivate ? this.options.privateSession : this.options.session,
         sandbox: true,
         contextIsolation: true,

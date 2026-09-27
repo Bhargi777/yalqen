@@ -29,7 +29,6 @@ import { Preconnector } from './preconnect.js';
 import { loadWallpaper } from './wallpaper.js';
 import { buildSearchUrl, type SearchEngine } from './search.js';
 import type { SettingsStore } from './settings.js';
-import type { SettingsWindow } from './settings-window.js';
 import { siteInfoTemplate } from './site-info.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { TabManager, type DetachedTab } from './tabs.js';
@@ -44,7 +43,6 @@ export interface AppContext {
   daily: Session;
   privateBrowsing: Session;
   settings: SettingsStore;
-  settingsWindow: SettingsWindow;
   commandBar: CommandBar;
   findBar: FindBar;
   history: HistoryStore;
@@ -176,7 +174,7 @@ export class YalqenWindow {
 
     this.tabs = new TabManager({
       window: this.window,
-      gesturePreload: path.join(__dirname, '../preload/page-gesture.js'),
+      pagePreload: path.join(__dirname, '../preload/page-preload.js'),
       closed: app.closedTabs,
       privateWindow: this.isPrivate,
       session: app.daily,
@@ -529,7 +527,7 @@ export class YalqenWindow {
           { label: 'Yeni gizli pencere', click: () => app.openWindow({ isPrivate: true, from: this }) },
           { label: 'Yeni gizli sekme', click: () => tabs.open(NEW_TAB_URL, { isPrivate: true }) },
           { type: 'separator' },
-          { label: 'Ayarlar…', click: () => app.settingsWindow.open() },
+          { label: 'Ayarlar…', click: () => tabs.openSettings() },
         ]);
         break;
       case 'toggle-bookmark': {
@@ -552,7 +550,7 @@ export class YalqenWindow {
         tabs.openHistory();
         break;
       case 'open-settings':
-        app.settingsWindow.open();
+        tabs.openSettings();
         break;
     }
   }

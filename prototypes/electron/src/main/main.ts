@@ -39,7 +39,7 @@ import {
 import { SessionStore, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
-import { SettingsWindow } from './settings-window.js';
+import { broadcastSettings, isSettingsFrame } from './settings-page.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
@@ -357,11 +357,6 @@ function startBrowser(): void {
   const adBlocker = new AdBlocker([daily, privateBrowsing], path.join(userData, 'adblock-engine.bin'));
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () => resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
-  const settingsWindow = new SettingsWindow({
-    preload: path.join(__dirname, '../preload/settings-preload.js'),
-    page: path.join(__dirname, '../renderer/settings.html'),
-    icon: appIcon,
-  });
   const commandBar = new CommandBar({
     preload: path.join(__dirname, '../preload/command-preload.js'),
     page: path.join(__dirname, '../renderer/command.html'),
@@ -397,7 +392,7 @@ function startBrowser(): void {
     if (settings.get().freezeBackgroundTabs !== wasFreezing) eachWindow((window) => window.tabs.applyFreezeSetting());
     adBlocker.setEnabled(settings.get().adBlocking);
     pushState();
-    settingsWindow.send(settingsView());
+    broadcastSettings(settingsView());
   };
 
   const context: AppContext = {
@@ -405,7 +400,6 @@ function startBrowser(): void {
     daily,
     privateBrowsing,
     settings,
-    settingsWindow,
     commandBar,
     findBar,
     history,
@@ -480,6 +474,7 @@ function startBrowser(): void {
       path.join(__dirname, '../renderer/history.html'),
       path.join(__dirname, '../renderer/downloads.html'),
       path.join(__dirname, '../renderer/bookmarks.html'),
+      path.join(__dirname, '../renderer/settings.html'),
       () => recentPages(closedTabs),
       () => [...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values()],
       (query) => history.list(query),
@@ -508,25 +503,17 @@ function startBrowser(): void {
       newPrivateWindow: () => openWindow({ isPrivate: true, from: current ?? undefined }),
       newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
       closeTab: () => {
-        if (settingsWindow.isFocused()) settingsWindow.close();
-        else if (current?.tabs.activeTabId) current.tabs.close(current.tabs.activeTabId);
+        if (current?.tabs.activeTabId) current.tabs.close(current.tabs.activeTabId);
       },
-      closeWindow: () => {
-        if (settingsWindow.isFocused()) settingsWindow.close();
-        else BaseWindow.getFocusedWindow()?.close();
-      },
+      closeWindow: () => BaseWindow.getFocusedWindow()?.close(),
       reopenClosedTab: inWindow((window) => window.tabs.reopenClosed()),
       moveTabToNewWindow: inWindow((window) => window.moveActiveTabToNewWindow()),
       selectNextTab: inWindow((window) => window.tabs.selectRelative(1)),
       selectPreviousTab: inWindow((window) => window.tabs.selectRelative(-1)),
       selectTab: (index) => current?.tabs.selectByIndex(index),
       focusAddress: inWindow((window) => window.openAddress()),
-      find: () => {
-        if (!settingsWindow.isFocused()) current?.openFind();
-      },
-      findNext: (forward) => {
-        if (!settingsWindow.isFocused()) current?.openFind(forward);
-      },
+      find: () => current?.openFind(),
+      findNext: (forward) => current?.openFind(forward),
       reload: () => current?.tabs.reload(),
       zoom: (direction) => current?.tabs.zoom(direction),
       togglePanel: () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed }),
@@ -544,7 +531,7 @@ function startBrowser(): void {
         deviceId = id;
         current?.tabs.selectDevice(id);
       },
-      openSettings: () => settingsWindow.open(),
+      openSettings: inWindow((window) => window.tabs.openSettings()),
       toggleBookmark: () => {
         const page = current?.tabs.activePage();
         if (page) context.toggleBookmark(page.url, page.title);
@@ -561,9 +548,9 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.getState, (event) => senderWindow(event)?.state() ?? null);
   ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
-  ipcMain.handle(SettingsChannel.get, (event) => (event.sender === settingsWindow.contents ? settingsView() : null));
+  ipcMain.handle(SettingsChannel.get, (event) => (isSettingsFrame(event) ? settingsView() : null));
   ipcMain.handle(SettingsChannel.clearData, async (event, value: unknown) => {
-    if (event.sender !== settingsWindow.contents) return;
+    if (!isSettingsFrame(event)) return;
     const request = sanitizeClearRequest(value);
     if (!request) return;
     const since = clearSince(request.range, Date.now());
@@ -581,7 +568,7 @@ function startBrowser(): void {
     if (request.cache) await daily.clearCache();
   });
   ipcMain.handle(SettingsChannel.makeDefault, (event) => {
-    if (event.sender !== settingsWindow.contents) return null;
+    if (!isSettingsFrame(event)) return null;
     for (const scheme of ['http', 'https']) {
       if (!app.setAsDefaultProtocolClient(scheme, clientPath, clientArgs)) {
         console.warn(`[default-browser] the system did not accept ${scheme}`);
@@ -590,7 +577,7 @@ function startBrowser(): void {
     return settingsView();
   });
   ipcMain.handle(SettingsChannel.update, (event, patch: unknown) => {
-    if (event.sender !== settingsWindow.contents) return null;
+    if (!isSettingsFrame(event)) return null;
     updateSettings(patch);
     return settingsView();
   });
@@ -621,7 +608,6 @@ function startBrowser(): void {
     adBlocker.destroy();
     commandBar.destroy();
     findBar.destroy();
-    settingsWindow.close();
     history.saveNow();
     downloads.saveNow();
     bookmarks.saveNow();

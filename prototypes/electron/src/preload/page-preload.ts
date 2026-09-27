@@ -1,4 +1,5 @@
-import { ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { ClearDataRequest, SettingsApi, SettingsChannel, SettingsValues, SettingsView } from '../shared/types.js';
 
 const CHANNEL = 'yalqen:page-swipe';
 const THRESHOLD = 90;
@@ -39,3 +40,27 @@ window.addEventListener('wheel', (event) => {
   navigatedAt = now;
   distance = 0;
 }, { capture: true, passive: true });
+
+const settingsChannel: typeof SettingsChannel = {
+  get: 'yalqen-settings:get',
+  update: 'yalqen-settings:update',
+  changed: 'yalqen-settings:changed',
+  clearData: 'yalqen-settings:clear-data',
+  makeDefault: 'yalqen-settings:make-default',
+};
+
+if (location.origin === 'yalqen://settings' && window === window.top) {
+  const api: SettingsApi = {
+    get: () => ipcRenderer.invoke(settingsChannel.get) as Promise<SettingsView>,
+    update: (patch: Partial<SettingsValues>) =>
+      ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsView>,
+    clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
+    makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
+    onChange: (listener) => {
+      const handler = (_event: IpcRendererEvent, view: SettingsView) => listener(view);
+      ipcRenderer.on(settingsChannel.changed, handler);
+      return () => ipcRenderer.off(settingsChannel.changed, handler);
+    },
+  };
+  contextBridge.exposeInMainWorld('yalqenSettings', api);
+}

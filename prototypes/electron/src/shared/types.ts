@@ -5,6 +5,7 @@ export const NEW_TAB_URL = 'yalqen://newtab/';
 export const HISTORY_URL = 'yalqen://history/';
 export const DOWNLOADS_URL = 'yalqen://downloads/';
 export const BOOKMARKS_URL = 'yalqen://bookmarks/';
+export const SETTINGS_URL = 'yalqen://settings/';
 export type CommandPage = 'downloads' | 'bookmarks';
 
 export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';

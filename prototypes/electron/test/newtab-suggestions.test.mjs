@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import changeFeed from '../dist/main/change-feed.js';
@@ -20,6 +22,7 @@ test('the new tab serves matching local suggestions and its script', async () =>
     page('history.html'),
     page('downloads.html'),
     page('bookmarks.html'),
+    path.resolve('src/renderer/settings.html'),
     () => [],
     () => [],
     () => [],
@@ -61,6 +64,7 @@ test('the downloads page updates itself when the list changes', async () => {
     page('history.html'),
     page('downloads.html'),
     page('bookmarks.html'),
+    path.resolve('src/renderer/settings.html'),
     () => [],
     () => [],
     () => [],
@@ -94,3 +98,41 @@ test('pinned sites render as escaped tiles with a letter fallback', () => {
   assert.doesNotMatch(html, /<b>/);
   assert.equal(internalPages.renderPinned([]), '');
 });
+
+test('the settings page and only its own assets are served under yalqen://settings', async () => {
+  let handle;
+  const session = { protocol: { handle(_scheme, callback) { handle = callback; } } };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
+  fs.mkdirSync(path.join(dir, 'assets'));
+  fs.writeFileSync(path.join(dir, 'settings.html'), '<title>Ayarlar</title>');
+  fs.writeFileSync(path.join(dir, 'assets', 'settings.js'), 'export {};');
+  fs.writeFileSync(path.join(dir, 'secret.txt'), 'secret');
+  serveInternalPages(
+    session,
+    page('newtab.html'),
+    page('newtab-suggestions.js'),
+    page('history.html'),
+    page('downloads.html'),
+    page('bookmarks.html'),
+    path.join(dir, 'settings.html'),
+    () => [],
+    () => [],
+    () => [],
+    { list: () => [], changes: new changeFeed.ChangeFeed() },
+    () => ({ folders: [], bookmarks: [] }),
+    () => false,
+    () => [],
+  );
+
+  for (const url of ['yalqen://settings/', 'yalqen://settings/privacy']) {
+    const response = await handle(new Request(url));
+    assert.equal(await response.text(), '<title>Ayarlar</title>');
+    assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  }
+  const script = await handle(new Request('yalqen://settings/assets/settings.js'));
+  assert.match(script.headers.get('content-type'), /^text\/javascript/);
+  for (const url of ['yalqen://settings/assets/..%2Fsecret.txt', 'yalqen://settings/assets/missing.js']) {
+    assert.equal((await handle(new Request(url))).status, 404);
+  }
+});
+

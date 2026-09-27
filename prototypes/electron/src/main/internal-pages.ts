@@ -14,6 +14,7 @@ const DOWNLOADS_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'";
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
+const SETTINGS_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
 const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
 const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
@@ -110,6 +111,27 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
   return `${form}<div class="results"><div class="summary"><span>${entries.length} ziyaret</span>${clear}</div><ol>${rows}</ol></div>`;
 }
 
+const ASSET_TYPES: Record<string, string> = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+};
+
+function serveSettings(pathname: string, page: string, assetsDir: string): Response {
+  if (!pathname.startsWith('/assets/')) {
+    return new Response(page, {
+      headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': SETTINGS_CSP, 'cache-control': 'no-store' },
+    });
+  }
+  const name = pathname.slice('/assets/'.length);
+  const type = ASSET_TYPES[path.extname(name)];
+  if (!type || name !== path.basename(name)) return new Response('Not found', { status: 404 });
+  try {
+    return new Response(fs.readFileSync(path.join(assetsDir, name)), { headers: { 'content-type': type } });
+  } catch {
+    return new Response('Not found', { status: 404 });
+  }
+}
+
 export function serveInternalPages(
   session: Session,
   newTabFile: string,
@@ -117,6 +139,7 @@ export function serveInternalPages(
   historyFile: string,
   downloadsFile: string,
   bookmarksFile: string,
+  settingsFile: string,
   recent: () => RecentPage[],
   pinned: () => RecentPage[],
   visits: (query: string) => HistoryEntry[],
@@ -132,6 +155,8 @@ export function serveInternalPages(
   const downloadsPage = fs.readFileSync(downloadsFile, 'utf8');
   const downloadsScript = fs.readFileSync(path.join(path.dirname(downloadsFile), 'downloads.js'), 'utf8');
   const bookmarksPage = fs.readFileSync(bookmarksFile, 'utf8');
+  const settingsPage = fs.readFileSync(settingsFile, 'utf8');
+  const settingsAssets = path.join(path.dirname(settingsFile), 'assets');
   const htmlHeaders = {
     'content-type': 'text/html; charset=utf-8',
     'content-security-policy': INTERNAL_CSP,
@@ -140,6 +165,7 @@ export function serveInternalPages(
 
   session.protocol.handle(INTERNAL_SCHEME, (request) => {
     const url = new URL(request.url);
+    if (url.host === 'settings') return serveSettings(url.pathname, settingsPage, settingsAssets);
     if (url.host === 'newtab' && url.pathname === '/suggestions.js') {
       return new Response(newTabScript, {
         headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
