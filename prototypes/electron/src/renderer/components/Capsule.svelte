@@ -5,7 +5,6 @@
     children,
     as = 'div',
     ariaLabel,
-    minWidth,
     layout = 'toolbar',
     tone = 'surface',
     spread = false,
@@ -13,7 +12,6 @@
     children: Snippet;
     as?: 'div' | 'nav';
     ariaLabel?: string;
-    minWidth?: number;
     layout?: 'toolbar' | 'tab';
     tone?: 'surface' | 'active' | 'bare';
     spread?: boolean;
@@ -30,7 +28,6 @@
   class:active={tone === 'active'}
   class:bare={tone === 'bare'}
   aria-label={ariaLabel}
-  style:min-width={minWidth !== undefined ? `${minWidth}px` : null}
 >
   {@render children()}
 </svelte:element>

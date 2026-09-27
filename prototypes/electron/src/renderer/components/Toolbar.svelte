@@ -14,7 +14,6 @@
     leadingInset,
     trailingInset,
     trailingOverhang = 0,
-    trailingSpan = 0,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
@@ -24,7 +23,6 @@
     leadingInset: number;
     trailingInset: number;
     trailingOverhang?: number;
-    trailingSpan?: number;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -168,7 +166,7 @@
   </div>
 
   <div class="side trailing" style:margin-right="{-trailingOverhang}px">
-    <Capsule minWidth={trailingSpan > 0 ? trailingSpan : undefined} spread>
+    <Capsule spread>
       <button class="icon" title="Yer imleri" aria-label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })}>
         <Icon name="bookmarks" />
       </button>
