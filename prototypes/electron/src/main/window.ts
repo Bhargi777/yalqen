@@ -32,7 +32,7 @@ import type { SettingsStore } from './settings.js';
 import { siteInfoTemplate } from './site-info.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { TabManager, type DetachedTab } from './tabs.js';
-import { resolveInput } from './url.js';
+import { resolveInput, withoutHash } from './url.js';
 import type { ZoomStore } from './zoom.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
@@ -99,6 +99,7 @@ export class YalqenWindow {
   private revealed = false;
   private htmlFullScreenTabId: string | null = null;
   private pushQueued = false;
+  private lastPushedState = '';
   private findTarget: { tabId: string; url: string } | null = null;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
@@ -191,7 +192,7 @@ export class YalqenWindow {
           this.syncPageFullScreen();
         }
         const target = this.findTarget;
-        if (target && (target.tabId !== this.tabs.activeTabId || target.url !== pageAddress(this.tabs.activeUrl))) {
+        if (target && (target.tabId !== this.tabs.activeTabId || target.url !== withoutHash(this.tabs.activeUrl))) {
           this.endFind();
         }
         this.findBar.keepOnTop(this.window);
@@ -346,7 +347,12 @@ export class YalqenWindow {
     this.pushQueued = true;
     setImmediate(() => {
       this.pushQueued = false;
-      if (!this.ui.webContents.isDestroyed()) this.ui.webContents.send(IpcChannel.state, this.state());
+      if (this.ui.webContents.isDestroyed()) return;
+      const state = this.state();
+      const serialized = JSON.stringify(state);
+      if (serialized === this.lastPushedState) return;
+      this.lastPushedState = serialized;
+      this.ui.webContents.send(IpcChannel.state, state);
     });
   };
 
@@ -406,7 +412,7 @@ export class YalqenWindow {
   openFind(forward?: boolean): void {
     if (this.isPageFullScreen() || !this.tabs.activeTabId) return;
     this.commandBar.close(this.window);
-    this.findTarget = { tabId: this.tabs.activeTabId, url: pageAddress(this.tabs.activeUrl) };
+    this.findTarget = { tabId: this.tabs.activeTabId, url: withoutHash(this.tabs.activeUrl) };
     if (forward === undefined) this.findBar.open(this.findHost);
     else this.findBar.findNext(this.findHost, forward);
   }
@@ -646,8 +652,4 @@ export class YalqenWindow {
       this.showWindowControls();
     }
   }
-}
-
-function pageAddress(url: string): string {
-  return url.split('#')[0];
 }

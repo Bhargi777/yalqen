@@ -18,7 +18,7 @@
   const DEVICE_BEZEL = 10;
   const PANEL_ANIMATION_MS = 240;
 
-  let browser: BrowserState = $state({
+  let browser: BrowserState = $state.raw({
     tabs: [],
     activeTabId: null,
     pageFullScreen: false,

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { FontSizeSetting, PageLanguage, PanelSide, SecureDnsSetting, SettingsValues, ThemeSource } from '../shared/types.js';
+import { JsonFile } from './json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from './memory-saver.js';
 import { DEFAULT_ZOOM_FACTORS, FONT_SIZES } from './page-preferences.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from './search.js';
@@ -101,12 +102,18 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
   };
 }
 
+function sameSettings(a: Settings, b: Settings): boolean {
+  return (Object.keys(a) as (keyof Settings)[]).every((key) => a[key] === b[key]);
+}
+
 export class SettingsStore {
   readonly file: string;
+  private readonly json: JsonFile;
   private current: Settings;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'settings.json');
+    this.json = new JsonFile(this.file, 'settings');
     this.current = this.load();
   }
 
@@ -115,12 +122,11 @@ export class SettingsStore {
   }
 
   update(patch: unknown): Settings {
-    this.current = sanitizeSettings({ ...this.current, ...(patch as object) }, this.current);
-    const temp = `${this.file}.tmp`;
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    fs.writeFileSync(temp, JSON.stringify(this.current, null, 2));
-    fs.renameSync(temp, this.file);
-    return this.current;
+    const next = sanitizeSettings({ ...this.current, ...(patch as object) }, this.current);
+    if (sameSettings(next, this.current)) return this.current;
+    this.current = next;
+    this.json.flush(() => next);
+    return next;
   }
 
   private load(): Settings {

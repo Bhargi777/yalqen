@@ -33,19 +33,37 @@ async function desktopImage(): Promise<string | null> {
   return file && fs.existsSync(file) ? file : null;
 }
 
+let converted: { key: string; wallpaper: Wallpaper } | null = null;
+let pending: Promise<Wallpaper | null> | null = null;
+
+// Every window asks on load and on entering full screen; the lookup spawns several
+// processes, so concurrent requests share one run and the converted image is reused
+// until the desktop picture changes.
+export function loadWallpaper(cacheDirectory: string): Promise<Wallpaper | null> {
+  if (process.platform !== 'darwin') return Promise.resolve(null);
+  pending ??= readWallpaper(cacheDirectory).finally(() => {
+    pending = null;
+  });
+  return pending;
+}
+
 // Aerial wallpapers report a generic placeholder as the desktop image, so their
 // preview thumbnail (light variant on the left half, dark on the right) is used instead.
-export async function loadWallpaper(cacheDirectory: string): Promise<Wallpaper | null> {
-  if (process.platform !== 'darwin') return null;
+async function readWallpaper(cacheDirectory: string): Promise<Wallpaper | null> {
   try {
     const aerial = await aerialThumbnail().catch(() => null);
     const source = aerial ?? (await desktopImage());
     if (!source) return null;
-    fs.mkdirSync(cacheDirectory, { recursive: true });
+    const { mtimeMs } = await fs.promises.stat(source);
+    const key = `${source}|${mtimeMs}`;
+    if (converted?.key === key) return converted.wallpaper;
+    await fs.promises.mkdir(cacheDirectory, { recursive: true });
     const output = path.join(cacheDirectory, 'wallpaper.jpg');
     await run('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '70', '-Z', '640', source, '--out', output]);
-    const image = fs.readFileSync(output).toString('base64');
-    return { dataUrl: `data:image/jpeg;base64,${image}`, split: aerial !== null };
+    const image = (await fs.promises.readFile(output)).toString('base64');
+    const wallpaper = { dataUrl: `data:image/jpeg;base64,${image}`, split: aerial !== null };
+    converted = { key, wallpaper };
+    return wallpaper;
   } catch (error) {
     console.warn('[wallpaper] could not load desktop picture', error);
     return null;

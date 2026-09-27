@@ -103,3 +103,17 @@ test('updates keep valid fields and persist', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('an update that changes nothing keeps the same settings and skips the write', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
+  try {
+    const store = new SettingsStore(dir);
+    const before = store.get();
+    assert.equal(store.update({ theme: before.theme, searchEngine: 'nope' }), before);
+    assert.equal(fs.existsSync(store.file), false);
+    assert.notEqual(store.update({ theme: 'dark' }), before);
+    assert.equal(JSON.parse(fs.readFileSync(store.file, 'utf8')).theme, 'dark');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
