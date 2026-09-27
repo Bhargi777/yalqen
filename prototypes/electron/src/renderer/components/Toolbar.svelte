@@ -11,6 +11,7 @@
     downloads,
     leadingInset,
     trailingInset,
+    trailingOverhang = 0,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
@@ -19,6 +20,7 @@
     downloads: DownloadsSummary;
     leadingInset: number;
     trailingInset: number;
+    trailingOverhang?: number;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -51,10 +53,15 @@
 {/snippet}
 
 
-<header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
+<header
+  class="toolbar"
+  style:padding-left="{leadingInset}px"
+  style:padding-right="{trailingInset}px"
+  style:margin-right="{-trailingOverhang}px"
+>
   <div class="side leading" aria-hidden="true"></div>
 
-  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
+  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset - trailingOverhang) / 2}px)">
     <nav class="capsule navigation" aria-label="Gezinme">
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />

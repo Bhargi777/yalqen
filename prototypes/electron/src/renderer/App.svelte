@@ -148,6 +148,7 @@
         downloads={browser.downloads}
         leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - shownWidth) : WINDOW_CONTROLS_END : 0}
         trailingInset={PAGE_INSET}
+        trailingOverhang={side === 'right' && browser.sidebarVisible ? shownWidth : 0}
       />
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
