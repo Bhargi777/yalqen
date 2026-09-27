@@ -263,16 +263,19 @@ export class YalqenWindow {
         else if (direction === 'left') this.navigateByGesture('forward', 'native');
       });
     }
-    this.window.on('resize', () => this.applyLayout());
-    const onFullScreenChange = () => {
+    // enter/leave-full-screen only fire once the macOS transition animation ends, while the
+    // first resize already reports the new state; waiting would show the bare glass meanwhile.
+    let fullScreen = this.window.isFullScreen();
+    const syncFullScreen = () => {
       this.applyLayout();
+      if (this.window.isFullScreen() === fullScreen) return;
+      fullScreen = !fullScreen;
+      if (fullScreen) void this.sendWallpaper();
       this.pushState();
     };
-    this.window.on('enter-full-screen', () => {
-      onFullScreenChange();
-      void this.sendWallpaper();
-    });
-    this.window.on('leave-full-screen', onFullScreenChange);
+    this.window.on('resize', syncFullScreen);
+    this.window.on('enter-full-screen', syncFullScreen);
+    this.window.on('leave-full-screen', syncFullScreen);
     this.applyLayout();
     setTimeout(this.reveal, REVEAL_FALLBACK_MS);
 
@@ -280,6 +283,7 @@ export class YalqenWindow {
     this.ui.webContents.once('did-finish-load', () => {
       this.glassApplied = applyGlass(this.window);
       this.pushState();
+      void this.sendWallpaper();
     });
 
     this.window.on('close', () => {
