@@ -8,33 +8,42 @@ import downloadsModule from '../dist/main/downloads.js';
 import internalPages from '../dist/main/internal-pages.js';
 import suggestionModule from '../dist/main/suggestions.js';
 
-const { serveInternalPages } = internalPages;
+const { loadInternalPages, serveInternalPages } = internalPages;
 const { indexHistory, suggest } = suggestionModule;
 const page = (name) => path.resolve('src/renderer/public', name);
 
-test('the new tab serves matching local suggestions and its script', async () => {
+function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
   let handle;
   const session = { protocol: { handle(_scheme, callback) { handle = callback; } } };
-  serveInternalPages(
-    session,
-    page('newtab.html'),
-    page('newtab-suggestions.js'),
-    page('history.html'),
-    page('downloads.html'),
-    page('bookmarks.html'),
-    path.resolve('src/renderer/settings.html'),
-    () => [],
-    () => [],
-    () => [],
-    { list: () => [], changes: new changeFeed.ChangeFeed() },
-    () => ({ folders: [], bookmarks: [] }),
-    () => false,
-    (query) => suggest(query, {
+  const pages = loadInternalPages({
+    newTab: page('newtab.html'),
+    newTabScript: page('newtab-suggestions.js'),
+    history: page('history.html'),
+    downloads: page('downloads.html'),
+    bookmarks: page('bookmarks.html'),
+    settings,
+  });
+  serveInternalPages(session, pages, {
+    recent: () => [],
+    pinned: () => [],
+    visits: () => [],
+    downloads: { list: () => [], changes: new changeFeed.ChangeFeed() },
+    bookmarks: () => ({ folders: [], bookmarks: [] }),
+    showWelcome: () => false,
+    suggestions: () => [],
+    ...sources,
+  });
+  return handle;
+}
+
+test('the new tab serves matching local suggestions and its script', async () => {
+  const handle = serve({
+    suggestions: (query) => suggest(query, {
       tabs: [],
       bookmarks: [{ title: 'GitHub', url: 'https://github.com/' }],
       history: indexHistory([{ title: 'GitLab', url: 'https://gitlab.com/', visitedAt: 1 }]),
     }),
-  );
+  });
 
   const response = await handle(new Request('yalqen://newtab/suggestions?q=git'));
   assert.deepEqual((await response.json()).map(({ kind, url }) => [kind, url]), [
@@ -53,26 +62,9 @@ test('the new tab serves matching local suggestions and its script', async () =>
 });
 
 test('the downloads page updates itself when the list changes', async () => {
-  let handle;
-  const session = { protocol: { handle(_scheme, callback) { handle = callback; } } };
   const changes = new changeFeed.ChangeFeed();
   let entries = [];
-  serveInternalPages(
-    session,
-    page('newtab.html'),
-    page('newtab-suggestions.js'),
-    page('history.html'),
-    page('downloads.html'),
-    page('bookmarks.html'),
-    path.resolve('src/renderer/settings.html'),
-    () => [],
-    () => [],
-    () => [],
-    { list: () => entries, changes },
-    () => ({ folders: [], bookmarks: [] }),
-    () => false,
-    () => [],
-  );
+  const handle = serve({ downloads: { list: () => entries, changes } });
 
   const html = await (await handle(new Request('yalqen://downloads/'))).text();
   assert.match(html, /<div id="downloads" data-version="0">/);
@@ -100,29 +92,12 @@ test('pinned sites render as escaped tiles with a letter fallback', () => {
 });
 
 test('the settings page and only its own assets are served under yalqen://settings', async () => {
-  let handle;
-  const session = { protocol: { handle(_scheme, callback) { handle = callback; } } };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
   fs.mkdirSync(path.join(dir, 'assets'));
   fs.writeFileSync(path.join(dir, 'settings.html'), '<title>Ayarlar</title>');
   fs.writeFileSync(path.join(dir, 'assets', 'settings.js'), 'export {};');
   fs.writeFileSync(path.join(dir, 'secret.txt'), 'secret');
-  serveInternalPages(
-    session,
-    page('newtab.html'),
-    page('newtab-suggestions.js'),
-    page('history.html'),
-    page('downloads.html'),
-    page('bookmarks.html'),
-    path.join(dir, 'settings.html'),
-    () => [],
-    () => [],
-    () => [],
-    { list: () => [], changes: new changeFeed.ChangeFeed() },
-    () => ({ folders: [], bookmarks: [] }),
-    () => false,
-    () => [],
-  );
+  const handle = serve({}, path.join(dir, 'settings.html'));
 
   for (const url of ['yalqen://settings/', 'yalqen://settings/privacy']) {
     const response = await handle(new Request(url));

@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { protocol, type Session } from 'electron';
+import { displayHost } from '../shared/hosts.js';
 import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
 import { renderBookmarks, type Bookmark, type BookmarkFolder } from './bookmarks.js';
 import type { ChangeFeed } from './change-feed.js';
 import { renderDownloads, type DownloadEntry } from './downloads.js';
 import type { HistoryEntry } from './history.js';
+import { escapeHtml } from './html.js';
 import type { AddressSuggestion } from '../shared/types.js';
 import { searchFieldMarkup } from './search-field-markup.js';
 import type { RecentPage } from './tabs.js';
@@ -27,6 +29,9 @@ const CONTROLS_MARKER = '__YALQEN_CONTROLS_SLOT__';
 const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
+// toLocaleDateString builds a new formatter per call, which made a full history page block the main process.
+const DAY_FORMAT = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+const TIME_FORMAT = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
 export function registerInternalScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -34,17 +39,6 @@ export function registerInternalScheme(): void {
   ]);
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-}
 
 export function renderRecent(pages: RecentPage[]): string {
   if (pages.length === 0) return '';
@@ -55,8 +49,8 @@ export function renderRecent(pages: RecentPage[]): string {
         : '<span class="dot"></span>';
       const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
       return (
-        `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(hostOf(page.url))}</span></a>` +
-        `<a class="icon-btn sm tone-muted forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır: ${escapeHtml(hostOf(page.url))}">${SMALL_FORGET_ICON}</a></li>`
+        `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(displayHost(page.url))}</span></a>` +
+        `<a class="icon-btn sm tone-muted forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır: ${escapeHtml(displayHost(page.url))}">${SMALL_FORGET_ICON}</a></li>`
       );
     })
     .join('');
@@ -67,7 +61,7 @@ export function renderPinned(pages: RecentPage[]): string {
   if (pages.length === 0) return '';
   const items = pages
     .map((page) => {
-      const host = hostOf(page.url);
+      const host = displayHost(page.url);
       const icon = page.faviconUrl?.startsWith('https:')
         ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="24" height="24" />`
         : `<span class="letter">${escapeHtml(host.charAt(0).toLocaleUpperCase('tr'))}</span>`;
@@ -101,11 +95,12 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
   }
   let previousDay = '';
   const rows = entries.map((entry) => {
-    const day = new Date(entry.visitedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const visitedAt = new Date(entry.visitedAt);
+    const day = DAY_FORMAT.format(visitedAt);
     const heading = day === previousDay ? '' : `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
     previousDay = day;
-    const time = new Date(entry.visitedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-    const host = hostOf(entry.url);
+    const time = TIME_FORMAT.format(visitedAt);
+    const host = displayHost(entry.url);
     const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
     return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
   }).join('');
@@ -118,130 +113,167 @@ const ASSET_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
 };
 
-function serveSettings(pathname: string, page: string, assetsDir: string): Response {
-  if (!pathname.startsWith('/assets/')) {
-    return new Response(page, {
-      headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': SETTINGS_CSP, 'cache-control': 'no-store' },
-    });
-  }
+export interface InternalPageFiles {
+  newTab: string;
+  newTabScript: string;
+  history: string;
+  downloads: string;
+  bookmarks: string;
+  settings: string;
+}
+
+export interface InternalPageSources {
+  recent: () => RecentPage[];
+  pinned: () => RecentPage[];
+  visits: (query: string) => HistoryEntry[];
+  downloads: { list: () => DownloadEntry[]; changes: ChangeFeed };
+  bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] };
+  showWelcome: () => boolean;
+  suggestions: (query: string) => AddressSuggestion[];
+}
+
+export interface InternalPages {
+  newTab: string;
+  newTabScript: string;
+  newTabMark: Buffer<ArrayBuffer>;
+  history: string;
+  downloads: string;
+  downloadsScript: string;
+  bookmarks: string;
+  settings: string;
+  settingsAsset: (name: string) => Buffer<ArrayBuffer> | null;
+}
+
+export function loadInternalPages(files: InternalPageFiles): InternalPages {
+  const publicDir = path.dirname(files.newTab);
+  const controlsCss = fs.readFileSync(path.join(publicDir, 'controls.css'), 'utf8');
+  const readPage = (file: string) => fs.readFileSync(file, 'utf8').replace(CONTROLS_MARKER, controlsCss);
+  const settingsAssets = path.join(path.dirname(files.settings), 'assets');
+  const assetCache = new Map<string, Buffer<ArrayBuffer>>();
+  return {
+    newTab: readPage(files.newTab),
+    newTabScript: fs.readFileSync(files.newTabScript, 'utf8'),
+    newTabMark: fs.readFileSync(path.join(publicDir, 'newtab-mark.png')),
+    history: readPage(files.history),
+    downloads: readPage(files.downloads),
+    downloadsScript: fs.readFileSync(path.join(path.dirname(files.downloads), 'downloads.js'), 'utf8'),
+    bookmarks: readPage(files.bookmarks),
+    settings: fs.readFileSync(files.settings, 'utf8'),
+    settingsAsset: (name) => {
+      const cached = assetCache.get(name);
+      if (cached) return cached;
+      try {
+        const content = fs.readFileSync(path.join(settingsAssets, name));
+        assetCache.set(name, content);
+        return content;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+const notFound = () => new Response('Not found', { status: 404 });
+
+function html(body: string, csp: string, noStore = true): Response {
+  return new Response(body, {
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'content-security-policy': csp,
+      ...(noStore ? { 'cache-control': 'no-store' } : {}),
+    },
+  });
+}
+
+function script(body: string): Response {
+  return new Response(body, {
+    headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
+function serveSettings(pathname: string, pages: InternalPages): Response {
+  if (!pathname.startsWith('/assets/')) return html(pages.settings, SETTINGS_CSP);
   const name = pathname.slice('/assets/'.length);
   const type = ASSET_TYPES[path.extname(name)];
-  if (!type || name !== path.basename(name)) return new Response('Not found', { status: 404 });
-  try {
-    return new Response(fs.readFileSync(path.join(assetsDir, name)), { headers: { 'content-type': type } });
-  } catch {
-    return new Response('Not found', { status: 404 });
+  if (!type || name !== path.basename(name)) return notFound();
+  const content = pages.settingsAsset(name);
+  return content ? new Response(content, { headers: { 'content-type': type } }) : notFound();
+}
+
+function serveHistory(pathname: string, query: string, pages: InternalPages, sources: InternalPageSources): Response {
+  let content: string;
+  if (pathname === '/') {
+    content = renderHistory(sources.visits(query), query);
+  } else if (pathname === '/confirm-clear') {
+    content = `<div class="confirm"><h2>Tüm geçmiş temizlensin mi?</h2><p>Bu işlem ziyaret kayıtlarını kalıcı olarak siler.</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">Vazgeç</a><a class="btn lg primary danger" href="${HISTORY_URL}clear">Geçmişi temizle</a></div></div>`;
+  } else {
+    return notFound();
+  }
+  return html(pages.history.replace(HISTORY_MARKER, content), INTERNAL_CSP);
+}
+
+function serveDownloads(url: URL, pages: InternalPages, sources: InternalPageSources): Response | Promise<Response> {
+  const { list, changes } = sources.downloads;
+  switch (url.pathname) {
+    case '/downloads.js':
+      return script(pages.downloadsScript);
+    case '/changes':
+      return changes.next(Number(url.searchParams.get('since'))).then((version) =>
+        Response.json({ version, html: renderDownloads(list()) }, { headers: { 'cache-control': 'no-store' } }),
+      );
+    case '/': {
+      const content = `<div id="downloads" data-version="${changes.version}">${renderDownloads(list())}</div>`;
+      return html(pages.downloads.replace(DOWNLOADS_MARKER, content), DOWNLOADS_CSP);
+    }
+    default:
+      return notFound();
   }
 }
 
-export function serveInternalPages(
-  session: Session,
-  newTabFile: string,
-  newTabScriptFile: string,
-  historyFile: string,
-  downloadsFile: string,
-  bookmarksFile: string,
-  settingsFile: string,
-  recent: () => RecentPage[],
-  pinned: () => RecentPage[],
-  visits: (query: string) => HistoryEntry[],
-  downloads: { list: () => DownloadEntry[]; changes: ChangeFeed },
-  bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] },
-  showWelcome: () => boolean,
-  suggestions: (query: string) => AddressSuggestion[],
-): void {
-  const controlsCss = fs.readFileSync(path.join(path.dirname(newTabFile), 'controls.css'), 'utf8');
-  const readPage = (file: string) => fs.readFileSync(file, 'utf8').replace(CONTROLS_MARKER, controlsCss);
-  const page = readPage(newTabFile);
-  const newTabScript = fs.readFileSync(newTabScriptFile, 'utf8');
-  const newTabMark = fs.readFileSync(path.join(path.dirname(newTabFile), 'newtab-mark.png'));
-  const historyPage = readPage(historyFile);
-  const downloadsPage = readPage(downloadsFile);
-  const downloadsScript = fs.readFileSync(path.join(path.dirname(downloadsFile), 'downloads.js'), 'utf8');
-  const bookmarksPage = readPage(bookmarksFile);
-  const settingsPage = fs.readFileSync(settingsFile, 'utf8');
-  const settingsAssets = path.join(path.dirname(settingsFile), 'assets');
-  const htmlHeaders = {
-    'content-type': 'text/html; charset=utf-8',
-    'content-security-policy': INTERNAL_CSP,
-    'cache-control': 'no-store',
-  };
-
-  session.protocol.handle(INTERNAL_SCHEME, (request) => {
-    const url = new URL(request.url);
-    if (url.host === 'settings') return serveSettings(url.pathname, settingsPage, settingsAssets);
-    if (url.host === 'newtab' && url.pathname === '/suggestions.js') {
-      return new Response(newTabScript, {
-        headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
-      });
-    }
-    if (url.host === 'newtab' && url.pathname === '/mark.png') {
-      return new Response(newTabMark, { headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' } });
-    }
-    if (url.host === 'newtab' && url.pathname === '/suggestions') {
-      return Response.json(suggestions(url.searchParams.get('q') ?? ''), {
+function serveNewTab(url: URL, pages: InternalPages, sources: InternalPageSources): Response {
+  switch (url.pathname) {
+    case '/suggestions.js':
+      return script(pages.newTabScript);
+    case '/mark.png':
+      return new Response(pages.newTabMark, { headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' } });
+    case '/suggestions':
+      return Response.json(sources.suggestions(url.searchParams.get('q') ?? ''), {
         headers: { 'cache-control': 'no-store' },
       });
-    }
-    if (url.host === 'bookmarks') {
-      if (url.pathname !== '/') return new Response('Not found', { status: 404 });
-      const query = url.searchParams.get('q') ?? '';
-      const data = bookmarks(query);
-      return new Response(bookmarksPage.replace(BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)), {
-        headers: htmlHeaders,
-      });
-    }
-    if (url.host === 'downloads' && url.pathname === '/downloads.js') {
-      return new Response(downloadsScript, {
-        headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
-      });
-    }
-    if (url.host === 'downloads' && url.pathname === '/changes') {
-      const since = Number(url.searchParams.get('since'));
-      return downloads.changes.next(since).then((version) =>
-        Response.json({ version, html: renderDownloads(downloads.list()) }, { headers: { 'cache-control': 'no-store' } }),
-      );
-    }
-    if (url.host === 'downloads') {
-      if (url.pathname !== '/') return new Response('Not found', { status: 404 });
-      const list = `<div id="downloads" data-version="${downloads.changes.version}">${renderDownloads(downloads.list())}</div>`;
-      return new Response(downloadsPage.replace(DOWNLOADS_MARKER, list), {
-        headers: {
-          'content-type': 'text/html; charset=utf-8',
-          'content-security-policy': DOWNLOADS_CSP,
-          'cache-control': 'no-store',
-        },
-      });
-    }
-    if (url.host === 'history') {
-      let content: string;
-      if (url.pathname === '/') {
-        const query = url.searchParams.get('q') ?? '';
-        content = renderHistory(visits(query), query);
-      } else if (url.pathname === '/confirm-clear') {
-        content = `<div class="confirm"><h2>Tüm geçmiş temizlensin mi?</h2><p>Bu işlem ziyaret kayıtlarını kalıcı olarak siler.</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">Vazgeç</a><a class="btn lg primary danger" href="${HISTORY_URL}clear">Geçmişi temizle</a></div></div>`;
-      } else {
-        return new Response('Not found', { status: 404 });
-      }
-      return new Response(historyPage.replace(HISTORY_MARKER, content), {
-        headers: {
-          'content-type': 'text/html; charset=utf-8',
-          'content-security-policy': INTERNAL_CSP,
-          'cache-control': 'no-store',
-        },
-      });
-    }
-    if (url.host !== 'newtab' || url.pathname !== '/') {
-      return new Response('Not found', { status: 404 });
-    }
-    const welcomeVisible = showWelcome();
-    return new Response(
-      page
+    case '/': {
+      const welcomeVisible = sources.showWelcome();
+      const body = pages.newTab
         .replace(WELCOME_MARKER, welcomeVisible ? renderWelcome() : '')
-        .replace(PINNED_MARKER, renderPinned(pinned()))
+        .replace(PINNED_MARKER, renderPinned(sources.pinned()))
         .replace(TIPS_MARKER, welcomeVisible ? renderTips() : '')
-        .replace(RECENT_MARKER, renderRecent(recent())),
-      { headers: { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': NEW_TAB_CSP } },
-    );
+        .replace(RECENT_MARKER, renderRecent(sources.recent()));
+      return html(body, NEW_TAB_CSP, false);
+    }
+    default:
+      return notFound();
+  }
+}
+
+export function serveInternalPages(session: Session, pages: InternalPages, sources: InternalPageSources): void {
+  session.protocol.handle(INTERNAL_SCHEME, (request) => {
+    const url = new URL(request.url);
+    switch (url.host) {
+      case 'settings':
+        return serveSettings(url.pathname, pages);
+      case 'newtab':
+        return serveNewTab(url, pages, sources);
+      case 'downloads':
+        return serveDownloads(url, pages, sources);
+      case 'history':
+        return serveHistory(url.pathname, url.searchParams.get('q') ?? '', pages, sources);
+      case 'bookmarks': {
+        if (url.pathname !== '/') return notFound();
+        const query = url.searchParams.get('q') ?? '';
+        const data = sources.bookmarks(query);
+        return html(pages.bookmarks.replace(BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)), INTERNAL_CSP);
+      }
+      default:
+        return notFound();
+    }
   });
 }

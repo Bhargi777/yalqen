@@ -35,16 +35,30 @@ export function responseCookieNames(setCookies: readonly string[]): string[] {
   return setCookies.map((cookie) => cookie.split(';')[0].split('=')[0].trim()).filter(Boolean);
 }
 
-export function blockThirdPartyCookies(session: Session, enabled: () => boolean): void {
+const blocking = new WeakSet<Session>();
+
+// webRequest listeners route every request of the session through the main process,
+// so they are attached only while blocking is on.
+export function setThirdPartyCookieBlocking(session: Session, enabled: boolean): void {
+  if (blocking.has(session) === enabled) return;
+  const { webRequest } = session;
+  if (!enabled) {
+    blocking.delete(session);
+    webRequest.onBeforeSendHeaders(null);
+    webRequest.onCompleted(null);
+    webRequest.onErrorOccurred(null);
+    return;
+  }
+  blocking.add(session);
   const existing = new Map<number, Set<string>>();
   const pageOf = (details: { webContents?: Electron.WebContents | null }) => {
     const contents = details.webContents;
     return contents && !contents.isDestroyed() ? contents.getURL() : '';
   };
 
-  session.webRequest.onBeforeSendHeaders((details, callback) => {
+  webRequest.onBeforeSendHeaders((details, callback) => {
     const page = pageOf(details);
-    if (!enabled() || details.resourceType === 'mainFrame' || !page || !isThirdParty(details.url, page)) {
+    if (details.resourceType === 'mainFrame' || !page || !isThirdParty(details.url, page)) {
       callback({});
       return;
     }
@@ -58,7 +72,7 @@ export function blockThirdPartyCookies(session: Session, enabled: () => boolean)
     existing.set(details.id, sent);
     callback({ requestHeaders });
   });
-  session.webRequest.onCompleted((details) => {
+  webRequest.onCompleted((details) => {
     const sent = existing.get(details.id);
     existing.delete(details.id);
     if (!sent) return;
@@ -66,5 +80,5 @@ export function blockThirdPartyCookies(session: Session, enabled: () => boolean)
       if (!sent.has(name)) void session.cookies.remove(details.url, name);
     }
   });
-  session.webRequest.onErrorOccurred((details) => existing.delete(details.id));
+  webRequest.onErrorOccurred((details) => existing.delete(details.id));
 }

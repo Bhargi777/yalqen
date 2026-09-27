@@ -1,7 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, app, dialog, ipcMain, nativeTheme, session, shell } from 'electron';
+import { BaseWindow, Menu, app, ipcMain, nativeTheme, session } from 'electron';
 import {
   BOOKMARKS_URL,
   HISTORY_URL,
@@ -13,29 +12,24 @@ import {
   type SettingsView,
 } from '../shared/types.js';
 import { AdBlocker } from './adblock.js';
-import { BookmarkStore } from './bookmarks.js';
+import { BookmarkStore, runBookmarksCommand } from './bookmarks.js';
 import { CertificateExceptions } from './certificates.js';
-import { ChangeFeed } from './change-feed.js';
 import { clearSince, sanitizeClearRequest } from './clear-data.js';
 import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
-import { DownloadStore, uniquePath, type DownloadActions } from './downloads.js';
-import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
+import { DownloadManager } from './download-manager.js';
+import { DownloadStore } from './downloads.js';
+import { loadInternalPages, registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
-import { blockThirdPartyCookies } from './third-party-cookies.js';
+import { setThirdPartyCookieBlocking } from './third-party-cookies.js';
 import { FindBar } from './find-bar.js';
 import { externalUrls } from './launch.js';
 import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-saver.js';
 import { buildMenu } from './menu.js';
-import {
-  PermissionStore,
-  permissionOrigin,
-  permissionQuestion,
-  requestedPermissions,
-  type SitePermission,
-} from './permissions.js';
+import { installPermissionHandlers } from './permission-handlers.js';
+import { PermissionStore } from './permissions.js';
 import { SessionStore, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
@@ -47,7 +41,6 @@ import { ZoomStore } from './zoom.js';
 
 const DAILY_PARTITION = 'persist:daily';
 const PRIVATE_PARTITION = 'private';
-const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
@@ -123,36 +116,6 @@ function startBrowser(): void {
         : [],
   });
 
-  let permissionPrompts: Promise<unknown> = Promise.resolve();
-  const askPermission = (
-    contents: Electron.WebContents,
-    isPrivate: boolean,
-    origin: string,
-    kinds: SitePermission[],
-  ): Promise<boolean> => {
-    const answer = permissionPrompts.then(async () => {
-      const store = permissionsFor(isPrivate);
-      const decided = store.decide(origin, kinds);
-      if (decided !== 'ask') return decided === 'allow';
-      const parent = windowOf(contents)?.window;
-      const options: Electron.MessageBoxOptions = {
-        type: 'question',
-        message: permissionQuestion(new URL(origin).host, kinds),
-        detail: 'Bu kararı daha sonra adres çubuğundaki site bilgisinden değiştirebilirsiniz.',
-        buttons: ['İzin ver', 'Bu seferlik izin ver', 'Engelle'],
-        defaultId: 2,
-        cancelId: 2,
-        noLink: true,
-      };
-      const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
-      if (response === 0) store.set(origin, kinds, 'allow');
-      else if (response === 1) store.allowOnce(origin, kinds);
-      else store.set(origin, kinds, 'deny');
-      return response !== 2;
-    });
-    permissionPrompts = answer.catch(() => {});
-    return answer;
-  };
   const applyLanguages = () => {
     const language = settings.get().pageLanguage;
     for (const browsing of [daily, privateBrowsing]) {
@@ -161,188 +124,31 @@ function startBrowser(): void {
     }
   };
   applyLanguages();
-  for (const browsing of [daily, privateBrowsing]) {
-    blockThirdPartyCookies(browsing, () => settings.get().blockThirdPartyCookies);
-  }
-  for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
-    browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
-      if (ALLOWED_PERMISSIONS.has(permission)) {
-        callback(true);
-        return;
-      }
-      const kinds = requestedPermissions(permission, 'mediaTypes' in details ? details.mediaTypes : []);
-      const origin = permissionOrigin(details.requestingUrl);
-      if (!kinds || !origin || origin !== permissionOrigin(contents.getURL())) {
-        callback(false);
-        return;
-      }
-      const decided = permissionsFor(isPrivate).decide(origin, kinds);
-      if (decided !== 'ask') {
-        callback(decided === 'allow');
-        return;
-      }
-      askPermission(contents, isPrivate, origin, kinds).then(callback, () => callback(false));
-    });
-    browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
-      if (ALLOWED_PERMISSIONS.has(permission)) return true;
-      const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
-      const origin = permissionOrigin(requestingOrigin);
-      if (!kinds || !origin) return false;
-      if (details.embeddingOrigin && permissionOrigin(details.embeddingOrigin) !== origin) return false;
-      return permissionsFor(isPrivate).decide(origin, kinds) === 'allow';
-    });
-  }
+  const applyCookieBlocking = () => {
+    for (const browsing of [daily, privateBrowsing]) {
+      setThirdPartyCookieBlocking(browsing, settings.get().blockThirdPartyCookies);
+    }
+  };
+  applyCookieBlocking();
+  installPermissionHandlers({
+    sessions: [[daily, false], [privateBrowsing, true]],
+    storeFor: permissionsFor,
+    parentOf: (contents) => windowOf(contents)?.window,
+  });
 
   const bookmarksChanged = () => {
     pushState();
     reloadPages(BOOKMARKS_URL);
   };
-  const runBookmarksCommand = (command: string, params: URLSearchParams) => {
-    const id = params.get('id') ?? '';
-    const title = params.get('title') ?? '';
-    switch (command) {
-      case 'new-folder':
-        bookmarks.addFolder(title);
-        break;
-      case 'rename':
-        bookmarks.rename(id, title);
-        break;
-      case 'move':
-        bookmarks.move(id, params.get('folder') || null);
-        break;
-      case 'remove':
-        bookmarks.remove(id);
-        break;
-      case 'rename-folder':
-        bookmarks.renameFolder(id, title);
-        break;
-      case 'remove-folder':
-        bookmarks.removeFolder(id);
-        break;
-      default:
-        return;
-    }
-    bookmarksChanged();
-  };
 
-  const downloadItems = new Map<string, Electron.DownloadItem>();
-  const reservedPaths = new Set<string>();
-  let downloadsStateTimer: NodeJS.Timeout | null = null;
-  let downloadsPageTimer: NodeJS.Timeout | null = null;
-  const downloadChanges = new ChangeFeed();
-  const downloadsChanged = () => {
-    downloadsStateTimer ??= setTimeout(() => {
-      downloadsStateTimer = null;
-      pushState();
-    }, 250);
-    downloadsPageTimer ??= setTimeout(() => {
-      downloadsPageTimer = null;
-      downloadChanges.notify();
-    }, 500);
-  };
-  const withDownload = (id: string, run: (entry: NonNullable<ReturnType<DownloadStore['get']>>) => void) => {
-    const entry = downloads.get(id);
-    if (entry) run(entry);
-    downloadsChanged();
-  };
-  const downloadActions = (window: YalqenWindow | null): DownloadActions => ({
-    open: (id) =>
-      withDownload(id, (entry) => {
-        if (entry.state !== 'completed') return;
-        void shell.openPath(entry.savePath).then((error) => {
-          if (error) console.warn(`[downloads] could not open ${entry.filename}: ${error}`);
-        });
-      }),
-    show: (id) => withDownload(id, (entry) => shell.showItemInFolder(entry.savePath)),
-    pause: (id) =>
-      withDownload(id, () => {
-        downloadItems.get(id)?.pause();
-        if (downloadItems.get(id)?.isPaused()) downloads.update(id, { state: 'paused' });
-      }),
-    resume: (id) =>
-      withDownload(id, () => {
-        const item = downloadItems.get(id);
-        if (!item?.canResume()) return;
-        item.resume();
-        downloads.update(id, { state: 'progressing' });
-      }),
-    cancel: (id) => withDownload(id, () => downloadItems.get(id)?.cancel()),
-    retry: (id) =>
-      withDownload(id, (entry) => {
-        if (entry.state !== 'cancelled' && entry.state !== 'interrupted') return;
-        const item = downloadItems.get(id);
-        if (item?.canResume()) {
-          item.resume();
-          return;
-        }
-        downloads.remove(id);
-        (entry.private ? privateBrowsing : daily).downloadURL(entry.url);
-      }),
-    remove: (id) =>
-      withDownload(id, (entry) => {
-        if (entry.state !== 'progressing' && entry.state !== 'paused') downloads.remove(id);
-      }),
-    showAll: () => window?.tabs.openDownloads(),
-    openFolder: () => {
-      void shell.openPath(app.getPath('downloads')).then((error) => {
-        if (error) console.warn(`[downloads] could not open folder: ${error}`);
-      });
-    },
+  const downloadManager = new DownloadManager({
+    store: downloads,
+    daily,
+    privateBrowsing,
+    directory: () => app.getPath('downloads'),
+    onStateChange: pushState,
   });
-  const runDownloadsCommand = (command: string, params: URLSearchParams) => {
-    if (command === 'clear') {
-      downloads.clearFinished();
-      downloadsChanged();
-      return;
-    }
-    const actions = downloadActions(null);
-    if (command in actions && command !== 'showAll' && command !== 'openFolder') {
-      (actions[command as keyof DownloadActions] as (id: string) => void)(params.get('id') ?? '');
-    }
-  };
-  const onWillDownload = (isPrivate: boolean) => (_event: Electron.Event, item: Electron.DownloadItem) => {
-    const savePath = uniquePath(
-      app.getPath('downloads'),
-      item.getFilename(),
-      (file) => reservedPaths.has(file) || fs.existsSync(file),
-    );
-    item.setSavePath(savePath);
-    reservedPaths.add(savePath);
-    const id = randomUUID();
-    downloadItems.set(id, item);
-    downloads.add({
-      id,
-      url: item.getURL(),
-      filename: path.basename(savePath),
-      savePath,
-      state: 'progressing',
-      receivedBytes: 0,
-      totalBytes: item.getTotalBytes(),
-      startedAt: Date.now(),
-      ...(isPrivate ? { private: true } : {}),
-    });
-    item.on('updated', (_event, state) => {
-      downloads.update(id, {
-        state: state === 'interrupted' ? 'interrupted' : item.isPaused() ? 'paused' : 'progressing',
-        receivedBytes: item.getReceivedBytes(),
-        totalBytes: item.getTotalBytes(),
-      });
-      downloadsChanged();
-    });
-    item.once('done', (_event, state) => {
-      downloadItems.delete(id);
-      reservedPaths.delete(savePath);
-      downloads.update(id, {
-        state: state === 'completed' ? 'completed' : state === 'cancelled' ? 'cancelled' : 'interrupted',
-        receivedBytes: item.getReceivedBytes(),
-        totalBytes: item.getTotalBytes(),
-      });
-      downloadsChanged();
-    });
-    downloadsChanged();
-  };
-  daily.on('will-download', onWillDownload(false));
-  privateBrowsing.on('will-download', onWillDownload(true));
+  const downloadsChanged = () => downloadManager.changed();
 
   app.on('certificate-error', (event, contents, url, _error, certificate, callback, isMainFrame) => {
     const browsing = contents.session === daily || contents.session === privateBrowsing;
@@ -380,17 +186,16 @@ function startBrowser(): void {
     };
   };
   const updateSettings = (patch: unknown) => {
-    const wasFreezing = settings.get().freezeBackgroundTabs;
-    const previousDns = settings.get().secureDns;
-    const previousZoom = settings.get().defaultZoom;
-    const previousLanguage = settings.get().pageLanguage;
-    settings.update(patch);
-    if (settings.get().defaultZoom !== previousZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
-    if (settings.get().pageLanguage !== previousLanguage) applyLanguages();
-    if (settings.get().secureDns !== previousDns) app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
-    nativeTheme.themeSource = settings.get().theme;
-    if (settings.get().freezeBackgroundTabs !== wasFreezing) eachWindow((window) => window.tabs.applyFreezeSetting());
-    adBlocker.setEnabled(settings.get().adBlocking);
+    const previous = settings.get();
+    const next = settings.update(patch);
+    if (next === previous) return;
+    if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
+    if (next.pageLanguage !== previous.pageLanguage) applyLanguages();
+    if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
+    nativeTheme.themeSource = next.theme;
+    if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs) eachWindow((window) => window.tabs.applyFreezeSetting());
+    adBlocker.setEnabled(next.adBlocking);
+    applyCookieBlocking();
     pushState();
     broadcastSettings(settingsView());
   };
@@ -411,7 +216,7 @@ function startBrowser(): void {
     permissionsFor,
     zoomFor: (isPrivate) => (isPrivate ? privateZoom : zoom),
     searchEngine,
-    downloadActions: (window) => downloadActions(window),
+    downloadActions: (window) => downloadManager.actions(() => window.tabs.openDownloads()),
     downloadsChanged,
     toggleBookmark: (url, title) => {
       const existing = bookmarks.find(url);
@@ -419,8 +224,10 @@ function startBrowser(): void {
       else bookmarks.add(url, title);
       bookmarksChanged();
     },
-    runBookmarksCommand,
-    runDownloadsCommand,
+    runBookmarksCommand: (command, params) => {
+      if (runBookmarksCommand(bookmarks, command, params)) bookmarksChanged();
+    },
+    runDownloadsCommand: (command, params) => downloadManager.runCommand(command, params),
     updateSettings,
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),
@@ -466,31 +273,33 @@ function startBrowser(): void {
     return window;
   };
 
-  for (const browsing of [daily, privateBrowsing]) {
-    serveInternalPages(
-      browsing,
-      path.join(__dirname, '../renderer/newtab.html'),
-      path.join(__dirname, '../renderer/newtab-suggestions.js'),
-      path.join(__dirname, '../renderer/history.html'),
-      path.join(__dirname, '../renderer/downloads.html'),
-      path.join(__dirname, '../renderer/bookmarks.html'),
-      path.join(__dirname, '../renderer/settings.html'),
-      () => recentPages(closedTabs),
-      () => [...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values()],
-      (query) => history.list(query),
-      { list: () => downloads.list(), changes: downloadChanges },
-      (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
-      () => {
+  const rendererDir = path.join(__dirname, '../renderer');
+  const internalPages = loadInternalPages({
+    newTab: path.join(rendererDir, 'newtab.html'),
+    newTabScript: path.join(rendererDir, 'newtab-suggestions.js'),
+    history: path.join(rendererDir, 'history.html'),
+    downloads: path.join(rendererDir, 'downloads.html'),
+    bookmarks: path.join(rendererDir, 'bookmarks.html'),
+    settings: path.join(rendererDir, 'settings.html'),
+  });
+  for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
+    serveInternalPages(browsing, internalPages, {
+      recent: () => recentPages(closedTabs),
+      pinned: () => [...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values()],
+      visits: (query) => history.list(query),
+      downloads: { list: () => downloads.list(), changes: downloadManager.changes },
+      bookmarks: (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
+      showWelcome: () => {
         const showWelcome = !settings.get().welcomeCompleted;
         if (showWelcome) settings.update({ welcomeCompleted: true });
         return showWelcome;
       },
-      (query) => suggest(query, {
+      suggestions: (query) => suggest(query, {
         tabs: [],
         bookmarks: bookmarks.bookmarks(),
-        history: browsing === privateBrowsing ? EMPTY_HISTORY_INDEX : history.index(),
+        history: isPrivate ? EMPTY_HISTORY_INDEX : history.index(),
       }),
-    );
+    });
   }
 
   const inWindow = (run: (window: YalqenWindow) => void) => () => {
@@ -582,10 +391,14 @@ function startBrowser(): void {
     return settingsView();
   });
 
+  const nextPressureVictim = () =>
+    pressureVictim(
+      windows.flatMap((window) => window.tabs.discardCandidates().map((tab) => ({ ...tab, window }))),
+      Date.now(),
+    );
   const discardUnderPressure = (count: number) => {
     for (let i = 0; i < count; i++) {
-      const candidates = windows.flatMap((window) => window.tabs.discardCandidates().map((tab) => ({ ...tab, window })));
-      const victim = pressureVictim(candidates, Date.now());
+      const victim = nextPressureVictim();
       if (!victim?.window.tabs.discard(victim.id)) return;
     }
   };
@@ -593,6 +406,7 @@ function startBrowser(): void {
     const minutes = settings.get().discardAfterMinutes;
     if (minutes === 0) return;
     eachWindow((window) => window.tabs.discardInactive(Date.now(), minutes));
+    if (!nextPressureVictim()) return;
     void readMemoryPressure().then((pressure) => {
       if (pressure !== 'normal') discardUnderPressure(pressure === 'critical' ? 3 : 1);
     });
@@ -605,6 +419,7 @@ function startBrowser(): void {
   });
   app.on('will-quit', () => {
     clearInterval(discardTimer);
+    downloadManager.destroy();
     adBlocker.destroy();
     commandBar.destroy();
     findBar.destroy();
