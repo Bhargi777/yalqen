@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, nativeTheme, type Session } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, nativeTheme, type Rectangle, type Session } from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -12,10 +12,10 @@ import {
 } from '../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
 import type { CertificateExceptions } from './certificates.js';
-import { CommandBar } from './command-bar.js';
+import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
 import { downloadsMenuTemplate, downloadsSummary, type DownloadActions, type DownloadStore } from './downloads.js';
-import { FindBar } from './find-bar.js';
+import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from './history.js';
 import type { HttpsOnly } from './https-only.js';
@@ -45,6 +45,8 @@ export interface AppContext {
   privateBrowsing: Session;
   settings: SettingsStore;
   settingsWindow: SettingsWindow;
+  commandBar: CommandBar;
+  findBar: FindBar;
   history: HistoryStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
@@ -82,8 +84,9 @@ export class YalqenWindow {
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
   private readonly ui: WebContentsView;
-  private readonly commandBar: CommandBar;
-  private readonly findBar: FindBar;
+  private readonly commandHost: CommandBarHost;
+  private readonly findHost: FindBarHost;
+  private pageArea: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
     panelWidth: 220,
@@ -132,10 +135,8 @@ export class YalqenWindow {
       (this.tabs.activeIsPrivate ? app.privateBrowsing : app.daily).preconnect({ url: origin }),
     );
 
-    this.commandBar = new CommandBar({
+    this.commandHost = {
       window: this.window,
-      preload: path.join(__dirname, '../preload/command-preload.js'),
-      page: path.join(__dirname, '../renderer/command.html'),
       onSubmit: (input, mode) => {
         this.preconnector.cancel();
         const url = resolveInput(input, app.searchEngine());
@@ -150,6 +151,7 @@ export class YalqenWindow {
         this.preconnector.typed(input, app.searchEngine());
         const open = this.tabs.state();
         this.commandBar.showSuggestions(
+          this.window,
           input,
           suggest(input, {
             tabs: open.tabs.filter((tab) => tab.id !== open.activeTabId),
@@ -159,19 +161,18 @@ export class YalqenWindow {
         );
       },
       onSwitchTab: (id) => this.tabs.activate(id),
-    });
+    };
 
-    this.findBar = new FindBar({
+    this.findHost = {
       window: this.window,
-      preload: path.join(__dirname, '../preload/find-preload.js'),
-      page: path.join(__dirname, '../renderer/find.html'),
+      area: () => this.pageArea,
       onFind: (text, forward, next) => this.tabs.findInPage(text, forward, next),
       onClose: () => {
         if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
         this.findTarget = null;
         if (!this.tabs.focusActive()) this.ui.webContents.focus();
       },
-    });
+    };
 
     this.tabs = new TabManager({
       window: this.window,
@@ -191,8 +192,8 @@ export class YalqenWindow {
         if (target && (target.tabId !== this.tabs.activeTabId || target.url !== pageAddress(this.tabs.activeUrl))) {
           this.endFind();
         }
-        this.findBar.keepOnTop();
-        this.commandBar.keepOnTop();
+        this.findBar.keepOnTop(this.window);
+        this.commandBar.keepOnTop(this.window);
         this.pushState();
         app.onWindowChange(persist);
       },
@@ -221,7 +222,7 @@ export class YalqenWindow {
         if (page === 'bookmarks') app.runBookmarksCommand(command, params);
         else app.runDownloadsCommand(command, params);
       },
-      onFindResult: (result) => this.findBar.showResult(result),
+      onFindResult: (result) => this.findBar.showResult(this.window, result),
       zoomFor: (url, isPrivate) => app.zoomFor(isPrivate).get(url),
       defaultZoom: () => app.settings.get().defaultZoom,
       hasOwnZoom: (url, isPrivate) => app.zoomFor(isPrivate).has(url),
@@ -283,8 +284,8 @@ export class YalqenWindow {
       nativeTheme.off('updated', this.pushState);
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
-      this.commandBar.destroy();
-      this.findBar.destroy();
+      this.commandBar.release(this.window);
+      this.findBar.release(this.window);
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close();
       app.onWindowClosed(this);
       if (hadPrivate) app.onPrivateTabsClosed();
@@ -296,6 +297,14 @@ export class YalqenWindow {
 
     void this.ui.webContents.loadFile(path.join(__dirname, '../renderer/index.html'));
     app.onWindowFocus(this);
+  }
+
+  private get commandBar(): CommandBar {
+    return this.app.commandBar;
+  }
+
+  private get findBar(): FindBar {
+    return this.app.findBar;
   }
 
   private navigateByGesture(direction: 'back' | 'forward', source: 'native' | 'page'): void {
@@ -356,7 +365,7 @@ export class YalqenWindow {
   openAddress(): void {
     const url = this.tabs.activeUrl;
     this.preconnector.opened(this.app.searchEngine());
-    this.commandBar.open({
+    this.commandBar.open(this.commandHost, {
       placeholder: this.app.searchEngine().placeholder,
       mode: 'navigate',
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
@@ -365,10 +374,10 @@ export class YalqenWindow {
 
   openFind(forward?: boolean): void {
     if (this.isPageFullScreen() || !this.tabs.activeTabId) return;
-    this.commandBar.close();
+    this.commandBar.close(this.window);
     this.findTarget = { tabId: this.tabs.activeTabId, url: pageAddress(this.tabs.activeUrl) };
-    if (forward === undefined) this.findBar.open();
-    else this.findBar.findNext(forward);
+    if (forward === undefined) this.findBar.open(this.findHost);
+    else this.findBar.findNext(this.findHost, forward);
   }
 
   print(contents = this.tabs.activeContents()): void {
@@ -576,12 +585,12 @@ export class YalqenWindow {
   private endFind(): void {
     if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
     this.findTarget = null;
-    this.findBar.close();
+    this.findBar.close(this.window);
   }
 
   private syncPageFullScreen(): void {
     if (this.isPageFullScreen()) {
-      this.commandBar.close();
+      this.commandBar.close(this.window);
       this.endFind();
     }
     this.applyLayout();
@@ -596,11 +605,12 @@ export class YalqenWindow {
   private applyLayout(): void {
     const { width, height } = this.window.getContentBounds();
     this.ui.setBounds({ x: 0, y: 0, width, height });
-    this.commandBar.fitWindow();
+    this.commandBar.fitWindow(this.window);
     const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
     this.tabs.setPageBounds(bounds);
     this.tabs.setPageRadius(radius);
-    this.findBar.setArea(bounds);
+    this.pageArea = bounds;
+    this.findBar.relayout(this.window);
     if (process.platform === 'darwin') {
       this.showWindowControls();
     }

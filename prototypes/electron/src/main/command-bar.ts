@@ -8,9 +8,12 @@ import {
 } from '../shared/types.js';
 
 export interface CommandBarOptions {
-  window: BaseWindow;
   preload: string;
   page: string;
+}
+
+export interface CommandBarHost {
+  window: BaseWindow;
   onSubmit: (input: string, mode: CommandBarOpen['mode']) => void;
   onDismiss: () => void;
   onInput: (input: string) => void;
@@ -18,94 +21,117 @@ export interface CommandBarOptions {
 }
 
 export class CommandBar {
-  private readonly view: WebContentsView;
+  private view: WebContentsView | null = null;
+  private host: CommandBarHost | null = null;
   private opened = false;
   private mode: CommandBarOpen['mode'] = 'navigate';
   private ready = false;
   private lastOpen: CommandBarOpen | null = null;
 
   constructor(private readonly options: CommandBarOptions) {
-    this.view = new WebContentsView({
-      webPreferences: {
-        preload: options.preload,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    this.view.setBackgroundColor('#00000000');
-    const contents = this.view.webContents;
-    contents.on('will-navigate', (event) => event.preventDefault());
-    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
     ipcMain.on(CommandBarChannel.action, this.onAction);
-    void contents.loadFile(options.page).then(() => {
-      this.ready = true;
-      if (this.opened && this.lastOpen) contents.send(CommandBarChannel.open, this.lastOpen);
-    });
   }
 
-  get isOpen(): boolean {
-    return this.opened;
+  warm(): void {
+    this.ensureView();
   }
 
-  open(open: CommandBarOpen): void {
-    this.fitWindow();
+  open(host: CommandBarHost, open: CommandBarOpen): void {
+    const view = this.ensureView();
+    if (this.host && this.host.window !== host.window) this.close();
+    this.host = host;
+    this.fitWindow(host.window);
     this.mode = open.mode;
     this.lastOpen = open;
     if (!this.opened) {
       this.opened = true;
-      this.options.window.contentView.addChildView(this.view);
+      host.window.contentView.addChildView(view);
     } else {
-      this.keepOnTop();
+      this.keepOnTop(host.window);
     }
-    this.options.window.focus();
-    this.view.webContents.focus();
-    if (this.ready) this.view.webContents.send(CommandBarChannel.open, open);
+    host.window.focus();
+    view.webContents.focus();
+    if (this.ready) view.webContents.send(CommandBarChannel.open, open);
   }
 
-  showSuggestions(input: string, suggestions: AddressSuggestion[]): void {
-    if (this.opened) this.view.webContents.send(CommandBarChannel.suggestions, { input, suggestions });
+  showSuggestions(window: BaseWindow, input: string, suggestions: AddressSuggestion[]): void {
+    if (this.isOpenIn(window)) this.view?.webContents.send(CommandBarChannel.suggestions, { input, suggestions });
   }
 
-  close(): void {
-    if (!this.opened) return;
+  close(window?: BaseWindow): void {
+    if (!this.opened || !this.view || !this.host) return;
+    if (window && this.host.window !== window) return;
     this.opened = false;
     this.lastOpen = null;
-    this.options.window.contentView.removeChildView(this.view);
+    if (!this.host.window.isDestroyed()) this.host.window.contentView.removeChildView(this.view);
   }
 
-  fitWindow(): void {
-    const { width, height } = this.options.window.getContentBounds();
+  release(window: BaseWindow): void {
+    if (this.host?.window !== window) return;
+    this.close();
+    this.host = null;
+  }
+
+  fitWindow(window: BaseWindow): void {
+    if (!this.view || this.host?.window !== window) return;
+    const { width, height } = window.getContentBounds();
     this.view.setBounds({ x: 0, y: 0, width, height });
   }
 
-  keepOnTop(): void {
-    if (!this.opened) return;
-    const children = this.options.window.contentView.children;
-    if (children[children.length - 1] !== this.view) {
-      this.options.window.contentView.addChildView(this.view);
-    }
+  keepOnTop(window: BaseWindow): void {
+    if (!this.view || !this.isOpenIn(window)) return;
+    const children = window.contentView.children;
+    if (children[children.length - 1] !== this.view) window.contentView.addChildView(this.view);
   }
 
   destroy(): void {
     ipcMain.off(CommandBarChannel.action, this.onAction);
     this.close();
-    if (!this.view.webContents.isDestroyed()) this.view.webContents.close();
+    this.host = null;
+    if (this.view && !this.view.webContents.isDestroyed()) this.view.webContents.close();
+    this.view = null;
+  }
+
+  private isOpenIn(window: BaseWindow): boolean {
+    return this.opened && this.host?.window === window;
+  }
+
+  private ensureView(): WebContentsView {
+    if (this.view) return this.view;
+    const view = new WebContentsView({
+      webPreferences: {
+        preload: this.options.preload,
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    view.setBackgroundColor('#00000000');
+    const contents = view.webContents;
+    contents.on('will-navigate', (event) => event.preventDefault());
+    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    this.view = view;
+    void contents.loadFile(this.options.page).then(() => {
+      this.ready = true;
+      if (this.opened && this.lastOpen) contents.send(CommandBarChannel.open, this.lastOpen);
+    });
+    return view;
   }
 
   private readonly onAction = (event: IpcMainEvent, action: CommandBarAction): void => {
-    if (event.sender !== this.view.webContents || !this.opened) return;
+    const host = this.host;
+    if (!this.view || event.sender !== this.view.webContents || !this.opened || !host) return;
     if (action.type === 'input') {
-      if (typeof action.input === 'string') this.options.onInput(action.input);
+      if (typeof action.input === 'string') host.onInput(action.input);
       return;
     }
     this.close();
     if (action.type === 'switch-tab' && typeof action.id === 'string') {
-      this.options.onSwitchTab(action.id);
+      host.onSwitchTab(action.id);
     } else if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
-      this.options.onSubmit(action.input, this.mode);
+      host.onSubmit(action.input, this.mode);
     } else {
-      this.options.onDismiss();
+      host.onDismiss();
     }
   };
 }

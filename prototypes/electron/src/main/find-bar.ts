@@ -6,109 +6,136 @@ const HEIGHT = 60;
 const INSET = 4;
 
 export interface FindBarOptions {
-  window: BaseWindow;
   preload: string;
   page: string;
+}
+
+export interface FindBarHost {
+  window: BaseWindow;
+  area: () => Rectangle;
   onFind: (text: string, forward: boolean, next: boolean) => void;
   onClose: () => void;
 }
 
 export class FindBar {
-  private readonly view: WebContentsView;
+  private view: WebContentsView | null = null;
+  private loaded: Promise<void> = Promise.resolve();
+  private host: FindBarHost | null = null;
   private opened = false;
-  private area: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private text = '';
 
   constructor(private readonly options: FindBarOptions) {
-    this.view = new WebContentsView({
-      webPreferences: {
-        preload: options.preload,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    this.view.setBackgroundColor('#00000000');
-    const contents = this.view.webContents;
-    contents.on('will-navigate', (event) => event.preventDefault());
-    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
     ipcMain.on(FindBarChannel.action, this.onAction);
-    void contents.loadFile(options.page);
   }
 
-  get isOpen(): boolean {
-    return this.opened;
-  }
-
-  open(): void {
+  open(host: FindBarHost): void {
+    const view = this.ensureView();
+    if (this.host && this.host.window !== host.window) this.close();
+    this.host = host;
     if (!this.opened) {
       this.opened = true;
       this.layout();
-      this.options.window.contentView.addChildView(this.view);
+      host.window.contentView.addChildView(view);
     } else {
-      this.keepOnTop();
+      this.keepOnTop(host.window);
     }
-    this.options.window.focus();
-    this.view.webContents.focus();
-    this.view.webContents.send(FindBarChannel.open);
+    host.window.focus();
+    view.webContents.focus();
+    void this.loaded.then(() => {
+      if (this.opened && this.view === view) view.webContents.send(FindBarChannel.open);
+    });
   }
 
-  findNext(forward: boolean): void {
-    if (!this.opened || this.text === '') {
-      this.open();
+  findNext(host: FindBarHost, forward: boolean): void {
+    if (!this.isOpenIn(host.window) || this.text === '') {
+      this.open(host);
       return;
     }
-    this.options.onFind(this.text, forward, true);
+    host.onFind(this.text, forward, true);
   }
 
-  close(): void {
-    if (!this.opened) return;
+  close(window?: BaseWindow): void {
+    if (!this.opened || !this.view || !this.host) return;
+    if (window && this.host.window !== window) return;
     this.opened = false;
-    this.options.window.contentView.removeChildView(this.view);
+    if (!this.host.window.isDestroyed()) this.host.window.contentView.removeChildView(this.view);
   }
 
-  showResult(result: FindResult): void {
-    if (this.opened) this.view.webContents.send(FindBarChannel.result, result);
+  release(window: BaseWindow): void {
+    if (this.host?.window !== window) return;
+    this.close();
+    this.host = null;
   }
 
-  setArea(area: Rectangle): void {
-    this.area = area;
-    if (this.opened) this.layout();
+  showResult(window: BaseWindow, result: FindResult): void {
+    if (this.isOpenIn(window)) this.view?.webContents.send(FindBarChannel.result, result);
   }
 
-  keepOnTop(): void {
-    if (!this.opened) return;
-    const children = this.options.window.contentView.children;
-    if (children[children.length - 1] !== this.view) {
-      this.options.window.contentView.addChildView(this.view);
-    }
+  relayout(window: BaseWindow): void {
+    if (this.isOpenIn(window)) this.layout();
+  }
+
+  keepOnTop(window: BaseWindow): void {
+    if (!this.view || !this.isOpenIn(window)) return;
+    const children = window.contentView.children;
+    if (children[children.length - 1] !== this.view) window.contentView.addChildView(this.view);
   }
 
   destroy(): void {
     ipcMain.off(FindBarChannel.action, this.onAction);
     this.close();
-    if (!this.view.webContents.isDestroyed()) this.view.webContents.close();
+    this.host = null;
+    if (this.view && !this.view.webContents.isDestroyed()) this.view.webContents.close();
+    this.view = null;
+  }
+
+  private isOpenIn(window: BaseWindow): boolean {
+    return this.opened && this.host?.window === window;
+  }
+
+  private ensureView(): WebContentsView {
+    if (this.view) return this.view;
+    const view = new WebContentsView({
+      webPreferences: {
+        preload: this.options.preload,
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    view.setBackgroundColor('#00000000');
+    const contents = view.webContents;
+    contents.on('will-navigate', (event) => event.preventDefault());
+    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    this.view = view;
+    this.loaded = contents.loadFile(this.options.page).catch((error: unknown) => {
+      console.warn('[find] could not load the find bar:', error);
+    });
+    return view;
   }
 
   private layout(): void {
-    const width = Math.max(0, Math.min(WIDTH, this.area.width - 2 * INSET));
+    if (!this.view || !this.host) return;
+    const area = this.host.area();
+    const width = Math.max(0, Math.min(WIDTH, area.width - 2 * INSET));
     this.view.setBounds({
-      x: this.area.x + this.area.width - width - INSET,
-      y: this.area.y + INSET,
+      x: area.x + area.width - width - INSET,
+      y: area.y + INSET,
       width,
       height: HEIGHT,
     });
   }
 
   private readonly onAction = (event: IpcMainEvent, action: FindBarAction): void => {
-    if (event.sender !== this.view.webContents || !this.opened) return;
+    const host = this.host;
+    if (!this.view || event.sender !== this.view.webContents || !this.opened || !host) return;
     if (action.type === 'close') {
       this.close();
-      this.options.onClose();
+      host.onClose();
       return;
     }
     if (typeof action.text !== 'string') return;
     this.text = action.text;
-    this.options.onFind(action.text, action.forward !== false, action.next === true);
+    host.onFind(action.text, action.forward !== false, action.next === true);
   };
 }

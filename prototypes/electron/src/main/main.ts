@@ -17,6 +17,7 @@ import { AdBlocker } from './adblock.js';
 import { BookmarkStore } from './bookmarks.js';
 import { CertificateExceptions } from './certificates.js';
 import { clearSince, sanitizeClearRequest } from './clear-data.js';
+import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { DownloadStore, uniquePath, type DownloadActions } from './downloads.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
@@ -24,6 +25,7 @@ import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
 import { blockThirdPartyCookies } from './third-party-cookies.js';
+import { FindBar } from './find-bar.js';
 import { externalUrls } from './launch.js';
 import { DISCARD_CHECK_MS } from './memory-saver.js';
 import { buildMenu } from './menu.js';
@@ -46,6 +48,7 @@ import { ZoomStore } from './zoom.js';
 const DAILY_PARTITION = 'persist:daily';
 const PRIVATE_PARTITION = 'private';
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
+const COMMAND_BAR_WARM_DELAY_MS = 2000;
 
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
@@ -359,6 +362,14 @@ function startBrowser(): void {
     page: path.join(__dirname, '../renderer/settings.html'),
     icon: appIcon,
   });
+  const commandBar = new CommandBar({
+    preload: path.join(__dirname, '../preload/command-preload.js'),
+    page: path.join(__dirname, '../renderer/command.html'),
+  });
+  const findBar = new FindBar({
+    preload: path.join(__dirname, '../preload/find-preload.js'),
+    page: path.join(__dirname, '../renderer/find.html'),
+  });
   nativeTheme.themeSource = settings.get().theme;
   let deviceId = DEFAULT_DEVICE_ID;
 
@@ -395,6 +406,8 @@ function startBrowser(): void {
     privateBrowsing,
     settings,
     settingsWindow,
+    commandBar,
+    findBar,
     history,
     downloads,
     bookmarks,
@@ -595,6 +608,8 @@ function startBrowser(): void {
   app.on('will-quit', () => {
     clearInterval(discardTimer);
     adBlocker.destroy();
+    commandBar.destroy();
+    findBar.destroy();
     settingsWindow.close();
     history.saveNow();
     downloads.saveNow();
@@ -615,6 +630,7 @@ function startBrowser(): void {
   };
   if (restored.length > 0 && first) openExternal([first, ...rest]);
   else if (rest.length > 0) openExternal(rest);
+  setTimeout(() => commandBar.warm(), COMMAND_BAR_WARM_DELAY_MS);
 }
 
 app.setAboutPanelOptions({
