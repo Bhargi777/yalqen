@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DownloadsSummary, TabId, TabSnapshot } from '../../shared/types';
   import { isNewTab, siteLabel } from '../format';
+  import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
 
@@ -60,7 +61,7 @@
   <div class="side leading" aria-hidden="true"></div>
 
   <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
-    <nav class="capsule navigation" aria-label="Gezinme">
+    <Capsule as="nav" ariaLabel="Gezinme">
       <button class="icon" title="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })}>
         <Icon name="back" />
       </button>
@@ -76,7 +77,7 @@
           <Icon name="reload" />
         </button>
       {/if}
-    </nav>
+    </Capsule>
     <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
     {#each tabs as tab (tab.id)}
       {@const active = tab.id === activeTabId}
@@ -167,7 +168,7 @@
   </div>
 
   <div class="side trailing" style:margin-right="{-trailingOverhang}px">
-    <div class="capsule" style:min-width={trailingSpan > 0 ? `${trailingSpan}px` : null}>
+    <Capsule minWidth={trailingSpan > 0 ? trailingSpan : undefined} spread>
       <button class="icon" title="Yer imleri" aria-label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })}>
         <Icon name="bookmarks" />
       </button>
@@ -194,7 +195,7 @@
           </svg>
         {/if}
       </button>
-    </div>
+    </Capsule>
   </div>
 </header>
 
@@ -224,10 +225,6 @@
     justify-content: flex-end;
   }
 
-  .trailing .capsule {
-    justify-content: space-between;
-  }
-
   .tab-group {
     display: flex;
     flex: 0 1 auto;
@@ -246,26 +243,6 @@
     .new-tab-slot {
       width: var(--chrome-control-size);
     }
-  }
-
-  .capsule {
-    display: flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    height: var(--chrome-control-size);
-    padding: 3px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    color: var(--text);
-    -webkit-app-region: no-drag;
-  }
-
-  :global([data-material='glass']) .capsule {
-    box-shadow: var(--shadow), var(--rim);
   }
 
   :global([data-material='glass']) .chip.active {

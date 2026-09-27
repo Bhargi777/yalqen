@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
+  import Capsule from './Capsule.svelte';
   import CircleButton from './CircleButton.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
@@ -13,6 +14,7 @@
     minWidth,
     maxWidth,
     topInset,
+    rowInset,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
@@ -22,6 +24,7 @@
     minWidth: number;
     maxWidth: number;
     topInset: number;
+    rowInset: number;
   } = $props();
 
   let dragId: TabId | null = $state(null);
@@ -100,7 +103,7 @@
   </span>
 {/snippet}
 
-<aside class="panel" class:collapsed class:right={side === 'right'} aria-label="Sekmeler">
+<aside class="panel" class:collapsed class:right={side === 'right'} aria-label="Sekmeler" style={`--panel-row-inset: ${rowInset}px`}>
   {#if !collapsed}
     <div
       class="resize"
@@ -178,57 +181,59 @@
               {@render favicon(tab, 16)}
             </CircleButton>
           {:else}
-            <button
-              class="select"
-              title={tab.url}
-              aria-label={label(tab)}
-              aria-current={tab.id === activeTabId ? 'page' : undefined}
-              onclick={() => send({ type: 'activate-tab', id: tab.id })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab, 16)}
-              <span class="title">{tab.title}</span>
-              {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
-            </button>
+            <Capsule layout="tab" tone={tab.id === activeTabId ? (listed.length === 1 ? 'surface' : 'active') : 'bare'}>
+              <button
+                class="select"
+                title={tab.url}
+                aria-label={label(tab)}
+                aria-current={tab.id === activeTabId ? 'page' : undefined}
+                onclick={() => send({ type: 'activate-tab', id: tab.id })}
+                onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+              >
+                {@render favicon(tab, 16)}
+                <span class="title">{tab.title}</span>
+                {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
+              </button>
 
-            {#if tab.audible || tab.muted}
-              <button
-                class="action audio"
-                title={tab.muted ? 'Sesi aç' : 'Sessize al'}
-                aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
-                aria-pressed={tab.muted}
-                onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-              >
-                <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
-              </button>
-            {/if}
-            <span class="actions">
-              {#if !tab.isPrivate && /^https?:/.test(tab.url)}
+              {#if tab.audible || tab.muted}
                 <button
-                  class="action extra"
-                  title="Sabitle"
-                  onclick={() => send({ type: 'toggle-pin', id: tab.id })}
+                  class="action audio"
+                  title={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                  aria-label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                  aria-pressed={tab.muted}
+                  onclick={() => send({ type: 'toggle-mute', id: tab.id })}
                 >
-                  <Icon name="pin" size={13} />
+                  <Icon name={tab.muted ? 'muted' : 'sound'} size={13} />
                 </button>
               {/if}
-              {#if tab.live && tab.id !== activeTabId}
+              <span class="actions">
+                {#if !tab.isPrivate && /^https?:/.test(tab.url)}
+                  <button
+                    class="action extra"
+                    title="Sabitle"
+                    onclick={() => send({ type: 'toggle-pin', id: tab.id })}
+                  >
+                    <Icon name="pin" size={13} />
+                  </button>
+                {/if}
+                {#if tab.live && tab.id !== activeTabId}
+                  <button
+                    class="action extra"
+                    title="Bellekten çıkar"
+                    onclick={() => send({ type: 'discard-tab', id: tab.id })}
+                  >
+                    <Icon name="moon" size={13} />
+                  </button>
+                {/if}
                 <button
-                  class="action extra"
-                  title="Bellekten çıkar"
-                  onclick={() => send({ type: 'discard-tab', id: tab.id })}
+                  class="action"
+                  title="Kapat"
+                  onclick={() => send({ type: 'close-tab', id: tab.id })}
                 >
-                  <Icon name="moon" size={13} />
+                  <Icon name="close" size={12} />
                 </button>
-              {/if}
-              <button
-                class="action"
-                title="Kapat"
-                onclick={() => send({ type: 'close-tab', id: tab.id })}
-              >
-                <Icon name="close" size={12} />
-              </button>
-            </span>
+              </span>
+            </Capsule>
           {/if}
         </li>
       {/each}
@@ -263,7 +268,7 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    padding: 0 8px 8px;
+    padding: 0 var(--panel-row-inset) 8px;
     overflow-x: clip;
   }
 
@@ -406,7 +411,6 @@
     align-items: center;
     height: var(--chrome-control-size);
     border-radius: 999px;
-    transition: background var(--transition);
   }
 
   .tab + .tab {
@@ -417,20 +421,6 @@
     margin-top: 6px;
   }
 
-  .panel:not(.collapsed) .tab:hover {
-    background: var(--well-hover);
-  }
-
-  .panel:not(.collapsed) .tab.active {
-    background: var(--surface-active);
-    box-shadow: var(--shadow);
-  }
-
-  .panel:not(.collapsed) .tabs.single .tab.active {
-    background: var(--surface);
-  }
-
-  :global([data-material='glass']) .panel:not(.collapsed) .tab.active,
   :global([data-material='glass']) .favorite.active .tile {
     box-shadow: var(--shadow), var(--rim);
   }

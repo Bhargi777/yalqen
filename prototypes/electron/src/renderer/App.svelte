@@ -139,6 +139,7 @@
         minWidth={MIN_WIDTH}
         maxWidth={MAX_WIDTH}
         {topInset}
+        rowInset={PANEL_ROW_INSET}
       />
     {/if}
     {#if browser.toolbarVisible}
