@@ -1,5 +1,5 @@
-import type { WebContents } from 'electron';
-import type { DeviceId } from '../shared/types.js';
+import type { Rectangle, WebContents } from 'electron';
+import type { DeviceFrame, DeviceId } from '../shared/types.js';
 
 export interface Device {
   id: DeviceId;
@@ -42,6 +42,31 @@ export function deviceSize(emulation: Emulation): { width: number; height: numbe
   return emulation.landscape
     ? { width: device.height, height: device.width }
     : { width: device.width, height: device.height };
+}
+
+const DEVICE_MARGIN = 32;
+const DEVICE_LABEL_HEIGHT = 24;
+const MIN_DEVICE_SCALE = 0.25;
+
+export function fitDevice(emulation: Emulation, page: Rectangle): DeviceFrame {
+  const device = findDevice(emulation.deviceId);
+  const { width, height } = deviceSize(emulation);
+  const availableWidth = page.width - 2 * DEVICE_MARGIN;
+  const availableHeight = page.height - 2 * DEVICE_MARGIN - DEVICE_LABEL_HEIGHT;
+  const scale = Math.max(MIN_DEVICE_SCALE, Math.min(1, availableWidth / width, availableHeight / height));
+  const viewWidth = Math.round(width * scale);
+  const viewHeight = Math.round(height * scale);
+  return {
+    label: device.label,
+    width,
+    height,
+    scale,
+    cornerRadius: device.cornerRadius,
+    x: Math.round((page.width - viewWidth) / 2),
+    y: DEVICE_LABEL_HEIGHT + Math.round((page.height - DEVICE_LABEL_HEIGHT - viewHeight) / 2),
+    viewWidth,
+    viewHeight,
+  };
 }
 
 const PROTOCOL_VERSION = '1.3';

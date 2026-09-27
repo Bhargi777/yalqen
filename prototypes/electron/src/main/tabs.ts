@@ -1,32 +1,45 @@
 import { randomUUID } from 'node:crypto';
-import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
-import { BOOKMARKS_URL, DOWNLOADS_URL, HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, SETTINGS_URL, type CommandPage, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
-import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
-import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
+import {
+  WebContentsView,
+  type BaseWindow,
+  type ContextMenuParams,
+  type Rectangle,
+  type Session,
+  type WebContents,
+  type WebPreferences,
+} from 'electron';
+import {
+  BOOKMARKS_URL,
+  DOWNLOADS_URL,
+  HISTORY_URL,
+  NEW_TAB_URL,
+  PageChannel,
+  SETTINGS_URL,
+  type BrowserState,
+  type CommandPage,
+  type DeviceFrame,
+  type DeviceId,
+  type FindResult,
+  type NewTabCenter,
+  type TabId,
+  type TabSnapshot,
+} from '../shared/types.js';
 import { PROCEED_URL } from './certificates.js';
+import { applyDeviceMetrics, applyEmulation, clearEmulation, fitDevice, type Emulation } from './devices.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
-import type { WebPreferences } from 'electron';
-import { PROCEED_HTTP_URL } from './https-only.js';
-import { canViewSource } from './page-export.js';
-import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { isSameVisit } from './history.js';
+import { PROCEED_HTTP_URL } from './https-only.js';
+import { internalNavigation, isAllowedFrom, type InternalNavigation } from './internal-navigation.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
+import { canViewSource } from './page-export.js';
+import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
+import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
+import { withoutHash } from './url.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
-const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
-const NEW_TAB_FORGET_URL = `${NEW_TAB_URL}forget`;
-const NEW_TAB_CENTER_CHANNEL = 'yalqen:newtab-center';
-
-interface NewTabCenter {
-  offset: number;
-  width: number | null;
-}
 const NEW_TAB_TITLE = 'Yeni sekme';
-const DEVICE_MARGIN = 32;
-const DEVICE_LABEL_HEIGHT = 24;
-const MIN_DEVICE_SCALE = 0.25;
 
 interface Tab {
   id: TabId;
@@ -92,23 +105,6 @@ export interface RecentPage {
   url: string;
   title: string;
   faviconUrl: string | null;
-}
-
-const COMMAND_PAGES = new Set<string>(['downloads', 'bookmarks'] satisfies CommandPage[]);
-
-function pageCommand(url: string): { page: CommandPage; name: string; params: URLSearchParams } | null {
-  if (!url.startsWith(`${INTERNAL_SCHEME}://`)) return null;
-  try {
-    const parsed = new URL(url);
-    if (!COMMAND_PAGES.has(parsed.host) || parsed.pathname === '/') return null;
-    return { page: parsed.host as CommandPage, name: parsed.pathname.slice(1), params: parsed.searchParams };
-  } catch {
-    return null;
-  }
-}
-
-function withoutHash(url: string): string {
-  return url.split('#')[0];
 }
 
 export type DetachedTab = Tab;
@@ -200,7 +196,7 @@ export class TabManager {
     if (tab.url !== NEW_TAB_URL) return;
     const contents = tab.view?.webContents;
     if (!contents || contents.isDestroyed()) return;
-    contents.send(NEW_TAB_CENTER_CHANNEL, this.newTabCenter(tab));
+    contents.send(PageChannel.newTabCenter, this.newTabCenter(tab));
   }
 
   toggleEmulation(deviceId: DeviceId): void {
@@ -745,7 +741,7 @@ export class TabManager {
       view.setBounds(this.pageBounds);
       return null;
     }
-    const frame = this.fitDevice(tab.emulation);
+    const frame = fitDevice(tab.emulation, this.pageBounds);
     view.setBorderRadius(Math.round(frame.cornerRadius * frame.scale));
     view.setBounds({
       x: this.pageBounds.x + frame.x,
@@ -759,31 +755,9 @@ export class TabManager {
     });
   }
 
-  private fitDevice(emulation: Emulation): DeviceFrame {
-    const device = findDevice(emulation.deviceId);
-    const { width, height } = deviceSize(emulation);
-    const page = this.pageBounds;
-    const availableWidth = page.width - 2 * DEVICE_MARGIN;
-    const availableHeight = page.height - 2 * DEVICE_MARGIN - DEVICE_LABEL_HEIGHT;
-    const scale = Math.max(MIN_DEVICE_SCALE, Math.min(1, availableWidth / width, availableHeight / height));
-    const viewWidth = Math.round(width * scale);
-    const viewHeight = Math.round(height * scale);
-    return {
-      label: device.label,
-      width,
-      height,
-      scale,
-      cornerRadius: device.cornerRadius,
-      x: Math.round((page.width - viewWidth) / 2),
-      y: DEVICE_LABEL_HEIGHT + Math.round((page.height - DEVICE_LABEL_HEIGHT - viewHeight) / 2),
-      viewWidth,
-      viewHeight,
-    };
-  }
-
   private deviceFrame(): DeviceFrame | null {
     const emulation = this.active()?.emulation;
-    return emulation ? this.fitDevice(emulation) : null;
+    return emulation ? fitDevice(emulation, this.pageBounds) : null;
   }
 
   private attachListeners(tab: Tab, view: WebContentsView): void {
@@ -804,12 +778,12 @@ export class TabManager {
     });
 
     listen('ipc-message', (event, channel, direction) => {
-      if (channel !== 'yalqen:page-swipe' || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
+      if (channel !== PageChannel.swipe || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
       if (direction === 'back' || direction === 'forward') this.options.onPageSwipe(direction);
     });
 
     listen('ipc-message-sync', (event, channel) => {
-      if (channel !== NEW_TAB_CENTER_CHANNEL) return;
+      if (channel !== PageChannel.newTabCenter) return;
       event.returnValue = event.senderFrame === contents.mainFrame ? this.newTabCenter(tab) : { offset: 0, width: null };
     });
 
@@ -832,61 +806,17 @@ export class TabManager {
     listen('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
 
     listen('will-navigate', (event) => {
-      if (event.url.startsWith(PROCEED_HTTP_URL)) {
+      const navigation = internalNavigation(event.url);
+      if (navigation) {
         event.preventDefault();
-        const http = this.options.onProceedHttp(event.url.slice(PROCEED_HTTP_URL.length), contents.getURL());
-        if (http) {
-          tab.upgrade = null;
-          void contents.loadURL(http);
-        }
+        if (isAllowedFrom(navigation, contents.getURL())) this.runInternalNavigation(tab, contents, navigation);
         return;
       }
       const upgraded = this.options.upgradeHttp(event.url);
-      if (upgraded) {
-        event.preventDefault();
-        tab.upgrade = { https: upgraded, http: event.url };
-        void contents.loadURL(upgraded);
-        return;
-      }
-      if (event.url.startsWith(PROCEED_URL)) {
-        event.preventDefault();
-        if (this.options.onCertificateProceed(event.url.slice(PROCEED_URL.length), contents.getURL())) {
-          contents.reload();
-        }
-        return;
-      }
-      const search = event.url === NEW_TAB_SEARCH_URL || event.url.startsWith(`${NEW_TAB_SEARCH_URL}?`);
-      const forget = event.url.startsWith(`${NEW_TAB_FORGET_URL}?`);
-      const command = pageCommand(event.url);
-      if (command) {
-        event.preventDefault();
-        if (!contents.getURL().startsWith(`${INTERNAL_SCHEME}://${command.page}/`)) return;
-        this.options.onPageCommand(command.page, command.name, command.params);
-        return;
-      }
-      const historyDelete = event.url.startsWith(`${HISTORY_URL}delete?`);
-      const historyClear = event.url === `${HISTORY_URL}clear`;
-      if (historyDelete || historyClear) {
-        event.preventDefault();
-        if (!contents.getURL().startsWith(HISTORY_URL)) return;
-        if (historyDelete) {
-          this.options.onHistoryDelete(new URL(event.url).searchParams.get('id') ?? '');
-          contents.reload();
-        } else {
-          this.options.onHistoryClear();
-          void contents.loadURL(HISTORY_URL);
-        }
-        return;
-      }
-      if (!search && !forget) return;
+      if (!upgraded) return;
       event.preventDefault();
-      if (contents.getURL() !== NEW_TAB_URL) return;
-      if (search) {
-        this.options.onNewTabSearch(new URL(event.url).searchParams.get('q') ?? '');
-      } else {
-        this.forgetClosed(new URL(event.url).searchParams.get('url') ?? '');
-        contents.reload();
-      }
+      tab.upgrade = { https: upgraded, http: event.url };
+      void contents.loadURL(upgraded);
     });
     listen('input-event', (_event, input) => {
       if (isActivation(input.type)) tab.activatedAt = Date.now();
@@ -1002,6 +932,39 @@ export class TabManager {
         this.changed(true);
       });
     });
+  }
+
+  private runInternalNavigation(tab: Tab, contents: WebContents, navigation: InternalNavigation): void {
+    switch (navigation.type) {
+      case 'proceed-http': {
+        const http = this.options.onProceedHttp(navigation.token, contents.getURL());
+        if (!http) return;
+        tab.upgrade = null;
+        void contents.loadURL(http);
+        return;
+      }
+      case 'proceed-certificate':
+        if (this.options.onCertificateProceed(navigation.token, contents.getURL())) contents.reload();
+        return;
+      case 'page-command':
+        this.options.onPageCommand(navigation.page, navigation.name, navigation.params);
+        return;
+      case 'history-delete':
+        this.options.onHistoryDelete(navigation.id);
+        contents.reload();
+        return;
+      case 'history-clear':
+        this.options.onHistoryClear();
+        void contents.loadURL(HISTORY_URL);
+        return;
+      case 'new-tab-search':
+        this.options.onNewTabSearch(navigation.query);
+        return;
+      case 'new-tab-forget':
+        this.forgetClosed(navigation.url);
+        contents.reload();
+        return;
+    }
   }
 
   private maybeFreeze(tab: Tab): void {
