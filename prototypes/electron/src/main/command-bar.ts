@@ -32,10 +32,6 @@ export class CommandBar {
     ipcMain.on(CommandBarChannel.action, this.onAction);
   }
 
-  warm(): void {
-    this.ensureView();
-  }
-
   open(host: CommandBarHost, open: CommandBarOpen): void {
     const view = this.ensureView();
     if (this.host && this.host.window !== host.window) this.close();

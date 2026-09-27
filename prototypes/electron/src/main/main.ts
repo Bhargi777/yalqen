@@ -48,7 +48,6 @@ import { ZoomStore } from './zoom.js';
 const DAILY_PARTITION = 'persist:daily';
 const PRIVATE_PARTITION = 'private';
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
-const COMMAND_BAR_WARM_DELAY_MS = 2000;
 
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
@@ -634,7 +633,6 @@ function startBrowser(): void {
   };
   if (restored.length > 0 && first) openExternal([first, ...rest]);
   else if (rest.length > 0) openExternal(rest);
-  setTimeout(() => commandBar.warm(), COMMAND_BAR_WARM_DELAY_MS);
 }
 
 app.setAboutPanelOptions({
