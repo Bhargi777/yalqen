@@ -6,21 +6,42 @@ const NEW_TAB_CENTER_CHANNEL = 'yalqen:newtab-center';
 const THRESHOLD = 90;
 const GAP_MS = 350;
 const COOLDOWN_MS = 650;
+const PENDING_CENTER_MS = 250;
 
 let distance = 0;
 let lastAt = 0;
 let navigatedAt = 0;
 
 if (location.href === 'yalqen://newtab/' && window === window.top) {
+  type NewTabCenter = { offset: number; width: number | null };
   let centerOffset = 0;
+  let pending: NewTabCenter | null = null;
+  let pendingTimer = 0;
   const applyCenterOffset = () => {
     document.documentElement?.style.setProperty('--newtab-center-offset', `${centerOffset}px`);
   };
-  ipcRenderer.on(NEW_TAB_CENTER_CHANNEL, (_event, offset: number) => {
-    if (!Number.isFinite(offset)) return;
+  const apply = (offset: number) => {
+    pending = null;
+    clearTimeout(pendingTimer);
     centerOffset = offset;
     applyCenterOffset();
+  };
+  // An offset meant for a new page width waits for the matching resize, so both land in the same frame.
+  const receive = (center: NewTabCenter | undefined) => {
+    if (!center || !Number.isFinite(center.offset)) return;
+    if (center.width === null || Math.abs(window.innerWidth - center.width) < 1) {
+      apply(center.offset);
+      return;
+    }
+    pending = center;
+    clearTimeout(pendingTimer);
+    pendingTimer = window.setTimeout(() => apply(center.offset), PENDING_CENTER_MS);
+  };
+  window.addEventListener('resize', () => {
+    if (pending) receive(pending);
   });
+  ipcRenderer.on(NEW_TAB_CENTER_CHANNEL, (_event, center: NewTabCenter) => receive(center));
+  receive(ipcRenderer.sendSync(NEW_TAB_CENTER_CHANNEL));
   window.addEventListener('DOMContentLoaded', applyCenterOffset, { once: true });
 }
 

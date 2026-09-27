@@ -18,6 +18,11 @@ const MAX_CLOSED_TABS = 20;
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_FORGET_URL = `${NEW_TAB_URL}forget`;
 const NEW_TAB_CENTER_CHANNEL = 'yalqen:newtab-center';
+
+interface NewTabCenter {
+  offset: number;
+  width: number | null;
+}
 const NEW_TAB_TITLE = 'Yeni sekme';
 const DEVICE_MARGIN = 32;
 const DEVICE_LABEL_HEIGHT = 24;
@@ -168,31 +173,34 @@ export class TabManager {
     };
   }
 
-  setPageBounds(bounds: Rectangle): void {
-    if (
-      bounds.x === this.pageBounds.x && bounds.y === this.pageBounds.y &&
-      bounds.width === this.pageBounds.width && bounds.height === this.pageBounds.height
-    ) return;
+  setPageLayout(bounds: Rectangle, newTabCenterOffset: number): void {
+    const boundsChanged =
+      bounds.x !== this.pageBounds.x || bounds.y !== this.pageBounds.y ||
+      bounds.width !== this.pageBounds.width || bounds.height !== this.pageBounds.height;
+    if (!boundsChanged && newTabCenterOffset === this.newTabCenterOffset) return;
     this.pageBounds = bounds;
+    this.newTabCenterOffset = newTabCenterOffset;
     const tab = this.active();
-    if (!tab?.view) return;
+    if (!tab) return;
+    // The new tab applies the offset on its own resize, so it has to arrive before the bounds do.
+    this.syncNewTabCenter(tab);
+    if (!boundsChanged || !tab.view) return;
     this.layoutView(tab, tab.view, true);
     if (tab.emulation) this.changed();
   }
 
-  setNewTabCenterOffset(offset: number): void {
-    if (offset === this.newTabCenterOffset) return;
-    this.newTabCenterOffset = offset;
-    const tab = this.active();
-    if (tab) this.syncNewTabCenter(tab);
+  private newTabCenter(tab: Tab): NewTabCenter {
+    const contents = tab.view?.webContents;
+    const zoom = contents && !contents.isDestroyed() ? contents.getZoomFactor() : 1;
+    if (tab.emulation) return { offset: 0, width: null };
+    return { offset: this.newTabCenterOffset / zoom, width: this.pageBounds.width / zoom };
   }
 
   private syncNewTabCenter(tab: Tab): void {
     if (tab.url !== NEW_TAB_URL) return;
     const contents = tab.view?.webContents;
     if (!contents || contents.isDestroyed()) return;
-    const zoom = contents.getZoomFactor();
-    contents.send(NEW_TAB_CENTER_CHANNEL, tab.emulation ? 0 : this.newTabCenterOffset / zoom);
+    contents.send(NEW_TAB_CENTER_CHANNEL, this.newTabCenter(tab));
   }
 
   toggleEmulation(deviceId: DeviceId): void {
@@ -252,9 +260,9 @@ export class TabManager {
     }
     const view = this.ensureLive(next);
     this.unfreeze(next);
+    this.syncNewTabCenter(next);
     this.layoutView(next, view);
     this.options.window.contentView.addChildView(view);
-    this.syncNewTabCenter(next);
     if (next.url !== 'about:blank') view.webContents.focus();
     this.changed(true);
   }
@@ -798,6 +806,11 @@ export class TabManager {
     listen('ipc-message', (event, channel, direction) => {
       if (channel !== 'yalqen:page-swipe' || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
       if (direction === 'back' || direction === 'forward') this.options.onPageSwipe(direction);
+    });
+
+    listen('ipc-message-sync', (event, channel) => {
+      if (channel !== NEW_TAB_CENTER_CHANNEL) return;
+      event.returnValue = event.senderFrame === contents.mainFrame ? this.newTabCenter(tab) : { offset: 0, width: null };
     });
 
     listen('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));

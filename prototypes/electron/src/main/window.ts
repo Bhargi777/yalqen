@@ -37,6 +37,7 @@ import type { ZoomStore } from './zoom.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
+const REVEAL_FALLBACK_MS = 1000;
 
 export interface AppContext {
   icon: string;
@@ -95,6 +96,7 @@ export class YalqenWindow {
     newTabCenterOffset: 0,
   };
   private glassApplied = glassAvailable;
+  private revealed = false;
   private htmlFullScreenTabId: string | null = null;
   private pushQueued = false;
   private findTarget: { tabId: string; url: string } | null = null;
@@ -116,6 +118,7 @@ export class YalqenWindow {
       icon: app.icon,
       titleBarStyle: 'hiddenInset',
       transparent: glassAvailable,
+      show: false,
     });
 
     this.ui = new WebContentsView({
@@ -271,6 +274,7 @@ export class YalqenWindow {
     });
     this.window.on('leave-full-screen', onFullScreenChange);
     this.applyLayout();
+    setTimeout(this.reveal, REVEAL_FALLBACK_MS);
 
     nativeTheme.on('updated', this.pushState);
     this.ui.webContents.once('did-finish-load', () => {
@@ -325,7 +329,7 @@ export class YalqenWindow {
   }
 
   focus(): void {
-    if (!this.window.isDestroyed()) this.window.focus();
+    if (this.revealed && !this.window.isDestroyed()) this.window.focus();
   }
 
   private async sendWallpaper(): Promise<void> {
@@ -362,7 +366,16 @@ export class YalqenWindow {
   setLayout(layout: ChromeLayout): void {
     this.layout = layout;
     this.applyLayout();
+    this.reveal();
   }
+
+  // The window stays hidden until the chrome reports its real layout, so the page never
+  // appears at the default bounds first and then jumps.
+  private reveal = (): void => {
+    if (this.revealed || this.window.isDestroyed()) return;
+    this.revealed = true;
+    this.window.show();
+  };
 
   openAddress(): void {
     const url = this.tabs.activeUrl;
@@ -621,8 +634,7 @@ export class YalqenWindow {
     this.ui.setBounds({ x: 0, y: 0, width, height });
     this.commandBar.fitWindow(this.window);
     const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
-    this.tabs.setPageBounds(bounds);
-    this.tabs.setNewTabCenterOffset(this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
+    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
     this.tabs.setPageRadius(radius);
     this.pageArea = bounds;
     this.findBar.relayout(this.window);

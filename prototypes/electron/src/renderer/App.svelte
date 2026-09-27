@@ -36,6 +36,7 @@
     downloads: { active: 0, progress: null },
   });
   let width = $state(DEFAULT_WIDTH);
+  let stateReceived = $state(false);
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
@@ -91,6 +92,7 @@
   });
 
   $effect(() => {
+    if (!stateReceived) return;
     window.yalqen.setLayout({
       panelWidth: pagePanelWidth,
       panelSide: side,
@@ -113,9 +115,13 @@
   onMount(() => {
     void window.yalqen.getState().then((next) => {
       browser = next;
+      stateReceived = true;
       requestAnimationFrame(() => (animateModeChanges = true));
     });
-    const offState = window.yalqen.onState((next) => (browser = next));
+    const offState = window.yalqen.onState((next) => {
+      browser = next;
+      stateReceived = true;
+    });
     const offWallpaper = window.yalqen.onWallpaper((wallpaper) => {
       const root = document.documentElement;
       root.toggleAttribute('data-wallpaper', wallpaper !== null);
