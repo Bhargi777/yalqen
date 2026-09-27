@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { indexHistory, type HistoryIndex } from './suggestions.js';
 
 const MAX_VISITS = 5000;
 
@@ -16,6 +17,7 @@ export class HistoryStore {
   private readonly file: string;
   private entries: HistoryEntry[] = [];
   private timer: NodeJS.Timeout | null = null;
+  private cachedIndex: HistoryIndex | null = null;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'history.json');
@@ -36,12 +38,17 @@ export class HistoryStore {
     );
   }
 
+  index(): HistoryIndex {
+    this.cachedIndex ??= indexHistory(this.entries);
+    return this.cachedIndex;
+  }
+
   visit(url: string, title: string): string | null {
     if (!isWebUrl(url)) return null;
     const entry = { id: randomUUID(), url, title: title || url, visitedAt: Date.now() };
     this.entries.unshift(entry);
     if (this.entries.length > MAX_VISITS) this.entries.length = MAX_VISITS;
-    this.scheduleSave();
+    this.changed();
     return entry.id;
   }
 
@@ -50,7 +57,7 @@ export class HistoryStore {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry || entry.title === title) return;
     entry.title = title;
-    this.scheduleSave();
+    this.changed();
   }
 
   setFavicon(id: string | null, faviconUrl: string): void {
@@ -58,23 +65,25 @@ export class HistoryStore {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry || entry.faviconUrl === faviconUrl) return;
     entry.faviconUrl = faviconUrl;
-    this.scheduleSave();
+    this.changed();
   }
 
   remove(id: string): void {
     const index = this.entries.findIndex((entry) => entry.id === id);
     if (index < 0) return;
     this.entries.splice(index, 1);
-    this.scheduleSave();
+    this.changed();
   }
 
   clear(): void {
     this.entries = [];
+    this.cachedIndex = null;
     this.saveNow();
   }
 
   clearSince(since: number): void {
     this.entries = since > 0 ? this.entries.filter((entry) => entry.visitedAt < since) : [];
+    this.cachedIndex = null;
     this.saveNow();
   }
 
@@ -89,6 +98,11 @@ export class HistoryStore {
     } catch (error) {
       console.warn('[history] could not save visits:', error);
     }
+  }
+
+  private changed(): void {
+    this.cachedIndex = null;
+    this.scheduleSave();
   }
 
   private scheduleSave(): void {

@@ -50,3 +50,24 @@ test('history page escapes page titles, URLs, and search terms', () => {
   assert.ok(html.includes('value="&#34; autofocus onfocus=&#34;alert(1)"'));
   assert.ok(!html.includes('<script>'));
 });
+
+test('the suggestion index follows every change to the visits', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
+  try {
+    const store = new HistoryStore(directory);
+    const pages = () => store.index().pages.map(({ url, title, visits }) => [url, title, visits]);
+    const first = store.visit('https://example.com/', 'Örnek');
+    assert.equal(store.index(), store.index());
+    store.visit('https://example.com/', 'Örnek');
+    assert.deepEqual(pages(), [['https://example.com/', 'Örnek', 2]]);
+    store.setTitle(first, 'Başka');
+    store.setFavicon(first, 'https://example.com/favicon.ico');
+    assert.equal(store.index().favicons.get('example.com'), 'https://example.com/favicon.ico');
+    store.remove(first);
+    assert.deepEqual(pages(), [['https://example.com/', 'Örnek', 1]]);
+    store.clear();
+    assert.deepEqual(pages(), []);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});

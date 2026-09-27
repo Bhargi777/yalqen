@@ -5,7 +5,7 @@ import internalPages from '../dist/main/internal-pages.js';
 import suggestionModule from '../dist/main/suggestions.js';
 
 const { serveInternalPages } = internalPages;
-const { suggest } = suggestionModule;
+const { indexHistory, suggest } = suggestionModule;
 const page = (name) => path.resolve('src/renderer/public', name);
 
 test('the new tab serves matching local suggestions and its script', async () => {
@@ -27,7 +27,7 @@ test('the new tab serves matching local suggestions and its script', async () =>
     (query) => suggest(query, {
       tabs: [],
       bookmarks: [{ title: 'GitHub', url: 'https://github.com/' }],
-      history: [{ title: 'GitLab', url: 'https://gitlab.com/', visitedAt: 1 }],
+      history: indexHistory([{ title: 'GitLab', url: 'https://gitlab.com/', visitedAt: 1 }]),
     }),
   );
 

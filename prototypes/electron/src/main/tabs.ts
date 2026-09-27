@@ -543,6 +543,10 @@ export class TabManager {
     return this.tabs.some((tab) => tab.view?.webContents === contents);
   }
 
+  suggestionTabs(): { id: TabId; title: string; url: string }[] {
+    return this.tabs.filter((tab) => tab.id !== this.activeId).map(({ id, title, url }) => ({ id, title, url }));
+  }
+
   get pinnedPages(): RecentPage[] {
     return this.tabs.flatMap((tab) =>
       tab.pinnedUrl ? [{ url: tab.pinnedUrl, title: tab.title, faviconUrl: tab.faviconUrl }] : [],

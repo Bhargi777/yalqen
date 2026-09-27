@@ -31,7 +31,7 @@ import { buildSearchUrl, type SearchEngine } from './search.js';
 import type { SettingsStore } from './settings.js';
 import type { SettingsWindow } from './settings-window.js';
 import { siteInfoTemplate } from './site-info.js';
-import { suggest } from './suggestions.js';
+import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { TabManager, type DetachedTab } from './tabs.js';
 import { resolveInput } from './url.js';
 import type { ZoomStore } from './zoom.js';
@@ -149,14 +149,13 @@ export class YalqenWindow {
       },
       onInput: (input) => {
         this.preconnector.typed(input, app.searchEngine());
-        const open = this.tabs.state();
         this.commandBar.showSuggestions(
           this.window,
           input,
           suggest(input, {
-            tabs: open.tabs.filter((tab) => tab.id !== open.activeTabId),
+            tabs: this.tabs.suggestionTabs(),
             bookmarks: app.bookmarks.bookmarks(),
-            history: this.tabs.activeIsPrivate ? [] : app.history.list(),
+            history: this.tabs.activeIsPrivate ? EMPTY_HISTORY_INDEX : app.history.index(),
           }),
         );
       },
@@ -370,6 +369,7 @@ export class YalqenWindow {
       mode: 'navigate',
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
     });
+    if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
 
   openFind(forward?: boolean): void {

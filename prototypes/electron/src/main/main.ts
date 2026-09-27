@@ -40,7 +40,7 @@ import { SessionStore, type SavedSession, type SavedTab } from './persistence.js
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
 import { SettingsWindow } from './settings-window.js';
-import { suggest } from './suggestions.js';
+import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
 import { ZoomStore } from './zoom.js';
@@ -493,7 +493,7 @@ function startBrowser(): void {
       (query) => suggest(query, {
         tabs: [],
         bookmarks: bookmarks.bookmarks(),
-        history: browsing === privateBrowsing ? [] : history.list(),
+        history: browsing === privateBrowsing ? EMPTY_HISTORY_INDEX : history.index(),
       }),
     );
   }

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import suggestions from '../dist/main/suggestions.js';
 
-const { MAX_SUGGESTIONS, suggest } = suggestions;
+const { MAX_SUGGESTIONS, indexHistory, suggest: suggestFrom } = suggestions;
+
+const suggest = (input, { history, ...rest }) => suggestFrom(input, { ...rest, history: indexHistory(history) });
 
 const sources = {
   tabs: [{ id: 't1', title: 'GitHub', url: 'https://github.com/' }],
