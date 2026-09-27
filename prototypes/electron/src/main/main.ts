@@ -4,7 +4,6 @@ import path from 'node:path';
 import { BaseWindow, Menu, app, dialog, ipcMain, nativeTheme, session, shell } from 'electron';
 import {
   BOOKMARKS_URL,
-  DOWNLOADS_URL,
   HISTORY_URL,
   NEW_TAB_URL,
   IpcChannel,
@@ -16,6 +15,7 @@ import {
 import { AdBlocker } from './adblock.js';
 import { BookmarkStore } from './bookmarks.js';
 import { CertificateExceptions } from './certificates.js';
+import { ChangeFeed } from './change-feed.js';
 import { clearSince, sanitizeClearRequest } from './clear-data.js';
 import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
@@ -230,6 +230,7 @@ function startBrowser(): void {
   const reservedPaths = new Set<string>();
   let downloadsStateTimer: NodeJS.Timeout | null = null;
   let downloadsPageTimer: NodeJS.Timeout | null = null;
+  const downloadChanges = new ChangeFeed();
   const downloadsChanged = () => {
     downloadsStateTimer ??= setTimeout(() => {
       downloadsStateTimer = null;
@@ -237,8 +238,8 @@ function startBrowser(): void {
     }, 250);
     downloadsPageTimer ??= setTimeout(() => {
       downloadsPageTimer = null;
-      reloadPages(DOWNLOADS_URL);
-    }, 1000);
+      downloadChanges.notify();
+    }, 500);
   };
   const withDownload = (id: string, run: (entry: NonNullable<ReturnType<DownloadStore['get']>>) => void) => {
     const entry = downloads.get(id);
@@ -483,7 +484,7 @@ function startBrowser(): void {
       () => recentPages(closedTabs),
       () => [...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values()],
       (query) => history.list(query),
-      () => downloads.list(),
+      { list: () => downloads.list(), changes: downloadChanges },
       (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
       () => {
         const showWelcome = !settings.get().welcomeCompleted;

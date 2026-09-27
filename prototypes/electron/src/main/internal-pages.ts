@@ -3,12 +3,15 @@ import path from 'node:path';
 import { protocol, type Session } from 'electron';
 import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
 import { renderBookmarks, type Bookmark, type BookmarkFolder } from './bookmarks.js';
+import type { ChangeFeed } from './change-feed.js';
 import { renderDownloads, type DownloadEntry } from './downloads.js';
 import type { HistoryEntry } from './history.js';
 import type { AddressSuggestion } from '../shared/types.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
+const DOWNLOADS_CSP =
+  "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'";
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
 const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
@@ -117,7 +120,7 @@ export function serveInternalPages(
   recent: () => RecentPage[],
   pinned: () => RecentPage[],
   visits: (query: string) => HistoryEntry[],
-  downloads: () => DownloadEntry[],
+  downloads: { list: () => DownloadEntry[]; changes: ChangeFeed },
   bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] },
   showWelcome: () => boolean,
   suggestions: (query: string) => AddressSuggestion[],
@@ -127,6 +130,7 @@ export function serveInternalPages(
   const newTabMark = fs.readFileSync(path.join(path.dirname(newTabFile), 'newtab-mark.png'));
   const historyPage = fs.readFileSync(historyFile, 'utf8');
   const downloadsPage = fs.readFileSync(downloadsFile, 'utf8');
+  const downloadsScript = fs.readFileSync(path.join(path.dirname(downloadsFile), 'downloads.js'), 'utf8');
   const bookmarksPage = fs.readFileSync(bookmarksFile, 'utf8');
   const htmlHeaders = {
     'content-type': 'text/html; charset=utf-8',
@@ -157,12 +161,24 @@ export function serveInternalPages(
         headers: htmlHeaders,
       });
     }
+    if (url.host === 'downloads' && url.pathname === '/downloads.js') {
+      return new Response(downloadsScript, {
+        headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    }
+    if (url.host === 'downloads' && url.pathname === '/changes') {
+      const since = Number(url.searchParams.get('since'));
+      return downloads.changes.next(since).then((version) =>
+        Response.json({ version, html: renderDownloads(downloads.list()) }, { headers: { 'cache-control': 'no-store' } }),
+      );
+    }
     if (url.host === 'downloads') {
       if (url.pathname !== '/') return new Response('Not found', { status: 404 });
-      return new Response(downloadsPage.replace(DOWNLOADS_MARKER, renderDownloads(downloads())), {
+      const list = `<div id="downloads" data-version="${downloads.changes.version}">${renderDownloads(downloads.list())}</div>`;
+      return new Response(downloadsPage.replace(DOWNLOADS_MARKER, list), {
         headers: {
           'content-type': 'text/html; charset=utf-8',
-          'content-security-policy': INTERNAL_CSP,
+          'content-security-policy': DOWNLOADS_CSP,
           'cache-control': 'no-store',
         },
       });
