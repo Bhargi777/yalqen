@@ -985,9 +985,17 @@ export class TabManager {
       failed(error);
       return;
     }
-    contents.debugger.sendCommand('Page.setWebLifecycleState', { state }).catch((error: unknown) => {
-      if (!contents.isDestroyed()) failed(error);
-    });
+    contents.debugger
+      .sendCommand('Page.setWebLifecycleState', { state })
+      .then(() => {
+        const settled = tab.frozen === (state === 'frozen');
+        if (settled && !tab.emulation && !contents.isDestroyed() && contents.debugger.isAttached()) {
+          contents.debugger.detach();
+        }
+      })
+      .catch((error: unknown) => {
+        if (!contents.isDestroyed()) failed(error);
+      });
   }
 
   private captureHistory(tab: Tab): SavedHistory | null {
