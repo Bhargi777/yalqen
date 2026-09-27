@@ -154,6 +154,7 @@
         downloads={browser.downloads}
         leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - shownWidth) : WINDOW_CONTROLS_END : 0}
         trailingInset={PAGE_INSET}
+        trailingWidth={MIN_WIDTH - 2 * PANEL_ROW_INSET}
         trailingOverhang={rightPanel ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET) : 0}
       />
     {:else}
