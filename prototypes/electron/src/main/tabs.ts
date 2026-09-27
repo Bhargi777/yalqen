@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type ContextMenuParams, type Rectangle, type Session, type WebContents } from 'electron';
 import { BOOKMARKS_URL, DOWNLOADS_URL, HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, type CommandPage, type BrowserState, type DeviceFrame, type DeviceId, type FindResult, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
-import type { SavedHistory, SavedTab, SavedWindow } from './persistence.js';
+import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { PROCEED_URL } from './certificates.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
 import type { WebPreferences } from 'electron';
@@ -1017,13 +1017,14 @@ export class TabManager {
   }
 
   private toSaved(tab: Tab): SavedTab {
+    const history = this.captureHistory(tab);
     return {
       id: tab.id,
       url: tab.url,
       title: tab.title,
       faviconUrl: tab.faviconUrl,
       pinnedUrl: tab.pinnedUrl,
-      history: this.captureHistory(tab),
+      history: history && trimHistory(history),
     };
   }
 

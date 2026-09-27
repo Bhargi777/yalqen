@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import persistence from '../dist/main/persistence.js';
 
-const { SessionStore } = persistence;
+const { SessionStore, trimHistory } = persistence;
 const tab = (url) => ({ id: 'tab', url, title: url, faviconUrl: null, pinnedUrl: null, history: null });
 const session = (url) => ({ version: 2, windows: [{ activeTabId: null, tabs: [tab(url)] }] });
 
@@ -76,3 +76,18 @@ async function waitFor(condition) {
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }
+
+test('saved navigation keeps a window of entries around the current page', () => {
+  const entries = Array.from({ length: 30 }, (_, i) => ({ url: `https://a.com/${i}`, title: String(i), pageState: '' }));
+  const middle = trimHistory({ entries, index: 20 });
+  assert.deepEqual(middle.entries.map((entry) => entry.title), ['14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26']);
+  assert.equal(middle.entries[middle.index].title, '20');
+  const start = trimHistory({ entries, index: 2 });
+  assert.equal(start.entries.length, 9);
+  assert.equal(start.entries[start.index].title, '2');
+  const end = trimHistory({ entries, index: 29 });
+  assert.equal(end.entries.length, 7);
+  assert.equal(end.entries[end.index].title, '29');
+  const short = trimHistory({ entries: entries.slice(0, 3), index: 1 });
+  assert.deepEqual(short, { entries: entries.slice(0, 3), index: 1 });
+});

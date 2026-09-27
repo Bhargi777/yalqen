@@ -9,6 +9,15 @@ export interface SavedHistory {
   index: number;
 }
 
+export const SAVED_ENTRIES_AROUND_ACTIVE = 6;
+
+export function trimHistory(history: SavedHistory, around = SAVED_ENTRIES_AROUND_ACTIVE): SavedHistory {
+  const index = Math.min(Math.max(history.index, 0), history.entries.length - 1);
+  const start = Math.max(0, index - around);
+  const end = Math.min(history.entries.length, index + around + 1);
+  return { entries: history.entries.slice(start, end), index: index - start };
+}
+
 export interface SavedTab {
   id: TabId;
   url: string;
