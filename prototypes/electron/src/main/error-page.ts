@@ -1,4 +1,6 @@
 import { NEW_TAB_URL } from '../shared/types.js';
+import { hostOf } from '../shared/hosts.js';
+import { escapeHtml } from './html.js';
 
 export const ERR_ABORTED = -3;
 
@@ -7,24 +9,13 @@ export interface ErrorText {
   message: string;
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host || url;
-  } catch {
-    return url;
-  }
-}
 
 export function isCertificateError(code: number): boolean {
   return code <= -200 && code > -300;
 }
 
 export function describeError(code: number, url: string): ErrorText {
-  const host = hostOf(url);
+  const host = hostOf(url) ?? url;
   switch (code) {
     case -106:
       return { title: 'İnternet bağlantısı yok', message: 'Ağ bağlantınızı kontrol edip yeniden deneyin.' };
@@ -58,7 +49,7 @@ export function describeError(code: number, url: string): ErrorText {
 export function describeHttpsOnly(url: string): ErrorText {
   return {
     title: 'Bu site güvenli bağlantıyı desteklemiyor',
-    message: `${hostOf(url)} HTTPS ile açılamadı. HTTP ile devam ederseniz bu sitedeki bilgileriniz şifrelenmeden gönderilir ve başkaları tarafından görülebilir.`,
+    message: `${hostOf(url) ?? url} HTTPS ile açılamadı. HTTP ile devam ederseniz bu sitedeki bilgileriniz şifrelenmeden gönderilir ve başkaları tarafından görülebilir.`,
   };
 }
 
@@ -71,7 +62,7 @@ export function errorPageHtml(
 ): string {
   const { title, message } = httpsOnly ? describeHttpsOnly(url) : describeError(code, url);
   const proceedLabel = httpsOnly ? 'HTTP ile devam et (güvenli değil)' : 'Yine de devam et (güvenli değil)';
-  return `<head><meta charset="utf-8"><title>${escapeHtml(hostOf(url))}</title><style>
+  return `<head><meta charset="utf-8"><title>${escapeHtml(hostOf(url) ?? url)}</title><style>
 :root { color-scheme: light dark; --text: #1a1b1e; --muted: #6b6e75; --accent: #f28c28; --page: #fff; }
 @media (prefers-color-scheme: dark) { :root { --text: #eceef1; --muted: #9a9ea6; --page: #1f2124; } }
 html, body { height: 100%; margin: 0; }

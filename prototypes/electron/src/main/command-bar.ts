@@ -1,4 +1,4 @@
-import { WebContentsView, ipcMain, type BaseWindow, type IpcMainEvent } from 'electron';
+import { ipcMain, type BaseWindow, type IpcMainEvent, type WebContentsView } from 'electron';
 import {
   CommandBarChannel,
   type AddressSuggestion,
@@ -6,6 +6,7 @@ import {
   type CommandBarOpen,
   type TabId,
 } from '../shared/types.js';
+import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 export interface CommandBarOptions {
   preload: string;
@@ -76,8 +77,7 @@ export class CommandBar {
 
   keepOnTop(window: BaseWindow): void {
     if (!this.view || !this.isOpenIn(window)) return;
-    const children = window.contentView.children;
-    if (children[children.length - 1] !== this.view) window.contentView.addChildView(this.view);
+    raiseToTop(window, this.view);
   }
 
   destroy(): void {
@@ -94,18 +94,8 @@ export class CommandBar {
 
   private ensureView(): WebContentsView {
     if (this.view) return this.view;
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: this.options.preload,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    view.setBackgroundColor('#00000000');
+    const view = createOverlayView(this.options.preload);
     const contents = view.webContents;
-    contents.on('will-navigate', (event) => event.preventDefault());
-    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
     this.view = view;
     void contents.loadFile(this.options.page).then(() => {
       this.ready = true;

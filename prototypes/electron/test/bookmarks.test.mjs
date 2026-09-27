@@ -116,3 +116,22 @@ test('the page escapes content and points its forms at commands', () => {
   assert.match(renderBookmarks([], [], ''), /Henüz yer imi yok/);
   assert.match(renderBookmarks([], [], 'zzz'), /Eşleşen yer imi bulunamadı/);
 });
+
+test('page commands edit the store and unknown ones are ignored', () => {
+  withDir((dir) => {
+    const store = new BookmarkStore(dir);
+    const bookmark = store.add('https://example.com/', 'Örnek');
+    const run = (command, params) => bookmarks.runBookmarksCommand(store, command, new URLSearchParams(params));
+    assert.equal(run('new-folder', { title: 'İş' }), true);
+    const [folder] = store.folders();
+    assert.equal(run('move', { id: bookmark.id, folder: folder.id }), true);
+    assert.equal(store.find('https://example.com/').folderId, folder.id);
+    assert.equal(run('rename', { id: bookmark.id, title: 'Yeni' }), true);
+    assert.equal(store.find('https://example.com/').title, 'Yeni');
+    assert.equal(run('explode', { id: bookmark.id }), false);
+    assert.equal(run('remove-folder', { id: folder.id }), true);
+    assert.equal(store.find('https://example.com/').folderId, null);
+    assert.equal(run('remove', { id: bookmark.id }), true);
+    assert.equal(store.has('https://example.com/'), false);
+  });
+});

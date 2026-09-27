@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
+import { displayHost } from '../shared/hosts.js';
 import { BOOKMARKS_URL } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
+import { escapeHtml } from './html.js';
 import { searchFieldMarkup } from './search-field-markup.js';
 
 export interface Bookmark {
@@ -150,6 +152,33 @@ export class BookmarkStore {
   }
 }
 
+export function runBookmarksCommand(store: BookmarkStore, command: string, params: URLSearchParams): boolean {
+  const id = params.get('id') ?? '';
+  const title = params.get('title') ?? '';
+  switch (command) {
+    case 'new-folder':
+      store.addFolder(title);
+      return true;
+    case 'rename':
+      store.rename(id, title);
+      return true;
+    case 'move':
+      store.move(id, params.get('folder') || null);
+      return true;
+    case 'remove':
+      store.remove(id);
+      return true;
+    case 'rename-folder':
+      store.renameFolder(id, title);
+      return true;
+    case 'remove-folder':
+      store.removeFolder(id);
+      return true;
+    default:
+      return false;
+  }
+}
+
 function menuTitle(title: string): string {
   return title.length > MENU_TITLE ? `${title.slice(0, MENU_TITLE - 1)}…` : title;
 }
@@ -184,17 +213,6 @@ export function bookmarksMenuTemplate(
   ];
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, '') || url;
-  } catch {
-    return url;
-  }
-}
 
 export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: readonly Bookmark[], query: string): string {
   const search = query.trim().slice(0, 200);
@@ -209,7 +227,7 @@ export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: r
   const row = (bookmark: Bookmark) => {
     const id = escapeHtml(bookmark.id);
     return (
-      `<li><a class="visit" href="${escapeHtml(bookmark.url)}"><strong>${escapeHtml(bookmark.title)}</strong><span>${escapeHtml(hostOf(bookmark.url))}</span></a>` +
+      `<li><a class="visit" href="${escapeHtml(bookmark.url)}"><strong>${escapeHtml(bookmark.title)}</strong><span>${escapeHtml(displayHost(bookmark.url))}</span></a>` +
       `<details><summary>Düzenle</summary>` +
       `<form action="${BOOKMARKS_URL}rename" method="get"><input type="hidden" name="id" value="${id}" /><input class="field" name="title" value="${escapeHtml(bookmark.title)}" aria-label="Ad" required /><button class="btn tonal">Kaydet</button></form>` +
       (folders.length > 0

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import type { AddressSuggestion, CommandBarAction } from '../shared/types';
+  import { displayHost } from '../shared/hosts';
   import Icon from './components/Icon.svelte';
   import SearchField from './components/ui/SearchField.svelte';
 
@@ -40,15 +41,8 @@
     window.yalqenCommand.send({ type: 'input', input: text });
   }
 
-  function hostOf(url: string): string {
-    try {
-      return new URL(url).host.replace(/^www\./, '') || url;
-    } catch {
-      return url;
-    }
-  }
 
-function onKeydown(event: KeyboardEvent): void {
+  function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
       finish({ type: 'dismiss' });
@@ -56,14 +50,14 @@ function onKeydown(event: KeyboardEvent): void {
       event.preventDefault();
       const step = event.key === 'ArrowDown' ? 1 : -1;
       selected = ((selected + 1 + step + suggestions.length + 1) % (suggestions.length + 1)) - 1;
+    }
   }
-}
 
-function onBackdropMouseDown(event: MouseEvent): void {
-  if (event.target instanceof HTMLElement && event.target.classList.contains('backdrop')) {
-    finish({ type: 'dismiss' });
+  function onBackdropMouseDown(event: MouseEvent): void {
+    if (event.target instanceof HTMLElement && event.target.classList.contains('backdrop')) {
+      finish({ type: 'dismiss' });
+    }
   }
-}
 
   onMount(() => {
     const offOpen = window.yalqenCommand.onOpen((open) => {
@@ -126,8 +120,8 @@ function onBackdropMouseDown(event: MouseEvent): void {
             onmousemove={() => (selected = index)}
           >
             <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>
-            <span class="title">{suggestion.title || hostOf(suggestion.url)}</span>
-            <span class="url">{suggestion.kind === 'tab' ? 'Sekmeye geç' : hostOf(suggestion.url)}</span>
+            <span class="title">{suggestion.title || displayHost(suggestion.url)}</span>
+            <span class="url">{suggestion.kind === 'tab' ? 'Sekmeye geç' : displayHost(suggestion.url)}</span>
           </li>
         {/each}
       </ul>

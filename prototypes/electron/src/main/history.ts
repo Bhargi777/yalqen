@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JsonFile } from './json-file.js';
 import { indexHistory, type HistoryIndex } from './suggestions.js';
+import { withoutHash } from './url.js';
 
 const MAX_VISITS = 5000;
 
@@ -100,7 +101,7 @@ export class HistoryStore {
 }
 
 export function isSameVisit(previousUrl: string, nextUrl: string): boolean {
-  return previousUrl.split('#')[0] === nextUrl.split('#')[0];
+  return withoutHash(previousUrl) === withoutHash(nextUrl);
 }
 
 function isWebUrl(url: string): boolean {

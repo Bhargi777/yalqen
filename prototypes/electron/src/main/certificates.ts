@@ -3,7 +3,7 @@ import { INTERNAL_SCHEME } from '../shared/types.js';
 
 export const PROCEED_URL = `${INTERNAL_SCHEME}://proceed/`;
 
-function hostOf(url: string): string | null {
+function httpsHost(url: string): string | null {
   try {
     const { protocol, host } = new URL(url);
     return protocol === 'https:' && host !== '' ? host : null;
@@ -23,17 +23,17 @@ export class CertificateExceptions {
   private readonly rejected = new Map<string, Rejected>();
 
   allows(url: string, fingerprint: string): boolean {
-    const host = hostOf(url);
+    const host = httpsHost(url);
     return host !== null && this.allowed.get(host) === fingerprint;
   }
 
   hasException(url: string): boolean {
-    const host = hostOf(url);
+    const host = httpsHost(url);
     return host !== null && this.allowed.has(host);
   }
 
   reject(url: string, fingerprint: string): string | null {
-    const host = hostOf(url);
+    const host = httpsHost(url);
     if (!host) return null;
     for (const [token, entry] of this.rejected) {
       if (entry.url === url) this.rejected.delete(token);
@@ -59,7 +59,7 @@ export class CertificateExceptions {
   }
 
   revoke(url: string): void {
-    const host = hostOf(url);
+    const host = httpsHost(url);
     if (host) this.allowed.delete(host);
   }
 }

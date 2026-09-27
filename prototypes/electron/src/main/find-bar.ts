@@ -1,5 +1,6 @@
-import { WebContentsView, ipcMain, type BaseWindow, type IpcMainEvent, type Rectangle } from 'electron';
+import { ipcMain, type BaseWindow, type IpcMainEvent, type WebContentsView, type Rectangle } from 'electron';
 import { FindBarChannel, type FindBarAction, type FindResult } from '../shared/types.js';
+import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 const WIDTH = 380;
 const HEIGHT = 60;
@@ -77,8 +78,7 @@ export class FindBar {
 
   keepOnTop(window: BaseWindow): void {
     if (!this.view || !this.isOpenIn(window)) return;
-    const children = window.contentView.children;
-    if (children[children.length - 1] !== this.view) window.contentView.addChildView(this.view);
+    raiseToTop(window, this.view);
   }
 
   destroy(): void {
@@ -95,18 +95,8 @@ export class FindBar {
 
   private ensureView(): WebContentsView {
     if (this.view) return this.view;
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: this.options.preload,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    view.setBackgroundColor('#00000000');
+    const view = createOverlayView(this.options.preload);
     const contents = view.webContents;
-    contents.on('will-navigate', (event) => event.preventDefault());
-    contents.setWindowOpenHandler(() => ({ action: 'deny' }));
     this.view = view;
     this.loaded = contents.loadFile(this.options.page).catch((error: unknown) => {
       console.warn('[find] could not load the find bar:', error);

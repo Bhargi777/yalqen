@@ -26,3 +26,7 @@ export function resolveInput(input: string, engine: SearchEngine): string {
 
   return buildSearchUrl(engine, text);
 }
+
+export function withoutHash(url: string): string {
+  return url.split('#')[0];
+}

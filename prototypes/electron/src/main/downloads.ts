@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
+import { hostOf } from '../shared/hosts.js';
 import { DOWNLOADS_URL, type DownloadsSummary } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
+import { escapeHtml } from './html.js';
 
 export type DownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted';
 
@@ -206,17 +208,6 @@ export function downloadsMenuTemplate(entries: readonly DownloadEntry[], actions
   ];
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host || url;
-  } catch {
-    return url;
-  }
-}
 
 export function renderDownloads(entries: readonly DownloadEntry[]): string {
   if (entries.length === 0) return '<p class="empty">Henüz indirilen bir dosya yok.</p>';
@@ -227,7 +218,7 @@ export function renderDownloads(entries: readonly DownloadEntry[]): string {
         .join('');
       return (
         `<li class="${entry.state}"><div class="file"><strong>${escapeHtml(entry.filename)}</strong>` +
-        `<span>${escapeHtml(downloadStatus(entry))} · ${escapeHtml(hostOf(entry.url))}</span></div>` +
+        `<span>${escapeHtml(downloadStatus(entry))} · ${escapeHtml(hostOf(entry.url) ?? entry.url)}</span></div>` +
         `<div class="commands">${commands}</div></li>`
       );
     })

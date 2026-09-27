@@ -1,3 +1,4 @@
+import { displayHost } from '../shared/hosts.js';
 import type { AddressSuggestion } from '../shared/types.js';
 
 export interface Visit {
@@ -33,13 +34,6 @@ export const EMPTY_HISTORY_INDEX: HistoryIndex = { pages: [], favicons: new Map(
 export const MAX_SUGGESTIONS = 6;
 const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { tab: 0, bookmark: 1, history: 2 };
 
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-}
 
 function bareUrl(url: string): string {
   return url.replace(/^[a-z][a-z\d+\-.]*:\/\/(www\.)?/i, '').toLocaleLowerCase('tr');
@@ -82,7 +76,7 @@ export function indexHistory(history: readonly Visit[]): HistoryIndex {
       });
     }
     if (!visit.faviconUrl) continue;
-    const host = hostOf(visit.url);
+    const host = displayHost(visit.url);
     if (host && !favicons.has(host)) favicons.set(host, visit.faviconUrl);
   }
   return { pages: [...pages.values()], favicons };
@@ -141,7 +135,7 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
     .slice(0, limit)
     .map(({ kind, title, url, tabId }) => {
       const suggestion: AddressSuggestion = tabId ? { kind, title, url, tabId } : { kind, title, url };
-      const faviconUrl = favicons.get(hostOf(url));
+      const faviconUrl = favicons.get(displayHost(url));
       if (faviconUrl) suggestion.faviconUrl = faviconUrl;
       return suggestion;
     });

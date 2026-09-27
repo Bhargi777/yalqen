@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
+import { hostOf } from '../shared/hosts.js';
 import { INTERNAL_SCHEME, type SecureDnsSetting } from '../shared/types.js';
 
 export const PROCEED_HTTP_URL = `${INTERNAL_SCHEME}://proceed-http/`;
@@ -35,13 +36,6 @@ export function httpsUpgrade(url: string): string | null {
   return parsed.toString();
 }
 
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return '';
-  }
-}
 
 export class HttpsOnly {
   private readonly allowed = new Set<string>();
@@ -50,7 +44,7 @@ export class HttpsOnly {
   constructor(private readonly enabled: () => boolean) {}
 
   upgrade(url: string): string | null {
-    if (!this.enabled() || this.allowed.has(hostOf(url))) return null;
+    if (!this.enabled() || this.allowed.has(hostOf(url) ?? '')) return null;
     return httpsUpgrade(url);
   }
 
