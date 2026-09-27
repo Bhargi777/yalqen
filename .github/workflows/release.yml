@@ -5,7 +5,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   mac:
@@ -41,11 +41,17 @@ jobs:
           printf '%s' "$APPLE_API_KEY_P8" > "$key"
           echo "APPLE_API_KEY=$key" >> "$GITHUB_ENV"
       - name: Package
-        run: npm run build && npx electron-builder --mac --publish never -c.extraMetadata.version="${GITHUB_REF_NAME#v}"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: yalqen-mac
-          path: |
-            prototypes/electron/release/*.dmg
-            prototypes/electron/release/*.zip
-          if-no-files-found: error
+        run: |
+          signing=()
+          # Hardened runtime rejects ad-hoc signed frameworks, so it is only used with a Developer ID certificate.
+          if [ -z "$CSC_LINK" ]; then signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false); fi
+          npm run build
+          npx electron-builder --mac --publish never -c.extraMetadata.version="${GITHUB_REF_NAME#v}" "${signing[@]}"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/*.dmg release/*.zip \
+            --title "Yalqen ${GITHUB_REF_NAME#v}" \
+            --notes-file build/release-notes.md \
+            --generate-notes

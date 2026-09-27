@@ -1,16 +1,20 @@
 # Releasing
 
-Yalqen is distributed directly as a DMG/ZIP (Developer ID), not through the Mac App Store.
+Yalqen is distributed as a DMG/ZIP on GitHub Releases, not through the Mac App Store.
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`, which checks, builds and packages the macOS app and uploads the DMG and ZIP as a workflow artifact. The tag sets the version (`v1.2.0` builds `1.2.0`).
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which checks, builds and packages the macOS app and publishes a GitHub release with the DMG, the ZIP and the install notes from `build/release-notes.md`. The tag sets the version (`v1.2.0` builds `1.2.0`).
 
 ```bash
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-## Signing and notarization
+## Without an Apple developer account (default)
 
-Apps downloaded outside the App Store still need a Developer ID signature and Apple notarization, otherwise Gatekeeper refuses to open them on other Macs. Both require a paid Apple Developer Program membership; nothing is submitted to the App Store.
+No secrets are needed. The app is ad-hoc signed, so on another Mac the first launch is blocked until the user clicks **Open Anyway** under System Settings › Privacy & Security; the release notes explain this. Camera and microphone permissions may be asked again after each update, because an ad-hoc signature changes with every build.
+
+## Signing and notarization (optional)
+
+With a paid Apple Developer Program membership the app can be signed with a Developer ID and notarized, so it opens on any Mac without the Gatekeeper step. Nothing is submitted to the App Store.
 
 Signing certificate:
 
@@ -35,9 +39,7 @@ or with an API key (created under App Store Connect > Users and Access > Integra
 | `APPLE_API_KEY_ID` | Key ID |
 | `APPLE_API_ISSUER` | Issuer ID |
 
-Without these secrets the build still succeeds but is only ad-hoc signed: users on other Macs have to allow it under System Settings > Privacy & Security before it opens.
-
-Signing uses hardened runtime with `build/entitlements.mac.plist` (JIT, camera, microphone, location).
+Developer ID signing uses hardened runtime with `build/entitlements.mac.plist` (JIT, camera, microphone, location).
 
 ## Local package
 
