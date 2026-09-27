@@ -14,8 +14,6 @@ jobs:
       run:
         working-directory: prototypes/electron
     env:
-      CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
-      CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -41,10 +39,18 @@ jobs:
           printf '%s' "$APPLE_API_KEY_P8" > "$key"
           echo "APPLE_API_KEY=$key" >> "$GITHUB_ENV"
       - name: Package
+        env:
+          MAC_CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
         run: |
           signing=()
+          # electron-builder treats an empty CSC_LINK as a certificate path, so it is only set when the secret exists.
           # Hardened runtime rejects ad-hoc signed frameworks, so it is only used with a Developer ID certificate.
-          if [ -z "$CSC_LINK" ]; then signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false); fi
+          if [ -n "$MAC_CERTIFICATE_P12_BASE64" ]; then
+            export CSC_LINK="$MAC_CERTIFICATE_P12_BASE64" CSC_KEY_PASSWORD="$MAC_CERTIFICATE_PASSWORD"
+          else
+            signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
+          fi
           npm run build
           npx electron-builder --mac --publish never -c.extraMetadata.version="${GITHUB_REF_NAME#v}" "${signing[@]}"
       - name: Publish GitHub release
