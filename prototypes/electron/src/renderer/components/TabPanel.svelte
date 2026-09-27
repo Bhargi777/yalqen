@@ -283,7 +283,6 @@
     align-items: center;
     gap: 4px;
     height: 44px;
-    transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
   }
 

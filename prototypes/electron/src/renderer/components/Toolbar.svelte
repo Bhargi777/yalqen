@@ -188,7 +188,6 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
-    transition: padding-left 0.2s ease;
     -webkit-app-region: drag;
   }
 
