@@ -35,8 +35,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    width: var(--chrome-control-size);
+    height: var(--chrome-control-size);
     padding: 0;
     border: 0;
     overflow: hidden;

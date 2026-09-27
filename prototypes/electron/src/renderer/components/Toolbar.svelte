@@ -226,7 +226,6 @@
 
   .trailing .capsule {
     justify-content: space-between;
-    padding: 3px;
   }
 
   .tab-group {
@@ -245,7 +244,7 @@
 
   @media (max-width: 760px) {
     .new-tab-slot {
-      width: 34px;
+      width: var(--chrome-control-size);
     }
   }
 
@@ -255,7 +254,8 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    padding: 2px;
+    height: var(--chrome-control-size);
+    padding: 3px;
     border: 0;
     border-radius: 999px;
     background: var(--surface);
@@ -329,7 +329,7 @@
     flex: none;
     align-items: center;
     max-width: 150px;
-    height: 32px;
+    height: var(--chrome-control-size);
     padding-right: 5px;
     border-radius: 999px;
     transition: background var(--transition);

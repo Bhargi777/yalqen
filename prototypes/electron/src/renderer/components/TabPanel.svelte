@@ -307,7 +307,7 @@
   }
 
   .collapsed .favorites {
-    grid-template-columns: 34px;
+    grid-template-columns: var(--chrome-control-size);
     gap: 6px;
   }
 
@@ -381,7 +381,7 @@
   }
 
   .collapsed .tabs {
-    width: 42px;
+    width: calc(var(--chrome-control-size) + 8px);
     padding: 4px;
     border-radius: 0;
     background: transparent;
@@ -403,7 +403,7 @@
   }
 
   .collapsed .tab {
-    height: 34px;
+    height: var(--chrome-control-size);
   }
 
   .tab + .tab {
@@ -554,7 +554,7 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    min-height: 34px;
+    min-height: var(--chrome-control-size);
     margin-top: auto;
     padding: 0 8px;
   }
@@ -568,8 +568,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: var(--chrome-control-size);
+    height: var(--chrome-control-size);
     padding: 0;
     border: 0;
     border-radius: 50%;
