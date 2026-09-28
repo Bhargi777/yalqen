@@ -3,6 +3,7 @@
 [![CI](https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml)
 [![Release](https://img.shields.io/github/v/release/YSamed/yalqen?include_prereleases)](https://github.com/YSamed/yalqen/releases)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge)](https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen)
 [![License: MIT](https://img.shields.io/github/license/YSamed/yalqen)](LICENSE)
 
 A fast, privacy-minded web browser for macOS, built with Electron, TypeScript and Svelte.

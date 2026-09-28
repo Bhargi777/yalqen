@@ -5,6 +5,7 @@ Thanks for your interest in improving Yalqen.
 ## Before you start
 
 - For bugs, search [existing issues](https://github.com/YSamed/yalqen/issues) first, then open one using the bug report template.
+- For questions and ideas, use [Discussions](https://github.com/YSamed/yalqen/discussions).
 - For larger changes or new features, open an issue to discuss the idea before writing code.
 - Never report security vulnerabilities in public issues; follow [SECURITY.md](SECURITY.md).
 
