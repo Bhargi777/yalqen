@@ -13,6 +13,7 @@ export interface DownloadManagerOptions {
   store: DownloadStore;
   daily: Session;
   privateBrowsing: Session;
+  developer: Session;
   directory: () => string;
   onStateChange: () => void;
 }
@@ -27,6 +28,7 @@ export class DownloadManager {
   constructor(private readonly options: DownloadManagerOptions) {
     options.daily.on('will-download', this.onWillDownload(false));
     options.privateBrowsing.on('will-download', this.onWillDownload(true));
+    options.developer.on('will-download', this.onWillDownload(true));
   }
 
   changed(): void {

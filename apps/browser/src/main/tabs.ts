@@ -21,6 +21,8 @@ import {
   type DeviceId,
   type FindResult,
   type NewTabCenter,
+  type PageOverrides,
+  type RequestRule,
   type TabId,
   type TabSnapshot,
 } from '../shared/types.js';
@@ -29,6 +31,7 @@ import {
   applyDeviceMetrics,
   applyEmulation,
   clearEmulation,
+  emulatedUserAgent,
   fitDevice,
   resizeEmulation,
   rotateEmulation,
@@ -40,8 +43,11 @@ import { isSameVisit } from './history.js';
 import { PROCEED_HTTP_URL } from './https-only.js';
 import { internalNavigation, isAllowedFrom, type InternalNavigation } from './internal-navigation.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
-import { captureFullPage, setCacheDisabled } from './page-debugger.js';
+import { captureFullPage, sendCommands } from './page-debugger.js';
 import { canViewSource } from './page-export.js';
+import { NO_OVERRIDES, hasOverrides, overrideCommands } from './page-overrides.js';
+import { pausedRequestCommand, type PausedRequest } from './request-rules.js';
+import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from './site-data.js';
 import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
@@ -49,6 +55,7 @@ import { withoutHash } from './url.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
+const STORAGE_WORLD_ID = 1001;
 // Past this the badge reads "99+", so further errors need not re-render the chrome.
 const MAX_CONSOLE_ERRORS = 99;
 const NEW_TAB_TITLE = 'Yeni sekme';
@@ -70,7 +77,7 @@ interface Tab {
   edited: boolean;
   blockedPopups: string[];
   consoleErrors: number;
-  cacheDisabled: boolean;
+  overrides: PageOverrides;
   autoReload: { seconds: number; dueAt: number } | null;
   loading: boolean;
   frozen: boolean;
@@ -114,6 +121,7 @@ export interface TabManagerOptions {
   onProceedHttp: (token: string, currentUrl: string) => string | null;
   confirmHttpRedirect: (url: string) => Promise<boolean>;
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
+  requestRules: () => readonly RequestRule[];
 }
 
 export interface RecentPage {
@@ -491,8 +499,8 @@ export class TabManager {
     this.openSingle(BOOKMARKS_URL);
   }
 
-  openSettings(): void {
-    this.openSingle(SETTINGS_URL);
+  openSettings(pane?: string): void {
+    this.openSingle(pane ? `${SETTINGS_URL}${pane}` : SETTINGS_URL);
   }
 
   activeContents(): WebContents | null {
@@ -543,21 +551,59 @@ export class TabManager {
     this.active()?.view?.webContents.reloadIgnoringCache();
   }
 
-  toggleCacheDisabled(): void {
+  activeOverrides(): PageOverrides {
+    return this.active()?.overrides ?? NO_OVERRIDES;
+  }
+
+  updateOverrides(patch: Partial<PageOverrides>): void {
     const tab = this.active();
     const contents = tab?.view?.webContents;
     if (!tab || !contents || contents.isDestroyed()) return;
-    const disabled = !tab.cacheDisabled;
-    tab.cacheDisabled = disabled;
+    const previous = tab.overrides;
+    const next = { ...previous, ...patch };
+    if ((Object.keys(next) as (keyof PageOverrides)[]).every((key) => next[key] === previous[key])) return;
+    tab.overrides = next;
     this.changed();
-    setCacheDisabled(contents, disabled)
-      .then(() => this.releaseDebugger(tab, contents))
+    this.pushOverrides(tab, contents)
+      .then(() => {
+        const userAgentChanged = next.userAgent !== previous.userAgent;
+        if (userAgentChanged && tab.overrides === next && !contents.isDestroyed() && contents.getURL() !== '') {
+          contents.reload();
+        }
+      })
       .catch((error: unknown) => {
-        console.warn('[cache] could not change the cache setting:', error);
-        if (tab.cacheDisabled !== disabled || !disabled) return;
-        tab.cacheDisabled = false;
+        console.warn('[overrides] could not apply page overrides:', error);
+        if (tab.overrides !== next) return;
+        tab.overrides = previous;
         this.changed();
+        this.pushOverrides(tab, contents).catch(() => undefined);
       });
+  }
+
+  async measureActiveStorage(timeoutMs = 500): Promise<StorageUsage | null> {
+    const contents = this.activeContents();
+    if (!contents) return null;
+    const measured = contents
+      .executeJavaScriptInIsolatedWorld(STORAGE_WORLD_ID, [{ code: MEASURE_STORAGE_SCRIPT }])
+      .then(parseStorageUsage, () => null);
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    return Promise.race([measured, timeout]);
+  }
+
+  refreshRequestRules(): void {
+    for (const tab of this.tabs) {
+      const contents = tab.view?.webContents;
+      if (!tab.overrides.requestRules || !contents || contents.isDestroyed()) continue;
+      this.pushOverrides(tab, contents).catch((error: unknown) => {
+        console.warn('[request-rules] could not refresh interception:', error);
+      });
+    }
+  }
+
+  private async pushOverrides(tab: Tab, contents: WebContents): Promise<void> {
+    const commands = overrideCommands(tab.overrides, emulatedUserAgent(tab.emulation), this.options.requestRules());
+    await sendCommands(contents, commands);
+    this.releaseDebugger(tab, contents);
   }
 
   setAutoReload(seconds: number | null): void {
@@ -583,7 +629,7 @@ export class TabManager {
   }
 
   private needsDebugger(tab: Tab): boolean {
-    return tab.emulation !== null || tab.cacheDisabled;
+    return tab.emulation !== null || hasOverrides(tab.overrides);
   }
 
   private releaseDebugger(tab: Tab, contents: WebContents): void {
@@ -778,7 +824,7 @@ export class TabManager {
       edited: false,
       blockedPopups: [],
       consoleErrors: 0,
-      cacheDisabled: false,
+      overrides: NO_OVERRIDES,
       autoReload: null,
       loading: false,
       frozen: false,
@@ -847,8 +893,14 @@ export class TabManager {
     const view = tab.view;
     if (view) {
       const applied = emulation ? this.layoutView(tab, view) : this.clearDevice(tab, view);
-      void (applied ?? Promise.resolve()).then(() => {
+      void (applied ?? Promise.resolve()).then(async () => {
         const contents = view.webContents;
+        // Device changes reset the user agent, so the tab's own overrides go back on top.
+        if (hasOverrides(tab.overrides) && tab.view === view && !contents.isDestroyed()) {
+          await this.pushOverrides(tab, contents).catch((error: unknown) => {
+            console.warn('[overrides] could not restore page overrides:', error);
+          });
+        }
         if (wasEmulated !== (emulation !== null) && !contents.isDestroyed() && contents.getURL() !== '') {
           contents.reload();
         }
@@ -1030,12 +1082,24 @@ export class TabManager {
     const onDebuggerDetach = () => {
       if (tab.view !== view || !this.needsDebugger(tab) || contents.isDestroyed()) return;
       tab.emulation = null;
-      tab.cacheDisabled = false;
+      tab.overrides = NO_OVERRIDES;
       this.layoutView(tab, view);
       this.changed();
     };
     contents.debugger.on('detach', onDebuggerDetach);
     disposers.push(() => contents.debugger.off('detach', onDebuggerDetach));
+    // A paused request stalls the page until it is answered, so every pause gets a reply.
+    const onDebuggerMessage = (_event: Electron.Event, method: string, params: unknown) => {
+      if (method !== 'Fetch.requestPaused' || contents.isDestroyed()) return;
+      const paused = params as PausedRequest;
+      const { method: command, params: reply } = pausedRequestCommand(this.options.requestRules(), paused);
+      contents.debugger.sendCommand(command, reply).catch(() => {
+        if (contents.isDestroyed() || !contents.debugger.isAttached()) return;
+        contents.debugger.sendCommand('Fetch.continueRequest', { requestId: paused.requestId }).catch(() => undefined);
+      });
+    };
+    contents.debugger.on('message', onDebuggerMessage);
+    disposers.push(() => contents.debugger.off('message', onDebuggerMessage));
     listen('did-navigate', () => updateUrl(true));
     let failure: string | null = null;
     listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
@@ -1164,7 +1228,7 @@ export class TabManager {
     tab.view = null;
     tab.loading = false;
     tab.frozen = false;
-    tab.cacheDisabled = false;
+    tab.overrides = NO_OVERRIDES;
     this.options.window.contentView.removeChildView(view);
     if (!view.webContents.isDestroyed()) view.webContents.close();
   }
@@ -1197,7 +1261,7 @@ export class TabManager {
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       blockedPopups: tab.blockedPopups.length,
       consoleErrors: tab.consoleErrors,
-      cacheDisabled: tab.cacheDisabled,
+      overrides: tab.overrides,
       autoReloadSeconds: tab.autoReload?.seconds ?? null,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,

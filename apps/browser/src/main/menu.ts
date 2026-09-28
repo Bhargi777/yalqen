@@ -12,6 +12,7 @@ export interface MenuActions {
   newWindow(): void;
   newPrivateWindow(): void;
   newPrivateTab(): void;
+  newDeveloperWindow(): void;
   closeTab(): void;
   closeWindow(): void;
   moveTabToNewWindow(): void;
@@ -78,6 +79,7 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Yeni pencere', accelerator: 'CmdOrCtrl+N', click: actions.newWindow },
         { label: 'Yeni gizli pencere', accelerator: 'CmdOrCtrl+Shift+N', click: actions.newPrivateWindow },
         { label: 'Yeni gizli sekme', click: actions.newPrivateTab },
+        { label: 'Yeni geliştirici penceresi', click: actions.newDeveloperWindow },
         { type: 'separator' },
         { label: 'Sekmeyi kapat', accelerator: 'CmdOrCtrl+W', click: actions.closeTab },
         { label: 'Pencereyi kapat', accelerator: 'CmdOrCtrl+Shift+W', click: actions.closeWindow },

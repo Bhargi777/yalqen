@@ -25,7 +25,14 @@ import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
-import { autoReloadSeconds, isDevCommandId, isDevCommandInput, matchDevCommands } from './dev-commands.js';
+import {
+  autoReloadSeconds,
+  isDevCommandId,
+  isDevCommandInput,
+  matchDevCommands,
+  overridePatch,
+} from './dev-commands.js';
+import { devMenuTemplate } from './dev-menu.js';
 import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from './downloads.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -41,10 +48,12 @@ import { Preconnector } from './preconnect.js';
 import { loadWallpaper } from './wallpaper.js';
 import { buildSearchUrl, type SearchEngine } from './search.js';
 import type { SettingsStore } from './settings.js';
+import { clearSiteData, cookieUrl, cookiesForHost } from './site-data.js';
 import { siteInfoTemplate } from './site-info.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { TabManager, type DetachedTab } from './tabs.js';
 import { resolveInput, withoutHash } from './url.js';
+import type { RequestRuleStore } from './request-rules.js';
 import type { ZoomStore } from './zoom.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
@@ -55,6 +64,8 @@ export interface AppContext {
   icon: string;
   daily: Session;
   privateBrowsing: Session;
+  developer: Session;
+  requestRules: RequestRuleStore;
   settings: SettingsStore;
   commandBar: CommandBar;
   findBar: FindBar;
@@ -84,6 +95,7 @@ export interface AppContext {
 
 export interface WindowOptions {
   isPrivate?: boolean;
+  developer?: boolean;
   saved?: SavedWindow;
   url?: string;
   tab?: DetachedTab;
@@ -94,6 +106,7 @@ export class YalqenWindow {
   readonly window: BaseWindow;
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
+  readonly isDeveloper: boolean;
   private readonly ui: WebContentsView;
   private readonly commandHost: CommandBarHost;
   private readonly findHost: FindBarHost;
@@ -119,7 +132,8 @@ export class YalqenWindow {
     private readonly app: AppContext,
     options: WindowOptions,
   ) {
-    this.isPrivate = options.isPrivate ?? false;
+    this.isDeveloper = options.developer ?? false;
+    this.isPrivate = this.isDeveloper || (options.isPrivate ?? false);
     const from = options.from?.window.getBounds();
     this.window = new BaseWindow({
       width: from?.width ?? 1280,
@@ -127,7 +141,7 @@ export class YalqenWindow {
       ...(from ? { x: from.x + CASCADE_OFFSET, y: from.y + CASCADE_OFFSET } : {}),
       minWidth: 640,
       minHeight: 400,
-      title: this.isPrivate ? 'Yalqen (gizli)' : 'Yalqen',
+      title: this.isDeveloper ? 'Yalqen (geliştirici)' : this.isPrivate ? 'Yalqen (gizli)' : 'Yalqen',
       icon: app.icon,
       titleBarStyle: 'hiddenInset',
       transparent: glassAvailable,
@@ -148,7 +162,7 @@ export class YalqenWindow {
     this.window.contentView.addChildView(this.ui);
 
     this.preconnector = new Preconnector((origin) =>
-      (this.tabs.activeIsPrivate ? app.privateBrowsing : app.daily).preconnect({ url: origin }),
+      this.sessionFor(this.tabs.activeIsPrivate).preconnect({ url: origin }),
     );
 
     this.commandHost = {
@@ -206,7 +220,7 @@ export class YalqenWindow {
       closed: app.closedTabs,
       privateWindow: this.isPrivate,
       session: app.daily,
-      privateSession: app.privateBrowsing,
+      privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       freezeBackground: () => app.settings.get().freezeBackgroundTabs,
       onChange: (persist) => {
@@ -278,6 +292,7 @@ export class YalqenWindow {
         return response === 1;
       },
       onContextMenu: (contents, params) => this.showContextMenu(contents, params),
+      requestRules: () => app.requestRules.list(),
     });
 
     this.window.on('focus', () => app.onWindowFocus(this));
@@ -382,6 +397,7 @@ export class YalqenWindow {
   state(): BrowserState {
     return {
       ...this.tabs.state(),
+      developer: this.isDeveloper,
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
       addressPlaceholder: this.app.searchEngine().placeholder,
@@ -424,18 +440,20 @@ export class YalqenWindow {
 
   runDevCommand(id: DevCommandId): void {
     const tabs = this.tabs;
-    const browsing = tabs.activeIsPrivate ? this.app.privateBrowsing : this.app.daily;
+    const browsing = this.sessionFor(tabs.activeIsPrivate);
     const seconds = autoReloadSeconds(id);
     if (seconds) {
       tabs.setAutoReload(seconds);
       return;
     }
+    const patch = overridePatch(id, tabs.activeOverrides());
+    if (patch) {
+      tabs.updateOverrides(patch);
+      return;
+    }
     switch (id) {
       case 'hard-reload':
         tabs.reloadIgnoringCache();
-        break;
-      case 'toggle-cache':
-        tabs.toggleCacheDisabled();
         break;
       case 'auto-reload-off':
         tabs.setAutoReload(null);
@@ -473,9 +491,15 @@ export class YalqenWindow {
       case 'clear-cache':
         void browsing.clearCache().then(() => tabs.reloadIgnoringCache());
         break;
+      case 'edit-request-rules':
+        tabs.openSettings('developer');
+        break;
+      case 'developer-window':
+        this.app.openWindow({ developer: true, from: this });
+        break;
       case 'clear-site-data': {
         const origin = permissionOrigin(tabs.activeUrl);
-        if (origin) void browsing.clearStorageData({ origin }).then(() => tabs.reloadIgnoringCache());
+        if (origin) void clearSiteData(browsing, origin).then(() => tabs.reloadIgnoringCache());
         break;
       }
     }
@@ -556,7 +580,7 @@ export class YalqenWindow {
   moveActiveTabToNewWindow(): void {
     const id = this.tabs.activeTabId;
     const tab = id ? this.tabs.detach(id) : null;
-    if (tab) this.app.openWindow({ tab, isPrivate: this.isPrivate, from: this });
+    if (tab) this.app.openWindow({ tab, isPrivate: this.isPrivate, developer: this.isDeveloper, from: this });
   }
 
   close(): void {
@@ -603,6 +627,14 @@ export class YalqenWindow {
       case 'open-devtools':
         tabs.openDevTools();
         break;
+      case 'open-dev-menu': {
+        const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
+        if (!tab) break;
+        this.popup(
+          devMenuTemplate(tab, { run: (id) => this.runDevCommand(id), openDevTools: () => tabs.openDevTools() }),
+        );
+        break;
+      }
       case 'dev-command':
         if (isDevCommandId(action.id)) this.runDevCommand(action.id);
         break;
@@ -632,27 +664,9 @@ export class YalqenWindow {
         this.popup(template);
         break;
       }
-      case 'open-site-info': {
-        const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
-        if (!tab) break;
-        const origin = permissionOrigin(tab.url);
-        const store = app.permissionsFor(tab.isPrivate);
-        const template = siteInfoTemplate(
-          { url: tab.url, security: tab.security, permissions: origin ? store.list(origin) : [] },
-          {
-            setPermission: (kind, decision) => {
-              if (origin) store.set(origin, [kind], decision);
-            },
-            revokeCertificateException: () => {
-              app.certificates.revoke(tab.url);
-              const browsing = tab.isPrivate ? app.privateBrowsing : app.daily;
-              void browsing.closeAllConnections().then(() => tabs.reload());
-            },
-          },
-        );
-        this.popup(template);
+      case 'open-site-info':
+        void this.openSiteInfo();
         break;
-      }
       case 'toggle-panel':
         app.updateSettings({ panelCollapsed: !app.settings.get().panelCollapsed });
         break;
@@ -669,6 +683,7 @@ export class YalqenWindow {
           { label: 'Yeni pencere', click: () => app.openWindow({ from: this }) },
           { label: 'Yeni gizli pencere', click: () => app.openWindow({ isPrivate: true, from: this }) },
           { label: 'Yeni gizli sekme', click: () => tabs.open(NEW_TAB_URL, { isPrivate: true }) },
+          { label: 'Yeni geliştirici penceresi', click: () => app.openWindow({ developer: true, from: this }) },
           { type: 'separator' },
           { label: 'Ayarlar…', click: () => tabs.openSettings() },
         ]);
@@ -698,6 +713,54 @@ export class YalqenWindow {
     }
   }
 
+  private async openSiteInfo(): Promise<void> {
+    const { tabs, app } = this;
+    const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
+    if (!tab) return;
+    const origin = permissionOrigin(tab.url);
+    const store = app.permissionsFor(tab.isPrivate);
+    const browsing = this.sessionFor(tab.isPrivate);
+    const [cookies, storage] = origin
+      ? await Promise.all([
+          browsing.cookies.get({}).then(
+            (all) => cookiesForHost(all, new URL(origin).hostname),
+            () => [],
+          ),
+          tabs.measureActiveStorage(),
+        ])
+      : [[], null];
+    if (tabs.activeTabId !== tab.id || this.window.isDestroyed()) return;
+    const template = siteInfoTemplate(
+      {
+        url: tab.url,
+        security: tab.security,
+        permissions: origin ? store.list(origin) : [],
+        data: origin ? { cookies: cookies.length, storage } : undefined,
+      },
+      {
+        setPermission: (kind, decision) => {
+          if (origin) store.set(origin, [kind], decision);
+        },
+        revokeCertificateException: () => {
+          app.certificates.revoke(tab.url);
+          void browsing.closeAllConnections().then(() => tabs.reload());
+        },
+        clearCookies: () => {
+          void Promise.allSettled(
+            cookies.map((cookie) => browsing.cookies.remove(cookieUrl(cookie), cookie.name)),
+          ).then(() => tabs.reloadIgnoringCache());
+        },
+        clearSiteData: () => this.runDevCommand('clear-site-data'),
+      },
+    );
+    this.popup(template);
+  }
+
+  private sessionFor(isPrivate: boolean): Session {
+    if (!isPrivate) return this.app.daily;
+    return this.isDeveloper ? this.app.developer : this.app.privateBrowsing;
+  }
+
   private popup(template: Electron.MenuItemConstructorOptions[]): void {
     Menu.buildFromTemplate(template).popup({ window: this.window });
   }
@@ -711,7 +774,7 @@ export class YalqenWindow {
       canGoForward: history.canGoForward(),
       canViewSource: canViewSource(contents.getURL()),
       openInNewTab: (url) => tabs.open(url, { activate: false, isPrivate }),
-      openInNewWindow: (url) => this.app.openWindow({ url, isPrivate, from: this }),
+      openInNewWindow: (url) => this.app.openWindow({ url, isPrivate, developer: this.isDeveloper, from: this }),
       copyText: (text) => clipboard.writeText(text),
       copyImage: () => contents.copyImageAt(params.x, params.y),
       download: (url) => contents.downloadURL(url),

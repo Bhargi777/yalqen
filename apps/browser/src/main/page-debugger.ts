@@ -1,5 +1,6 @@
 import type { WebContents } from 'electron';
 import { fullPageClip } from './page-export.js';
+import type { ProtocolCommand } from './page-overrides.js';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -7,18 +8,15 @@ export function attachDebugger(contents: WebContents): void {
   if (!contents.debugger.isAttached()) contents.debugger.attach(PROTOCOL_VERSION);
 }
 
-export async function setCacheDisabled(contents: WebContents, disabled: boolean): Promise<void> {
-  const dbg = contents.debugger;
-  if (disabled) {
-    attachDebugger(contents);
-    // Only the cache switch is needed, so the protocol keeps no response bodies around.
-    await dbg.sendCommand('Network.enable', { maxTotalBufferSize: 0, maxResourceBufferSize: 0 });
-    await dbg.sendCommand('Network.setCacheDisabled', { cacheDisabled: true });
-    return;
+export async function sendCommands(contents: WebContents, commands: readonly ProtocolCommand[]): Promise<void> {
+  attachDebugger(contents);
+  for (const { method, params, optional } of commands) {
+    try {
+      await contents.debugger.sendCommand(method, params);
+    } catch (error) {
+      if (!optional) throw error;
+    }
   }
-  if (!dbg.isAttached()) return;
-  await dbg.sendCommand('Network.setCacheDisabled', { cacheDisabled: false });
-  await dbg.sendCommand('Network.disable');
 }
 
 export async function captureFullPage(contents: WebContents): Promise<Buffer> {

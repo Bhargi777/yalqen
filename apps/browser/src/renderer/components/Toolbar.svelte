@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DownloadsSummary, TabId, TabSnapshot } from '../../shared/types';
-  import { isNewTab, siteLabel } from '../format';
+  import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
@@ -9,6 +9,7 @@
 
   let {
     tabs,
+    developer,
     activeTabId,
     zoom,
     defaultZoom,
@@ -19,6 +20,7 @@
     trailingWidth,
   }: {
     tabs: TabSnapshot[];
+    developer: boolean;
     activeTabId: TabId | null;
     zoom: number;
     defaultZoom: number;
@@ -87,7 +89,14 @@
             </Button>
           {/if}
           {#if active}
-            {#if tab.isPrivate}
+            {#if developer}
+              <span
+                class="private-badge developer"
+                title="Geliştirici penceresi: temiz oturum, reklam ve üçüncü taraf çerez engeli kapalı, pencereler kapanınca silinir"
+              >
+                <Icon name="gauge" size={14} />
+              </span>
+            {:else if tab.isPrivate}
               <span class="private-badge" title="Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir">
                 <Icon name="private" size={14} />
               </span>
@@ -125,42 +134,18 @@
                 onclick={() => send({ type: 'open-blocked-popups' })}
               />
             {/if}
-            {#if tab.consoleErrors > 0}
-              {@const errors = tab.consoleErrors > 99 ? '99+' : String(tab.consoleErrors)}
+            {#if devStates(tab).length > 0}
+              {@const states = devStates(tab)}
               <Button
                 size="sm"
                 variant="tonal"
-                icon="warning"
-                class="console-errors"
-                aria-label="Konsolda {errors} hata, geliştirici araçlarını aç"
-                title="Konsolda {errors} hata (⌥⌘I)"
-                onclick={() => send({ type: 'open-devtools' })}
+                icon={tab.consoleErrors > 0 ? 'warning' : 'gauge'}
+                class={['dev-state', tab.consoleErrors > 0 && 'has-errors']}
+                aria-label="Geliştirici durumu: {states.join(', ')}"
+                title={states.join(' · ')}
+                onclick={() => send({ type: 'open-dev-menu' })}
               >
-                {errors}
-              </Button>
-            {/if}
-            {#if tab.cacheDisabled}
-              <Button
-                size="sm"
-                variant="tonal"
-                class="dev-state"
-                title="Bu sekmede önbellek kapalı. Açmak için tıklayın."
-                onclick={() => send({ type: 'dev-command', id: 'toggle-cache' })}
-              >
-                Önbellek kapalı
-              </Button>
-            {/if}
-            {#if tab.autoReloadSeconds}
-              <Button
-                size="sm"
-                variant="tonal"
-                icon="reload"
-                class="dev-state"
-                aria-label="Otomatik yenileme her {tab.autoReloadSeconds} saniyede, durdur"
-                title="Otomatik yenileme açık. Durdurmak için tıklayın."
-                onclick={() => send({ type: 'dev-command', id: 'auto-reload-off' })}
-              >
-                {tab.autoReloadSeconds < 60 ? `${tab.autoReloadSeconds} sn` : `${tab.autoReloadSeconds / 60} dk`}
+                {tab.consoleErrors > 0 ? consoleErrorCount(tab) : states.length}
               </Button>
             {/if}
             {#if Math.round(zoom * 100) !== Math.round(defaultZoom * 100)}
@@ -399,6 +384,11 @@
     color: var(--surface);
   }
 
+  .private-badge.developer {
+    background: var(--accent);
+    color: #fff;
+  }
+
   .select.private {
     font-style: italic;
   }
@@ -429,9 +419,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .chip :global(.console-errors) {
+  .chip :global(.dev-state.has-errors) {
     color: var(--warn);
-    font-variant-numeric: tabular-nums;
   }
 
   .address.after-site {

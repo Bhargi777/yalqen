@@ -21,6 +21,7 @@
 
   let browser: BrowserState = $state.raw({
     tabs: [],
+    developer: false,
     activeTabId: null,
     pageFullScreen: false,
     windowFullScreen: false,
@@ -151,6 +152,7 @@
     {#if browser.sidebarVisible}
       <TabPanel
         tabs={browser.tabs}
+        developer={browser.developer}
         activeTabId={browser.activeTabId}
         collapsed={collapsed && panelSettled}
         {side}
@@ -163,6 +165,7 @@
     {/if}
     {#if browser.toolbarVisible}
       <Toolbar
+        developer={browser.developer}
         tabs={browser.toolbarTabs ? browser.tabs : browser.tabs.filter((tab) => tab.id === browser.activeTabId)}
         activeTabId={browser.activeTabId}
         zoom={browser.zoom}

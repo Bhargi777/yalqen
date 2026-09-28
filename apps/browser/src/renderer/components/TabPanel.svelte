@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
+  import { devStates } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
@@ -7,6 +8,7 @@
 
   let {
     tabs,
+    developer,
     activeTabId,
     collapsed,
     side,
@@ -17,6 +19,7 @@
     rowInset,
   }: {
     tabs: TabSnapshot[];
+    developer: boolean;
     activeTabId: TabId | null;
     collapsed: boolean;
     side: PanelSide;
@@ -40,14 +43,12 @@
   function label(tab: TabSnapshot): string {
     const states = [
       tab.id === activeTabId ? 'aktif' : null,
-      tab.isPrivate ? 'gizli' : null,
+      developer ? 'geliştirici' : tab.isPrivate ? 'gizli' : null,
       tab.live ? null : 'bellekten çıkarılmış',
       tab.frozen ? 'dondurulmuş' : null,
       tab.pinned ? 'sabitlendi' : null,
       tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
-      tab.consoleErrors > 0 ? `${tab.consoleErrors > 99 ? '99+' : tab.consoleErrors} konsol hatası` : null,
-      tab.cacheDisabled ? 'önbellek kapalı' : null,
-      tab.autoReloadSeconds ? 'otomatik yenileniyor' : null,
+      ...devStates(tab),
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
@@ -230,7 +231,9 @@
               >
                 {@render favicon(tab, 16)}
                 <span class="title">{tab.title}</span>
-                {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"
+                {#if developer}<span class="private-mark" title="Geliştirici sekmesi"
+                    ><Icon name="gauge" size={13} /></span
+                  >{:else if tab.isPrivate}<span class="private-mark" title="Gizli sekme"
                     ><Icon name="private" size={13} /></span
                   >{/if}
               </button>

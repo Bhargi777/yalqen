@@ -66,3 +66,23 @@ test('auto reload commands carry their interval', () => {
   assert.equal(autoReloadSeconds('devtools'), null);
   assert.equal(matchDevCommands('>otomatik yenile 1 dk')[0].title, 'Otomatik yenile: 1 dk');
 });
+
+test('override commands map to a patch of the current state', () => {
+  const { overridePatch } = devCommands;
+  const current = {
+    cacheDisabled: true,
+    network: null,
+    colorScheme: null,
+    reducedMotion: false,
+    printMedia: true,
+    userAgent: null,
+  };
+  assert.deepEqual(overridePatch('network-fast-4g', current), { network: 'fast-4g' });
+  assert.deepEqual(overridePatch('network-online', current), { network: null });
+  assert.deepEqual(overridePatch('user-agent-safari', current), { userAgent: 'safari' });
+  assert.deepEqual(overridePatch('toggle-cache', current), { cacheDisabled: false });
+  assert.deepEqual(overridePatch('toggle-print-media', current), { printMedia: false });
+  assert.deepEqual(overridePatch('color-scheme-dark', current), { colorScheme: 'dark' });
+  assert.equal(overridePatch('reset-overrides', current).cacheDisabled, false);
+  assert.equal(overridePatch('devtools', current), null);
+});

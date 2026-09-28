@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { ClearDataRange, SettingsValues, SettingsView } from '../shared/types';
   import type { IconName } from './components/Icon.svelte';
+  import RequestRules from './components/RequestRules.svelte';
   import Button from './components/ui/Button.svelte';
   import SegmentedControl from './components/ui/SegmentedControl.svelte';
   import Select from './components/ui/Select.svelte';
@@ -9,12 +10,13 @@
 
   const api = window.yalqenSettings;
 
-  type PaneId = 'general' | 'appearance' | 'privacy' | 'performance';
+  type PaneId = 'general' | 'appearance' | 'privacy' | 'performance' | 'developer';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
     { id: 'general', label: 'Genel', icon: 'settings' },
     { id: 'appearance', label: 'Görünüm', icon: 'appearance' },
     { id: 'privacy', label: 'Gizlilik', icon: 'lock' },
     { id: 'performance', label: 'Performans', icon: 'gauge' },
+    { id: 'developer', label: 'Geliştirici', icon: 'sparkle' },
   ];
   const paneFromPath = panes.find((item) => `/${item.id}` === location.pathname)?.id;
   let pane = $state<PaneId>(paneFromPath ?? 'general');
@@ -444,6 +446,8 @@
             </div>
           </div>
         </div>
+      {:else if pane === 'developer'}
+        <RequestRules />
       {:else}
         <h2>Bellek</h2>
         <div class="row">

@@ -13,11 +13,11 @@ export interface Device {
   mobile: boolean;
 }
 
-const IOS_UA =
+export const IOS_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const IPAD_UA =
   'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
-const ANDROID_UA =
+export const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
 
 export const DEVICES: readonly Device[] = [
@@ -127,6 +127,12 @@ export function rotateEmulation(emulation: Emulation): Emulation {
 export function scaleEmulation(emulation: Emulation, scaleFactor: number): Emulation {
   if (!isResizable(emulation) || !(DEVICE_SCALE_FACTORS as readonly number[]).includes(scaleFactor)) return emulation;
   return { ...emulation, scaleFactor };
+}
+
+export function emulatedUserAgent(emulation: Emulation | null): { userAgent: string; platform: string } {
+  if (!emulation) return { userAgent: '', platform: '' };
+  const { userAgent, platform } = findDevice(emulation.deviceId);
+  return { userAgent, platform };
 }
 
 function scaleFactorOf(emulation: Emulation): number {

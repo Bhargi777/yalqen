@@ -6,6 +6,7 @@ import {
   HISTORY_URL,
   NEW_TAB_URL,
   IpcChannel,
+  RequestRulesChannel,
   SettingsChannel,
   type ChromeLayout,
   type UiAction,
@@ -30,6 +31,7 @@ import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-s
 import { buildMenu } from './menu.js';
 import { installPermissionHandlers } from './permission-handlers.js';
 import { PermissionStore } from './permissions.js';
+import { RequestRuleStore } from './request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
@@ -41,6 +43,7 @@ import { ZoomStore } from './zoom.js';
 
 const DAILY_PARTITION = 'persist:daily';
 const PRIVATE_PARTITION = 'private';
+const DEVELOPER_PARTITION = 'developer';
 
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
@@ -83,6 +86,7 @@ function startBrowser(): void {
   app.userAgentFallback = chromeUserAgent(app.userAgentFallback);
   const daily = session.fromPartition(DAILY_PARTITION);
   const privateBrowsing = session.fromPartition(PRIVATE_PARTITION);
+  const developer = session.fromPartition(DEVELOPER_PARTITION);
   const settings = new SettingsStore(userData);
   const history = new HistoryStore(userData);
   const downloads = new DownloadStore(userData);
@@ -91,6 +95,7 @@ function startBrowser(): void {
   const defaultZoom = () => settings.get().defaultZoom;
   const zoom = new ZoomStore(userData, defaultZoom);
   const permissions = new PermissionStore(userData);
+  const requestRules = new RequestRuleStore(userData);
   const certificates = new CertificateExceptions();
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
   app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
@@ -122,7 +127,7 @@ function startBrowser(): void {
 
   const applyLanguages = () => {
     const language = settings.get().pageLanguage;
-    for (const browsing of [daily, privateBrowsing]) {
+    for (const browsing of [daily, privateBrowsing, developer]) {
       browsing.setUserAgent(browsing.getUserAgent(), acceptLanguages(language));
       if (process.platform !== 'darwin') browsing.setSpellCheckerLanguages(spellCheckerLanguages(language));
     }
@@ -134,10 +139,12 @@ function startBrowser(): void {
     }
   };
   applyCookieBlocking();
+  setThirdPartyCookieBlocking(developer, false);
   installPermissionHandlers({
     sessions: [
       [daily, false],
       [privateBrowsing, true],
+      [developer, true],
     ],
     storeFor: permissionsFor,
     parentOf: (contents) => windowOf(contents)?.window,
@@ -152,13 +159,14 @@ function startBrowser(): void {
     store: downloads,
     daily,
     privateBrowsing,
+    developer,
     directory: () => app.getPath('downloads'),
     onStateChange: pushState,
   });
   const downloadsChanged = () => downloadManager.changed();
 
   app.on('certificate-error', (event, contents, url, _error, certificate, callback, isMainFrame) => {
-    const browsing = contents.session === daily || contents.session === privateBrowsing;
+    const browsing = [daily, privateBrowsing, developer].includes(contents.session);
     if (browsing && certificates.allows(url, certificate.fingerprint)) {
       event.preventDefault();
       callback(true);
@@ -212,6 +220,8 @@ function startBrowser(): void {
     icon: appIcon,
     daily,
     privateBrowsing,
+    developer,
+    requestRules,
     settings,
     commandBar,
     findBar,
@@ -243,7 +253,7 @@ function startBrowser(): void {
       if (persist && !quitting) store.scheduleSave(sessionSnapshot);
     },
     onPrivateTabsClosed: () => {
-      if (windows.some((window) => window.tabs.hasPrivateTabs)) return;
+      if (windows.some((window) => !window.isDeveloper && window.tabs.hasPrivateTabs)) return;
       privatePermissions = new PermissionStore(null);
       privateZoom = new ZoomStore(null, defaultZoom);
       downloads.removePrivate();
@@ -270,6 +280,12 @@ function startBrowser(): void {
     onWindowClosed: (window) => {
       const index = windows.indexOf(window);
       if (index >= 0) windows.splice(index, 1);
+      if (window.isDeveloper && !windows.some((other) => other.isDeveloper)) {
+        void developer.clearStorageData();
+        void developer.clearCache();
+        void developer.clearAuthCache();
+        void developer.closeAllConnections();
+      }
       if (current === window) current = windows.at(-1) ?? null;
     },
   };
@@ -293,6 +309,7 @@ function startBrowser(): void {
   for (const [browsing, isPrivate] of [
     [daily, false],
     [privateBrowsing, true],
+    [developer, true],
   ] as const) {
     serveInternalPages(browsing, internalPages, {
       recent: () => recentPages(closedTabs),
@@ -324,6 +341,7 @@ function startBrowser(): void {
       newTab: inWindow((window) => window.tabs.open()),
       newWindow: () => openWindow({ from: current ?? undefined }),
       newPrivateWindow: () => openWindow({ isPrivate: true, from: current ?? undefined }),
+      newDeveloperWindow: () => openWindow({ developer: true, from: current ?? undefined }),
       newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
       closeTab: () => {
         if (current?.tabs.activeTabId) current.tabs.close(current.tabs.activeTabId);
@@ -374,6 +392,13 @@ function startBrowser(): void {
   ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
   ipcMain.handle(SettingsChannel.get, (event) => (isSettingsFrame(event) ? settingsView() : null));
+  ipcMain.handle(RequestRulesChannel.list, (event) => (isSettingsFrame(event) ? requestRules.list() : null));
+  ipcMain.handle(RequestRulesChannel.save, (event, rules: unknown) => {
+    if (!isSettingsFrame(event)) return null;
+    const saved = requestRules.save(rules);
+    eachWindow((window) => window.tabs.refreshRequestRules());
+    return saved;
+  });
   ipcMain.handle(SettingsChannel.clearData, async (event, value: unknown) => {
     if (!isSettingsFrame(event)) return;
     const request = sanitizeClearRequest(value);
@@ -444,6 +469,7 @@ function startBrowser(): void {
     bookmarks.saveNow();
     zoom.saveNow();
     permissions.saveNow();
+    requestRules.saveNow();
   });
   app.on('activate', () => {
     if (windows.length === 0 && !quitting) openWindow({});

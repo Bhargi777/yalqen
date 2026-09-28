@@ -2,10 +2,12 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   NEW_TAB_URL,
   PageChannel,
+  RequestRulesChannel,
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
   type ClearDataRequest,
   type NewTabCenter,
+  type RequestRule,
   type SettingsApi,
   type SettingsValues,
   type SettingsView,
@@ -103,6 +105,9 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
       ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsView>,
     clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
     makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
+    requestRules: () => ipcRenderer.invoke(RequestRulesChannel.list) as Promise<RequestRule[]>,
+    saveRequestRules: (rules: RequestRule[]) =>
+      ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,
     onChange: (listener) => {
       const handler = (_event: IpcRendererEvent, view: SettingsView) => listener(view);
       ipcRenderer.on(settingsChannel.changed, handler);

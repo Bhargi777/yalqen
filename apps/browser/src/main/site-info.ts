@@ -1,6 +1,7 @@
 import type { MenuItemConstructorOptions } from 'electron';
 import type { SecurityState } from '../shared/types.js';
 import { PERMISSION_LABELS, type Decision, type SitePermission } from './permissions.js';
+import { siteDataItems, type SiteData, type SiteDataActions } from './site-data.js';
 
 export function securityState(url: string, certificateException = false): SecurityState {
   try {
@@ -22,9 +23,10 @@ export interface SiteInfo {
   url: string;
   security: SecurityState;
   permissions: { kind: SitePermission; decision: Decision }[];
+  data?: SiteData;
 }
 
-export interface SiteInfoActions {
+export interface SiteInfoActions extends SiteDataActions {
   revokeCertificateException(): void;
   setPermission(kind: SitePermission, decision: Decision | null): void;
 }
@@ -61,5 +63,6 @@ export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): Menu
         click: () => actions.setPermission(kind, choice),
       })),
     })),
+    ...(info.data ? siteDataItems(info.data, actions) : []),
   ];
 }
