@@ -1,5 +1,9 @@
 # Yalqen
 
+<a href="https://yalqen.com/">
+  <img src="design/screenshots/website.png" alt="Yalqen website: Light as paper. Clear as glass." width="100%" />
+</a>
+
 [![Website](https://img.shields.io/badge/website-yalqen.com-0A84FF)](https://yalqen.com/)
 [![CI](https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml)
