@@ -1,5 +1,6 @@
 # Yalqen
 
+[![Website](https://img.shields.io/badge/website-yalqen.com-0A84FF)](https://yalqen.com/)
 [![CI](https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml)
 [![Release](https://img.shields.io/github/v/release/YSamed/yalqen?include_prereleases)](https://github.com/YSamed/yalqen/releases)
@@ -7,8 +8,6 @@
 [![License: MIT](https://img.shields.io/github/license/YSamed/yalqen)](LICENSE)
 
 A fast, privacy-minded web browser for macOS, built with Electron, TypeScript and Svelte.
-
-Website: [yalqen.com](https://yalqen.com/)
 
 > **Status:** early prototype. Expect rough edges and breaking changes.
 
