@@ -30,7 +30,7 @@ import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-s
 import { buildMenu } from './menu.js';
 import { installPermissionHandlers } from './permission-handlers.js';
 import { PermissionStore } from './permissions.js';
-import { SessionStore, type SavedSession, type SavedTab } from './persistence.js';
+import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
 import { broadcastSettings, isSettingsFrame } from './settings-page.js';
@@ -108,13 +108,13 @@ function startBrowser(): void {
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
-  const sessionSnapshot = (): SavedSession => ({
-    version: 2,
-    windows:
-      settings.get().startupBehavior === 'restore'
-        ? windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow())
-        : [],
-  });
+  const sessionSnapshot = (): SavedSession => {
+    const saved = windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow());
+    return {
+      version: 2,
+      windows: settings.get().startupBehavior === 'restore' ? saved : saved.map(pinnedOnly).filter((window) => window.tabs.length > 0),
+    };
+  };
 
   const applyLanguages = () => {
     const language = settings.get().pageLanguage;
@@ -433,17 +433,18 @@ function startBrowser(): void {
     if (windows.length === 0 && !quitting) openWindow({});
   });
 
-  const saved = settings.get().startupBehavior === 'restore' ? store.load() : null;
-  const restored = saved?.windows.filter((window) => window.tabs.length > 0) ?? [];
+  const restoring = settings.get().startupBehavior === 'restore';
+  const savedWindows = store.load()?.windows ?? [];
+  const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter((window) => window.tabs.length > 0);
   const [first, ...rest] = pendingUrls.splice(0);
   if (restored.length === 0) openWindow(first ? { url: first } : {});
-  for (const window of restored) openWindow({ saved: window });
+  restored.forEach((window, index) => openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }));
   openExternal = (urls) => {
     const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
     for (const url of urls) window.tabs.open(url);
     window.focus();
   };
-  if (restored.length > 0 && first) openExternal([first, ...rest]);
+  if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
   else if (rest.length > 0) openExternal(rest);
 }
 

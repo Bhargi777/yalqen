@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import persistence from '../dist/main/persistence.js';
 
-const { SessionStore, trimHistory } = persistence;
+const { SessionStore, pinnedOnly, trimHistory } = persistence;
 const tab = (url) => ({ id: 'tab', url, title: url, faviconUrl: null, pinnedUrl: null, history: null });
 const session = (url) => ({ version: 2, windows: [{ activeTabId: null, tabs: [tab(url)] }] });
 
@@ -90,4 +90,24 @@ test('saved navigation keeps a window of entries around the current page', () =>
   assert.equal(end.entries[end.index].title, '29');
   const short = trimHistory({ entries: entries.slice(0, 3), index: 1 });
   assert.deepEqual(short, { entries: entries.slice(0, 3), index: 1 });
+});
+
+test('without session restore only pinned tabs are kept, reset to their pinned page', () => {
+  const history = { entries: [{ url: 'https://mail.example/inbox', title: 'Inbox' }], index: 0 };
+  const window = {
+    activeTabId: 'pinned',
+    tabs: [
+      { ...tab('https://news.example/'), id: 'loose' },
+      { ...tab('https://mail.example/inbox'), id: 'pinned', pinnedUrl: 'https://mail.example/', history },
+      { ...tab('https://chat.example/'), id: 'legacy', keepAlive: true },
+    ],
+  };
+
+  const kept = pinnedOnly(window);
+
+  assert.equal(kept.activeTabId, null);
+  assert.deepEqual(kept.tabs.map(({ id, url, pinnedUrl, history }) => ({ id, url, pinnedUrl, history })), [
+    { id: 'pinned', url: 'https://mail.example/', pinnedUrl: 'https://mail.example/', history: null },
+    { id: 'legacy', url: 'https://chat.example/', pinnedUrl: 'https://chat.example/', history: null },
+  ]);
 });

@@ -35,6 +35,7 @@
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
+  const draggingPinned = $derived(pinned.some((tab) => tab.id === dragId));
 
   function label(tab: TabSnapshot): string {
     const states = [
@@ -48,23 +49,27 @@
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
 
-  function onDragOver(event: DragEvent, index: number): void {
-    if (!dragId) return;
+  function onDragOver(event: DragEvent, group: TabSnapshot[], index: number, horizontal = false): void {
+    if (!group.some((tab) => tab.id === dragId)) return;
     event.preventDefault();
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    dropIndex = event.clientY < rect.top + rect.height / 2 ? index : index + 1;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const before = horizontal ? event.clientX < rect.left + rect.width / 2 : event.clientY < rect.top + rect.height / 2;
+    dropIndex = before ? index : index + 1;
   }
 
-  function onDrop(event: DragEvent): void {
+  function onDrop(event: DragEvent, group: TabSnapshot[]): void {
     event.preventDefault();
-    if (dragId && dropIndex !== null) {
+    if (dragId && dropIndex !== null && group.some((tab) => tab.id === dragId)) {
       const from = tabs.findIndex((tab) => tab.id === dragId);
-      const before = listed[dropIndex];
-      const target = before ? tabs.indexOf(before) : tabs.indexOf(listed[listed.length - 1]) + 1;
+      const before = group[dropIndex];
+      const target = before ? tabs.indexOf(before) : tabs.indexOf(group[group.length - 1]) + 1;
       const toIndex = target > from ? target - 1 : target;
       if (toIndex !== from) send({ type: 'move-tab', id: dragId, toIndex });
     }
+    endDrag();
+  }
+
+  function endDrag(): void {
     dragId = null;
     dropIndex = null;
   }
@@ -117,9 +122,24 @@
   <div class="top" style:height="{topInset}px"></div>
 
   {#if pinned.length > 0}
-    <ul class="favorites" aria-label="Sabitlenenler">
-      {#each pinned as tab (tab.id)}
-        <li class="favorite" class:active={tab.id === activeTabId} class:discarded={!tab.live}>
+    <ul
+      class="favorites"
+      aria-label="Sabitlenenler"
+      ondrop={(e) => onDrop(e, pinned)}
+      ondragover={(e) => draggingPinned && e.preventDefault()}
+    >
+      {#each pinned as tab, index (tab.id)}
+        <li
+          class="favorite"
+          class:active={tab.id === activeTabId}
+          class:discarded={!tab.live}
+          class:drop-before={draggingPinned && dropIndex === index}
+          class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
+          draggable="true"
+          ondragstart={() => (dragId = tab.id)}
+          ondragend={endDrag}
+          ondragover={(e) => onDragOver(e, pinned, index, !collapsed)}
+        >
           {#if collapsed}
             <IconButton
               size="lg"
@@ -159,19 +179,24 @@
   {/if}
 
   {#if listed.length > 0}
-    <ol class="tabs" class:single={listed.length === 1} ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
+    <ol
+      class="tabs"
+      class:single={listed.length === 1}
+      ondrop={(e) => onDrop(e, listed)}
+      ondragover={(e) => dragId && !draggingPinned && e.preventDefault()}
+    >
       {#each listed as tab, index (tab.id)}
         <li
           class="tab"
           class:private={tab.isPrivate}
           class:active={tab.id === activeTabId}
           class:discarded={!tab.live}
-          class:drop-before={dropIndex === index}
-          class:drop-after={dropIndex === index + 1 && index === listed.length - 1}
+          class:drop-before={!draggingPinned && dropIndex === index}
+          class:drop-after={!draggingPinned && dropIndex === index + 1 && index === listed.length - 1}
           draggable="true"
           ondragstart={() => (dragId = tab.id)}
-          ondragend={() => ((dragId = null), (dropIndex = null))}
-          ondragover={(e) => onDragOver(e, index)}
+          ondragend={endDrag}
+          ondragover={(e) => onDragOver(e, listed, index)}
         >
           {#if collapsed}
             <IconButton
@@ -388,6 +413,43 @@
 
   :global([data-material='glass']) .favorite.active .tile {
     box-shadow: var(--shadow), var(--rim);
+  }
+
+  .favorite.drop-before::before,
+  .favorite.drop-after::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+  }
+
+  .favorite.drop-before::before {
+    left: -4px;
+  }
+
+  .favorite.drop-after::after {
+    right: -4px;
+  }
+
+  .collapsed .favorite.drop-before::before,
+  .collapsed .favorite.drop-after::after {
+    top: auto;
+    bottom: auto;
+    right: 6px;
+    left: 6px;
+    width: auto;
+    height: 2px;
+  }
+
+  .collapsed .favorite.drop-before::before {
+    top: -4px;
+  }
+
+  .collapsed .favorite.drop-after::after {
+    bottom: -4px;
   }
 
   .tab.drop-before::before,

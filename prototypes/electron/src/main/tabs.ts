@@ -556,15 +556,15 @@ export class TabManager {
     this.activate(this.tabs[index].id);
   }
 
-  restore(session: SavedWindow): void {
+  restore(session: SavedWindow, url?: string): void {
     for (const saved of session.tabs) {
       this.tabs.push(this.createRecord(saved));
     }
-    const active = session.activeTabId ? this.find(session.activeTabId) : this.tabs[0];
+    const active = session.activeTabId ? this.find(session.activeTabId) : undefined;
     if (active) {
       this.activate(active.id);
     } else {
-      this.open();
+      this.open(url);
     }
   }
 

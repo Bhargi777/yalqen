@@ -38,6 +38,16 @@ export interface SavedSession {
   windows: SavedWindow[];
 }
 
+// Without session restore only pinned tabs survive, reset to their pinned URL; a null activeTabId
+// makes the restored window start on a new tab instead.
+export function pinnedOnly(window: SavedWindow): SavedWindow {
+  const tabs = window.tabs.flatMap((tab) => {
+    const pinnedUrl = tab.pinnedUrl ?? (tab.keepAlive ? tab.url : null);
+    return pinnedUrl ? [{ ...tab, url: pinnedUrl, pinnedUrl, keepAlive: undefined, history: null }] : [];
+  });
+  return { activeTabId: null, tabs };
+}
+
 function isSavedWindow(value: unknown): value is SavedWindow {
   const window = value as SavedWindow;
   return typeof window === 'object' && window !== null && Array.isArray(window.tabs);
@@ -59,7 +69,7 @@ export class SessionStore {
         | SavedSession
         | ({ version: 1 } & SavedWindow);
       if (data.version === 1) {
-        return isSavedWindow(data) ? { version: 2, windows: [{ activeTabId: data.activeTabId ?? null, tabs: data.tabs }] } : null;
+        return isSavedWindow(data) ? { version: 2, windows: [{ activeTabId: data.activeTabId ?? data.tabs[0]?.id ?? null, tabs: data.tabs }] } : null;
       }
       return data.version === 2 && Array.isArray(data.windows)
         ? { version: 2, windows: data.windows.filter(isSavedWindow) }

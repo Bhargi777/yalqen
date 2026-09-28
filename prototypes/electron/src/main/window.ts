@@ -300,7 +300,7 @@ export class YalqenWindow {
     });
 
     if (options.tab) this.tabs.adopt(options.tab);
-    else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved);
+    else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved, options.url);
     else this.tabs.open(options.url);
 
     void this.ui.webContents.loadFile(path.join(__dirname, '../renderer/index.html'));
