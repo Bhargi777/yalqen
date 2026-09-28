@@ -7,8 +7,7 @@ export function securityState(url: string, certificateException = false): Securi
     const { protocol } = new URL(url);
     if (protocol === 'https:') return certificateException ? 'dangerous' : 'secure';
     if (protocol === 'http:') return 'insecure';
-  } catch {
-  }
+  } catch {}
   return 'local';
 }
 
@@ -36,8 +35,7 @@ export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): Menu
   let host = info.url;
   try {
     host = new URL(info.url).host || info.url;
-  } catch {
-  }
+  } catch {}
   return [
     { label: host, enabled: false },
     { label: STATE_TEXT[info.security], enabled: false },

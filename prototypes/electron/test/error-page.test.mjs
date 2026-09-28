@@ -22,7 +22,7 @@ test('page text is escaped', () => {
 });
 
 test('the script only replaces Chromium error documents and retries the failed address', () => {
-  const url = "https://a.com/?q='\"</script>";
+  const url = 'https://a.com/?q=\'"</script>';
   const script = errorPageScript(-105, 'ERR_NAME_NOT_RESOLVED', url);
   let replaced = null;
   const run = (protocol) => {

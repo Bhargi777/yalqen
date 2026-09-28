@@ -20,7 +20,10 @@ test('pages not fetched from a site have no connection state', () => {
 
 test('the menu names the site and its connection', () => {
   const labels = (info) => siteInfoTemplate({ permissions: [], ...info }, {}).map((item) => item.label);
-  assert.deepEqual(labels({ url: 'https://www.example.com/a', security: 'secure' }), ['www.example.com', 'Bağlantı güvenli']);
+  assert.deepEqual(labels({ url: 'https://www.example.com/a', security: 'secure' }), [
+    'www.example.com',
+    'Bağlantı güvenli',
+  ]);
   assert.deepEqual(labels({ url: 'http://example.com:8080/', security: 'insecure' }), [
     'example.com:8080',
     'Bu siteye bağlantı güvenli değil',
@@ -56,8 +59,18 @@ test('saved permissions can be changed from the menu', () => {
     ['a.test', 'Bağlantı güvenli', '-', 'Kamera: İzin verildi', 'Bildirimler: Engellendi'],
   );
   const camera = items[3].submenu;
-  assert.deepEqual(camera.map((item) => [item.label, item.checked]), [['Sor', false], ['İzin ver', true], ['Engelle', false]]);
+  assert.deepEqual(
+    camera.map((item) => [item.label, item.checked]),
+    [
+      ['Sor', false],
+      ['İzin ver', true],
+      ['Engelle', false],
+    ],
+  );
   camera[0].click();
   items[4].submenu[1].click();
-  assert.deepEqual(changes, [['camera', null], ['notifications', 'allow']]);
+  assert.deepEqual(changes, [
+    ['camera', null],
+    ['notifications', 'allow'],
+  ]);
 });

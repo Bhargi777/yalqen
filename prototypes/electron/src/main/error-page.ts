@@ -9,7 +9,6 @@ export interface ErrorText {
   message: string;
 }
 
-
 export function isCertificateError(code: number): boolean {
   return code <= -200 && code > -300;
 }
@@ -80,10 +79,10 @@ button.link { display: block; margin-top: 12px; padding: 0; background: none; co
 <p>${escapeHtml(message)}</p>
 <code>${escapeHtml(name)}</code><br>
 ${
-    proceedUrl
-      ? `<button id="back" type="button">Güvenliğe dön</button><button id="proceed" class="link" type="button">${proceedLabel}</button>`
-      : '<button id="retry" type="button">Yeniden dene</button>'
-  }
+  proceedUrl
+    ? `<button id="back" type="button">Güvenliğe dön</button><button id="proceed" class="link" type="button">${proceedLabel}</button>`
+    : '<button id="retry" type="button">Yeniden dene</button>'
+}
 </main></body>`;
 }
 

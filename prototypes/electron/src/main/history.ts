@@ -29,16 +29,13 @@ export class HistoryStore {
       if (Array.isArray(data)) {
         this.entries = data.filter(isHistoryEntry).slice(0, MAX_VISITS);
       }
-    } catch {
-    }
+    } catch {}
   }
 
   list(query = ''): HistoryEntry[] {
     const term = query.trim().toLocaleLowerCase('tr').slice(0, 200);
     if (!term) return [...this.entries];
-    return this.entries.filter((entry) =>
-      `${entry.title} ${entry.url}`.toLocaleLowerCase('tr').includes(term),
-    );
+    return this.entries.filter((entry) => `${entry.title} ${entry.url}`.toLocaleLowerCase('tr').includes(term));
   }
 
   index(): HistoryIndex {
@@ -115,8 +112,13 @@ function isWebUrl(url: string): boolean {
 function isHistoryEntry(value: unknown): value is HistoryEntry {
   if (!value || typeof value !== 'object') return false;
   const entry = value as Partial<HistoryEntry>;
-  return typeof entry.id === 'string' && typeof entry.url === 'string' &&
-    isWebUrl(entry.url) && typeof entry.title === 'string' &&
-    typeof entry.visitedAt === 'number' && Number.isFinite(entry.visitedAt) &&
-    (entry.faviconUrl === undefined || typeof entry.faviconUrl === 'string');
+  return (
+    typeof entry.id === 'string' &&
+    typeof entry.url === 'string' &&
+    isWebUrl(entry.url) &&
+    typeof entry.title === 'string' &&
+    typeof entry.visitedAt === 'number' &&
+    Number.isFinite(entry.visitedAt) &&
+    (entry.faviconUrl === undefined || typeof entry.faviconUrl === 'string')
+  );
 }

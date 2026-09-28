@@ -35,7 +35,10 @@ test('only web pages have a permission origin', () => {
 });
 
 test('questions name what the site wants', () => {
-  assert.equal(permissionQuestion('a.com', ['camera', 'microphone']), 'a.com kameranızı ve mikrofonunuzu kullanmak istiyor.');
+  assert.equal(
+    permissionQuestion('a.com', ['camera', 'microphone']),
+    'a.com kameranızı ve mikrofonunuzu kullanmak istiyor.',
+  );
   assert.equal(permissionQuestion('a.com', ['microphone']), 'a.com mikrofonunuzu kullanmak istiyor.');
   assert.equal(permissionQuestion('a.com', ['geolocation']), 'a.com konumunuzu öğrenmek istiyor.');
   assert.equal(permissionQuestion('a.com', ['notifications']), 'a.com bildirim göstermek istiyor.');
@@ -61,7 +64,10 @@ test('decisions are asked for, saved per site and survive a restart', () => {
     reloaded.set(SITE, ['camera', 'microphone'], null);
     assert.deepEqual(reloaded.list(SITE), []);
     reloaded.saveNow();
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'permissions.json'), 'utf8')), { version: 1, sites: {} });
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'permissions.json'), 'utf8')), {
+      version: 1,
+      sites: {},
+    });
   });
 });
 
@@ -83,7 +89,10 @@ test('invalid saved entries are ignored', () => {
       path.join(dir, 'permissions.json'),
       JSON.stringify({
         version: 1,
-        sites: { [SITE]: { camera: 'allow', microphone: 'maybe', usb: 'allow' }, 'yalqen://newtab': { camera: 'allow' } },
+        sites: {
+          [SITE]: { camera: 'allow', microphone: 'maybe', usb: 'allow' },
+          'yalqen://newtab': { camera: 'allow' },
+        },
       }),
     );
     const store = new PermissionStore(dir);

@@ -38,12 +38,24 @@ test('bookmarks are added once, edited, moved and persisted', () => {
     store.rename(b.id, 'B');
     store.move(b.id, 'unknown');
     assert.deepEqual(store.bookmarks('iş').length, 0);
-    assert.deepEqual(store.bookmarks('b.com').map((item) => item.title), ['B']);
+    assert.deepEqual(
+      store.bookmarks('b.com').map((item) => item.title),
+      ['B'],
+    );
     store.saveNow();
 
     const reloaded = new BookmarkStore(dir);
-    assert.deepEqual(reloaded.folders().map((item) => item.title), ['İş']);
-    assert.deepEqual(reloaded.bookmarks().map((item) => [item.title, item.folderId]), [['A sitesi', folder.id], ['B', null]]);
+    assert.deepEqual(
+      reloaded.folders().map((item) => item.title),
+      ['İş'],
+    );
+    assert.deepEqual(
+      reloaded.bookmarks().map((item) => [item.title, item.folderId]),
+      [
+        ['A sitesi', folder.id],
+        ['B', null],
+      ],
+    );
     assert.equal(reloaded.find('https://a.com/').id, a.id);
 
     reloaded.removeFolder(folder.id);
@@ -81,21 +93,42 @@ test('damaged entries are dropped and missing folders are cleared', () => {
       }),
     );
     const store = new BookmarkStore(dir);
-    assert.deepEqual(store.folders().map((item) => item.id), ['f']);
-    assert.deepEqual(store.bookmarks().map((item) => [item.id, item.folderId]), [['1', null], ['3', 'f']]);
+    assert.deepEqual(
+      store.folders().map((item) => item.id),
+      ['f'],
+    );
+    assert.deepEqual(
+      store.bookmarks().map((item) => [item.id, item.folderId]),
+      [
+        ['1', null],
+        ['3', 'f'],
+      ],
+    );
   });
 });
 
 test('the menu lists folders, then loose bookmarks', () => {
   const opened = [];
-  const folders = [{ id: 'f', title: 'İş', createdAt: 1 }, { id: 'g', title: 'Boş klasör', createdAt: 2 }];
+  const folders = [
+    { id: 'f', title: 'İş', createdAt: 1 },
+    { id: 'g', title: 'Boş klasör', createdAt: 2 },
+  ];
   const list = [
     { id: '1', title: 'A', url: 'https://a.com/', folderId: 'f', createdAt: 1 },
     { id: '2', title: 'B'.repeat(80), url: 'https://b.com/', folderId: null, createdAt: 2 },
   ];
-  const items = bookmarksMenuTemplate(folders, list, { open: (url) => opened.push(url), showAll: () => opened.push('all') });
-  assert.deepEqual(items.map((item) => item.label ?? '-'), ['İş', 'Boş klasör', `${'B'.repeat(59)}…`, '-', 'Tüm yer imleri']);
-  assert.deepEqual(items[1].submenu.map((item) => item.label), ['Boş']);
+  const items = bookmarksMenuTemplate(folders, list, {
+    open: (url) => opened.push(url),
+    showAll: () => opened.push('all'),
+  });
+  assert.deepEqual(
+    items.map((item) => item.label ?? '-'),
+    ['İş', 'Boş klasör', `${'B'.repeat(59)}…`, '-', 'Tüm yer imleri'],
+  );
+  assert.deepEqual(
+    items[1].submenu.map((item) => item.label),
+    ['Boş'],
+  );
   items[0].submenu[0].click();
   items[2].click();
   items[4].click();

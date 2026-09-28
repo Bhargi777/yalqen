@@ -18,7 +18,10 @@ test('an old filter cache is usable immediately without downloading lists', asyn
     fs.writeFileSync(cache, ElectronBlocker.empty().serialize());
     const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
     fs.utimesSync(cache, old, old);
-    globalThis.fetch = async () => { fetches++; throw new Error('network should not be used'); };
+    globalThis.fetch = async () => {
+      fetches++;
+      throw new Error('network should not be used');
+    };
 
     const result = await loadEngine(cache);
     assert.equal(result.stale, true);
@@ -42,21 +45,33 @@ test('scriptlets sharing global helpers can be injected one after another', asyn
         });
       }
     }`;
-    const engine = ElectronBlocker.parse('example.com##+js(first)\nexample.com##+js(second)', { loadCosmeticFilters: true });
-    engine.updateResources(JSON.stringify({
-      scriptlets: ['first', 'second'].map((name) => ({
-        name: `${name}.js`,
-        aliases: [],
-        body: `function ${name}() { wrapToString(); }`,
-        dependencies: ['wrap-to-string.fn'],
-      })).concat({ name: 'wrap-to-string.fn', aliases: [], body: wrapToString, dependencies: [] }),
-    }), 'test');
+    const engine = ElectronBlocker.parse('example.com##+js(first)\nexample.com##+js(second)', {
+      loadCosmeticFilters: true,
+    });
+    engine.updateResources(
+      JSON.stringify({
+        scriptlets: ['first', 'second']
+          .map((name) => ({
+            name: `${name}.js`,
+            aliases: [],
+            body: `function ${name}() { wrapToString(); }`,
+            dependencies: ['wrap-to-string.fn'],
+          }))
+          .concat({ name: 'wrap-to-string.fn', aliases: [], body: wrapToString, dependencies: [] }),
+      }),
+      'test',
+    );
     fs.writeFileSync(cache, engine.serialize());
 
     const { blocker } = await loadEngine(cache);
     const { scripts } = blocker.getCosmeticsFilters({
-      url: 'https://example.com/', hostname: 'example.com', domain: 'example.com',
-      getBaseRules: false, getInjectionRules: true, getExtendedRules: false, getRulesFromHostname: true,
+      url: 'https://example.com/',
+      hostname: 'example.com',
+      domain: 'example.com',
+      getBaseRules: false,
+      getInjectionRules: true,
+      getExtendedRules: false,
+      getRulesFromHostname: true,
     });
     assert.equal(scripts.length, 2);
 

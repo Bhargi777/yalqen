@@ -41,8 +41,14 @@ function gesturePage() {
     wheel(deltaX, at, target = new Element(), isTrusted = true) {
       now = at;
       onWheel({
-        deltaX, deltaY: 0, deltaMode: 0, isTrusted,
-        ctrlKey: false, metaKey: false, altKey: false, shiftKey: false,
+        deltaX,
+        deltaY: 0,
+        deltaMode: 0,
+        isTrusted,
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
         composedPath: () => [target],
       });
     },

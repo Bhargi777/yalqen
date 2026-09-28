@@ -52,8 +52,14 @@ test('history and finished downloads are cleared from a point in time', () => {
     );
     const visits = new history.HistoryStore(dir);
     visits.clearSince(15);
-    assert.deepEqual(visits.list().map((entry) => entry.id), ['o']);
-    assert.deepEqual(new history.HistoryStore(dir).list().map((entry) => entry.id), ['o']);
+    assert.deepEqual(
+      visits.list().map((entry) => entry.id),
+      ['o'],
+    );
+    assert.deepEqual(
+      new history.HistoryStore(dir).list().map((entry) => entry.id),
+      ['o'],
+    );
     visits.clearSince(0);
     assert.deepEqual(new history.HistoryStore(dir).list(), []);
 
@@ -63,9 +69,18 @@ test('history and finished downloads are cleared from a point in time', () => {
     list.add({ ...base, id: 'new', filename: 'new', state: 'completed', startedAt: 20 });
     list.add({ ...base, id: 'running', filename: 'running', state: 'progressing', startedAt: 30 });
     list.removeSince(15);
-    assert.deepEqual(list.list().map((entry) => entry.id), ['running', 'old']);
-    assert.deepEqual(new downloads.DownloadStore(dir).list().map((entry) => entry.id), ['running', 'old']);
+    assert.deepEqual(
+      list.list().map((entry) => entry.id),
+      ['running', 'old'],
+    );
+    assert.deepEqual(
+      new downloads.DownloadStore(dir).list().map((entry) => entry.id),
+      ['running', 'old'],
+    );
     list.removeSince(0);
-    assert.deepEqual(list.list().map((entry) => entry.id), ['running']);
+    assert.deepEqual(
+      list.list().map((entry) => entry.id),
+      ['running'],
+    );
   });
 });

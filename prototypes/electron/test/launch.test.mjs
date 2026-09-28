@@ -9,7 +9,18 @@ const isFile = (file) => files.has(file);
 test('links and existing files become addresses; the rest is skipped', () => {
   assert.deepEqual(
     externalUrls(
-      ['/usr/bin/yalqen', '.', '--no-sandbox', 'https://example.com/a?b=1', 'HTTP://x.com', 'doc.pdf', 'sayfa ben.html', 'missing.html', 'javascript:alert(1)', 'mailto:a@b.c'],
+      [
+        '/usr/bin/yalqen',
+        '.',
+        '--no-sandbox',
+        'https://example.com/a?b=1',
+        'HTTP://x.com',
+        'doc.pdf',
+        'sayfa ben.html',
+        'missing.html',
+        'javascript:alert(1)',
+        'mailto:a@b.c',
+      ],
       '/home/a',
       isFile,
     ),
@@ -18,5 +29,8 @@ test('links and existing files become addresses; the rest is skipped', () => {
 });
 
 test('file addresses are kept', () => {
-  assert.deepEqual(externalUrls(['file:///tmp/x.html'], '/', () => false), ['file:///tmp/x.html']);
+  assert.deepEqual(
+    externalUrls(['file:///tmp/x.html'], '/', () => false),
+    ['file:///tmp/x.html'],
+  );
 });

@@ -14,7 +14,13 @@ const page = (name) => path.resolve('src/renderer/public', name);
 
 function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
   let handle;
-  const session = { protocol: { handle(_scheme, callback) { handle = callback; } } };
+  const session = {
+    protocol: {
+      handle(_scheme, callback) {
+        handle = callback;
+      },
+    },
+  };
   const pages = loadInternalPages({
     newTab: page('newtab.html'),
     newTabScript: page('newtab-suggestions.js'),
@@ -38,18 +44,22 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
 
 test('the new tab serves matching local suggestions and its script', async () => {
   const handle = serve({
-    suggestions: (query) => suggest(query, {
-      tabs: [],
-      bookmarks: [{ title: 'GitHub', url: 'https://github.com/' }],
-      history: indexHistory([{ title: 'GitLab', url: 'https://gitlab.com/', visitedAt: 1 }]),
-    }),
+    suggestions: (query) =>
+      suggest(query, {
+        tabs: [],
+        bookmarks: [{ title: 'GitHub', url: 'https://github.com/' }],
+        history: indexHistory([{ title: 'GitLab', url: 'https://gitlab.com/', visitedAt: 1 }]),
+      }),
   });
 
   const response = await handle(new Request('yalqen://newtab/suggestions?q=git'));
-  assert.deepEqual((await response.json()).map(({ kind, url }) => [kind, url]), [
-    ['bookmark', 'https://github.com/'],
-    ['history', 'https://gitlab.com/'],
-  ]);
+  assert.deepEqual(
+    (await response.json()).map(({ kind, url }) => [kind, url]),
+    [
+      ['bookmark', 'https://github.com/'],
+      ['history', 'https://gitlab.com/'],
+    ],
+  );
   assert.equal(response.headers.get('cache-control'), 'no-store');
 
   const script = await handle(new Request('yalqen://newtab/suggestions.js'));
@@ -73,7 +83,18 @@ test('the downloads page updates itself when the list changes', async () => {
   assert.match(await script.text(), /downloads\/changes/);
 
   const waiting = handle(new Request('yalqen://downloads/changes?since=0'));
-  entries = [{ id: 'a', url: 'https://a.com/f', filename: 'f.zip', savePath: '/tmp/f.zip', state: 'completed', receivedBytes: 1, totalBytes: 1, startedAt: 1 }];
+  entries = [
+    {
+      id: 'a',
+      url: 'https://a.com/f',
+      filename: 'f.zip',
+      savePath: '/tmp/f.zip',
+      state: 'completed',
+      receivedBytes: 1,
+      totalBytes: 1,
+      startedAt: 1,
+    },
+  ];
   changes.notify();
   const update = await (await waiting).json();
   assert.equal(update.version, 1);
@@ -110,4 +131,3 @@ test('the settings page and only its own assets are served under yalqen://settin
     assert.equal((await handle(new Request(url))).status, 404);
   }
 });
-

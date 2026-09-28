@@ -48,7 +48,6 @@
     window.yalqenCommand.send({ type: 'input', input: text });
   }
 
-
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -156,7 +155,8 @@
 
   .bar {
     --search-field-bg: rgb(255 255 255 / 0.88);
-    --search-field-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12), inset 0 1px rgb(255 255 255 / 0.8), 0 12px 40px rgb(0 0 0 / 0.22);
+    --search-field-shadow:
+      0 0 0 0.5px rgb(0 0 0 / 0.12), inset 0 1px rgb(255 255 255 / 0.8), 0 12px 40px rgb(0 0 0 / 0.22);
   }
 
   .suggestions {
@@ -220,7 +220,8 @@
 
     .bar {
       --search-field-bg: rgb(38 37 40 / 0.9);
-      --search-field-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), inset 0 1px rgb(255 255 255 / 0.14), 0 12px 40px rgb(0 0 0 / 0.5);
+      --search-field-shadow:
+        0 0 0 0.5px rgb(255 255 255 / 0.14), inset 0 1px rgb(255 255 255 / 0.14), 0 12px 40px rgb(0 0 0 / 0.5);
     }
   }
 

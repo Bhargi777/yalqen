@@ -5,7 +5,13 @@ import { JsonFile } from './json-file.js';
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
 export type Decision = 'allow' | 'deny';
 
-export const SITE_PERMISSIONS: readonly SitePermission[] = ['camera', 'microphone', 'geolocation', 'notifications', 'popups'];
+export const SITE_PERMISSIONS: readonly SitePermission[] = [
+  'camera',
+  'microphone',
+  'geolocation',
+  'notifications',
+  'popups',
+];
 
 export const PERMISSION_LABELS: Record<SitePermission, string> = {
   camera: 'Kamera',
@@ -45,7 +51,10 @@ export function permissionOrigin(url: string | undefined): string | null {
 export function permissionQuestion(host: string, kinds: readonly SitePermission[]): string {
   if (kinds.includes('geolocation')) return `${host} konumunuzu öğrenmek istiyor.`;
   if (kinds.includes('notifications')) return `${host} bildirim göstermek istiyor.`;
-  const devices = [kinds.includes('camera') ? 'kameranızı' : null, kinds.includes('microphone') ? 'mikrofonunuzu' : null];
+  const devices = [
+    kinds.includes('camera') ? 'kameranızı' : null,
+    kinds.includes('microphone') ? 'mikrofonunuzu' : null,
+  ];
   return `${host} ${devices.filter(Boolean).join(' ve ')} kullanmak istiyor.`;
 }
 
@@ -67,7 +76,9 @@ export class PermissionStore {
   }
 
   decide(origin: string, kinds: readonly SitePermission[]): Decision | 'ask' {
-    const decisions = kinds.map((kind) => this.get(origin, kind) ?? (this.once.has(`${origin} ${kind}`) ? 'allow' : undefined));
+    const decisions = kinds.map(
+      (kind) => this.get(origin, kind) ?? (this.once.has(`${origin} ${kind}`) ? 'allow' : undefined),
+    );
     if (decisions.includes('deny')) return 'deny';
     return decisions.every((decision) => decision === 'allow') ? 'allow' : 'ask';
   }
@@ -118,8 +129,7 @@ export class PermissionStore {
         }
         if (site.size > 0) this.sites.set(origin, site);
       }
-    } catch {
-    }
+    } catch {}
   }
 
   saveNow(): void {

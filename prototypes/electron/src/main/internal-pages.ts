@@ -13,8 +13,7 @@ import { searchFieldMarkup } from './search-field-markup.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
-const DOWNLOADS_CSP =
-  "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'";
+const DOWNLOADS_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'";
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
 const SETTINGS_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
@@ -38,7 +37,6 @@ export function registerInternalScheme(): void {
     { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
   ]);
 }
-
 
 export function renderRecent(pages: RecentPage[]): string {
   if (pages.length === 0) return '';
@@ -88,22 +86,29 @@ function renderTips(): string {
 
 export function renderHistory(entries: HistoryEntry[], query: string): string {
   const search = query.trim().slice(0, 200);
-  const form = searchFieldMarkup({ action: HISTORY_URL, label: 'Geçmişte ara', valueHtml: escapeHtml(search), autofocus: true });
+  const form = searchFieldMarkup({
+    action: HISTORY_URL,
+    label: 'Geçmişte ara',
+    valueHtml: escapeHtml(search),
+    autofocus: true,
+  });
   if (entries.length === 0) {
     const message = search ? 'Eşleşen sayfa bulunamadı.' : 'Henüz ziyaret edilen bir sayfa yok.';
     return `${form}<p class="empty">${message}</p>`;
   }
   let previousDay = '';
-  const rows = entries.map((entry) => {
-    const visitedAt = new Date(entry.visitedAt);
-    const day = DAY_FORMAT.format(visitedAt);
-    const heading = day === previousDay ? '' : `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
-    previousDay = day;
-    const time = TIME_FORMAT.format(visitedAt);
-    const host = displayHost(entry.url);
-    const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
-    return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
-  }).join('');
+  const rows = entries
+    .map((entry) => {
+      const visitedAt = new Date(entry.visitedAt);
+      const day = DAY_FORMAT.format(visitedAt);
+      const heading = day === previousDay ? '' : `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
+      previousDay = day;
+      const time = TIME_FORMAT.format(visitedAt);
+      const host = displayHost(entry.url);
+      const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
+      return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
+    })
+    .join('');
   const clear = search ? '' : `<a class="clear" href="${HISTORY_URL}confirm-clear">Tüm geçmişi temizle</a>`;
   return `${form}<div class="results"><div class="summary"><span>${entries.length} ziyaret</span>${clear}</div><ol>${rows}</ol></div>`;
 }
@@ -218,9 +223,11 @@ function serveDownloads(url: URL, pages: InternalPages, sources: InternalPageSou
     case '/downloads.js':
       return script(pages.downloadsScript);
     case '/changes':
-      return changes.next(Number(url.searchParams.get('since'))).then((version) =>
-        Response.json({ version, html: renderDownloads(list()) }, { headers: { 'cache-control': 'no-store' } }),
-      );
+      return changes
+        .next(Number(url.searchParams.get('since')))
+        .then((version) =>
+          Response.json({ version, html: renderDownloads(list()) }, { headers: { 'cache-control': 'no-store' } }),
+        );
     case '/': {
       const content = `<div id="downloads" data-version="${changes.version}">${renderDownloads(list())}</div>`;
       return html(pages.downloads.replace(DOWNLOADS_MARKER, content), DOWNLOADS_CSP);
@@ -235,7 +242,9 @@ function serveNewTab(url: URL, pages: InternalPages, sources: InternalPageSource
     case '/suggestions.js':
       return script(pages.newTabScript);
     case '/mark.png':
-      return new Response(pages.newTabMark, { headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' } });
+      return new Response(pages.newTabMark, {
+        headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' },
+      });
     case '/suggestions':
       return Response.json(sources.suggestions(url.searchParams.get('q') ?? ''), {
         headers: { 'cache-control': 'no-store' },
@@ -270,7 +279,10 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         if (url.pathname !== '/') return notFound();
         const query = url.searchParams.get('q') ?? '';
         const data = sources.bookmarks(query);
-        return html(pages.bookmarks.replace(BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)), INTERNAL_CSP);
+        return html(
+          pages.bookmarks.replace(BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)),
+          INTERNAL_CSP,
+        );
       }
       default:
         return notFound();

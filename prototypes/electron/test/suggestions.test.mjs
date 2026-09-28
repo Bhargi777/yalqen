@@ -25,7 +25,12 @@ test('suggestions carry the latest favicon seen for their host', () => {
   const list = suggest('git', {
     ...sources,
     history: [
-      { title: 'GitHub repo', url: 'https://github.com/org/repo', visitedAt: 40, faviconUrl: 'https://github.com/new.ico' },
+      {
+        title: 'GitHub repo',
+        url: 'https://github.com/org/repo',
+        visitedAt: 40,
+        faviconUrl: 'https://github.com/new.ico',
+      },
       { title: 'GitHub', url: 'https://github.com/', visitedAt: 35, faviconUrl: 'https://github.com/old.ico' },
       ...sources.history,
     ],
@@ -40,18 +45,30 @@ test('nothing is suggested for empty input', () => {
 
 test('open tabs come first and each address appears once', () => {
   const list = suggest('git', sources);
-  assert.deepEqual(list.map((item) => [item.kind, item.url]), [
-    ['tab', 'https://github.com/'],
-    ['history', 'https://gitlab.com/'],
-    ['history', 'https://git-scm.com/book/tr'],
-  ]);
+  assert.deepEqual(
+    list.map((item) => [item.kind, item.url]),
+    [
+      ['tab', 'https://github.com/'],
+      ['history', 'https://gitlab.com/'],
+      ['history', 'https://git-scm.com/book/tr'],
+    ],
+  );
   assert.equal(list[0].tabId, 't1');
 });
 
 test('addresses match without scheme or www, titles match by word', () => {
-  assert.deepEqual(suggest('resmi', sources).map((item) => item.kind), ['bookmark']);
-  assert.deepEqual(suggest('news', sources).map((item) => item.title), ['Hacker News']);
-  assert.deepEqual(suggest('KİTAB', sources).map((item) => item.title), ['Git kitabı']);
+  assert.deepEqual(
+    suggest('resmi', sources).map((item) => item.kind),
+    ['bookmark'],
+  );
+  assert.deepEqual(
+    suggest('news', sources).map((item) => item.title),
+    ['Hacker News'],
+  );
+  assert.deepEqual(
+    suggest('KİTAB', sources).map((item) => item.title),
+    ['Git kitabı'],
+  );
 });
 
 test('frequently visited pages rank higher among equal matches', () => {
@@ -64,10 +81,17 @@ test('frequently visited pages rank higher among equal matches', () => {
       { title: 'Often', url: 'https://h2.com/', visitedAt: 40 },
     ],
   });
-  assert.deepEqual(list.map((item) => item.title), ['Often', 'Once']);
+  assert.deepEqual(
+    list.map((item) => item.title),
+    ['Often', 'Once'],
+  );
 });
 
 test('the list is limited', () => {
-  const history = Array.from({ length: 20 }, (_, i) => ({ title: `Sayfa ${i}`, url: `https://a.com/${i}`, visitedAt: i }));
+  const history = Array.from({ length: 20 }, (_, i) => ({
+    title: `Sayfa ${i}`,
+    url: `https://a.com/${i}`,
+    visitedAt: i,
+  }));
   assert.equal(suggest('a.com', { tabs: [], bookmarks: [], history }).length, MAX_SUGGESTIONS);
 });

@@ -34,7 +34,6 @@ export const EMPTY_HISTORY_INDEX: HistoryIndex = { pages: [], favicons: new Map(
 export const MAX_SUGGESTIONS = 6;
 const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { command: 0, tab: 1, bookmark: 2, history: 3 };
 
-
 function bareUrl(url: string): string {
   return url.replace(/^[a-z][a-z\d+\-.]*:\/\/(www\.)?/i, '').toLocaleLowerCase('tr');
 }
@@ -105,11 +104,13 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
 
   for (const tab of sources.tabs) {
     const score = matchScore(term, tab.title, tab.url);
-    if (score > 0) offer({ kind: 'tab', title: tab.title, url: tab.url, tabId: tab.id, score, visits: 0, lastVisit: 0 });
+    if (score > 0)
+      offer({ kind: 'tab', title: tab.title, url: tab.url, tabId: tab.id, score, visits: 0, lastVisit: 0 });
   }
   for (const bookmark of sources.bookmarks) {
     const score = matchScore(term, bookmark.title, bookmark.url);
-    if (score > 0) offer({ kind: 'bookmark', title: bookmark.title, url: bookmark.url, score, visits: 0, lastVisit: 0 });
+    if (score > 0)
+      offer({ kind: 'bookmark', title: bookmark.title, url: bookmark.url, score, visits: 0, lastVisit: 0 });
   }
   for (const page of sources.history.pages) {
     const score = matchText(term, page.address, page.name, page.words);
@@ -119,7 +120,14 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
       existing.visits = page.visits;
       existing.lastVisit = page.lastVisit;
     } else {
-      offer({ kind: 'history', title: page.title, url: page.url, score, visits: page.visits, lastVisit: page.lastVisit });
+      offer({
+        kind: 'history',
+        title: page.title,
+        url: page.url,
+        score,
+        visits: page.visits,
+        lastVisit: page.lastVisit,
+      });
     }
   }
 

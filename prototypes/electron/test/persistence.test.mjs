@@ -14,8 +14,14 @@ test('frequent changes are coalesced into one background save', async () => {
   try {
     const store = new SessionStore(dir);
     let snapshots = 0;
-    store.scheduleSave(() => { snapshots++; return session('first'); }, 10);
-    store.scheduleSave(() => { snapshots++; return session('latest'); }, 10);
+    store.scheduleSave(() => {
+      snapshots++;
+      return session('first');
+    }, 10);
+    store.scheduleSave(() => {
+      snapshots++;
+      return session('latest');
+    }, 10);
     await waitFor(() => fs.existsSync(path.join(dir, 'tabs.json')));
     assert.equal(snapshots, 1);
     assert.equal(store.load().windows[0].tabs[0].url, 'latest');
@@ -30,9 +36,15 @@ test('a pending background save cannot replace the final shutdown save', async (
   let startWrite;
   let finishWrite;
   let noteWritten;
-  const started = new Promise((resolve) => { startWrite = resolve; });
-  const released = new Promise((resolve) => { finishWrite = resolve; });
-  const written = new Promise((resolve) => { noteWritten = resolve; });
+  const started = new Promise((resolve) => {
+    startWrite = resolve;
+  });
+  const released = new Promise((resolve) => {
+    finishWrite = resolve;
+  });
+  const written = new Promise((resolve) => {
+    noteWritten = resolve;
+  });
   fs.promises.writeFile = async (...args) => {
     startWrite();
     await released;
@@ -58,9 +70,18 @@ test('a pending background save cannot replace the final shutdown save', async (
 test('a single-window session from before windows is read as one window', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-session-'));
   try {
-    fs.writeFileSync(path.join(dir, 'tabs.json'), JSON.stringify({ version: 1, activeTabId: 'tab', tabs: [tab('old')] }));
-    assert.deepEqual(new SessionStore(dir).load(), { version: 2, windows: [{ activeTabId: 'tab', tabs: [tab('old')] }] });
-    fs.writeFileSync(path.join(dir, 'tabs.json'), JSON.stringify({ version: 2, windows: [{ activeTabId: null, tabs: [] }, { nope: 1 }] }));
+    fs.writeFileSync(
+      path.join(dir, 'tabs.json'),
+      JSON.stringify({ version: 1, activeTabId: 'tab', tabs: [tab('old')] }),
+    );
+    assert.deepEqual(new SessionStore(dir).load(), {
+      version: 2,
+      windows: [{ activeTabId: 'tab', tabs: [tab('old')] }],
+    });
+    fs.writeFileSync(
+      path.join(dir, 'tabs.json'),
+      JSON.stringify({ version: 2, windows: [{ activeTabId: null, tabs: [] }, { nope: 1 }] }),
+    );
     assert.deepEqual(new SessionStore(dir).load().windows, [{ activeTabId: null, tabs: [] }]);
     fs.writeFileSync(path.join(dir, 'tabs.json'), JSON.stringify({ version: 3 }));
     assert.equal(new SessionStore(dir).load(), null);
@@ -78,9 +99,16 @@ async function waitFor(condition) {
 }
 
 test('saved navigation keeps a window of entries around the current page', () => {
-  const entries = Array.from({ length: 30 }, (_, i) => ({ url: `https://a.com/${i}`, title: String(i), pageState: '' }));
+  const entries = Array.from({ length: 30 }, (_, i) => ({
+    url: `https://a.com/${i}`,
+    title: String(i),
+    pageState: '',
+  }));
   const middle = trimHistory({ entries, index: 20 });
-  assert.deepEqual(middle.entries.map((entry) => entry.title), ['14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26']);
+  assert.deepEqual(
+    middle.entries.map((entry) => entry.title),
+    ['14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26'],
+  );
   assert.equal(middle.entries[middle.index].title, '20');
   const start = trimHistory({ entries, index: 2 });
   assert.equal(start.entries.length, 9);
@@ -106,8 +134,11 @@ test('without session restore only pinned tabs are kept, reset to their pinned p
   const kept = pinnedOnly(window);
 
   assert.equal(kept.activeTabId, null);
-  assert.deepEqual(kept.tabs.map(({ id, url, pinnedUrl, history }) => ({ id, url, pinnedUrl, history })), [
-    { id: 'pinned', url: 'https://mail.example/', pinnedUrl: 'https://mail.example/', history: null },
-    { id: 'legacy', url: 'https://chat.example/', pinnedUrl: 'https://chat.example/', history: null },
-  ]);
+  assert.deepEqual(
+    kept.tabs.map(({ id, url, pinnedUrl, history }) => ({ id, url, pinnedUrl, history })),
+    [
+      { id: 'pinned', url: 'https://mail.example/', pinnedUrl: 'https://mail.example/', history: null },
+      { id: 'legacy', url: 'https://chat.example/', pinnedUrl: 'https://chat.example/', history: null },
+    ],
+  );
 });

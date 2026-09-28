@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <title>Yeni sekme</title>
-    <style>__YALQEN_CONTROLS_SLOT__</style>
+    <style>
+      __YALQEN_CONTROLS_SLOT__
+    </style>
 
     <style>
       :root {
@@ -13,8 +15,9 @@
         --faint: rgb(40 42 48 / 0.5);
         --surface: rgb(255 255 255 / 0.82);
         --glass: rgb(255 255 255 / 0.76);
-        --glass-edge: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08),
-          inset 0 0 0 0.5px rgb(255 255 255 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.5);
+        --glass-edge:
+          0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08), inset 0 0 0 0.5px rgb(255 255 255 / 0.6),
+          inset 0 1px 0 rgb(255 255 255 / 0.5);
         --lift: 0 12px 32px rgb(16 18 24 / 0.07);
         --chip: rgb(255 255 255 / 0.5);
         --well: rgb(16 18 24 / 0.06);
@@ -35,8 +38,9 @@
           --faint: rgb(236 238 241 / 0.45);
           --surface: rgb(39 38 41 / 0.82);
           --glass: rgb(255 255 255 / 0.12);
-          --glass-edge: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2),
-            inset 0 0 0 0.5px rgb(255 255 255 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.12);
+          --glass-edge:
+            0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.22),
+            inset 0 1px 0 rgb(255 255 255 / 0.12);
           --lift: 0 12px 32px rgb(0 0 0 / 0.22);
           --chip: rgb(255 255 255 / 0.07);
           --well: rgb(255 255 255 / 0.08);
@@ -88,7 +92,12 @@
         place-items: center;
         background: var(--page);
         color: var(--text);
-        font: 15px / 1.35 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        font:
+          15px / 1.35 -apple-system,
+          BlinkMacSystemFont,
+          'SF Pro Text',
+          'Helvetica Neue',
+          sans-serif;
         overflow: hidden;
         user-select: none;
         -webkit-font-smoothing: antialiased;
@@ -110,11 +119,9 @@
         align-items: center;
         width: min(720px, 100%);
         padding: 0 24px 10vh;
-        transform: translateX(clamp(
-          min(0px, calc(360px - 50vw)),
-          var(--newtab-center-offset, 0px),
-          max(0px, calc(50vw - 360px))
-        ));
+        transform: translateX(
+          clamp(min(0px, calc(360px - 50vw)), var(--newtab-center-offset, 0px), max(0px, calc(50vw - 360px)))
+        );
       }
 
       .mark {
@@ -156,7 +163,10 @@
       }
 
       .submit {
-        transition: background-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
+        transition:
+          background-color 150ms ease-out,
+          color 150ms ease-out,
+          transform 120ms ease-out;
       }
 
       .submit:active {
@@ -179,7 +189,10 @@
         padding: 6px;
         border-radius: 20px;
         background: var(--surface);
-        box-shadow: var(--rim), var(--shadow), 0 12px 40px rgb(0 0 0 / 0.16);
+        box-shadow:
+          var(--rim),
+          var(--shadow),
+          0 12px 40px rgb(0 0 0 / 0.16);
         list-style: none;
       }
 
@@ -265,7 +278,9 @@
         border-radius: 18px;
         background: var(--glass);
         box-shadow: var(--glass-edge);
-        transition: transform 150ms ease-out, background-color 150ms ease-out;
+        transition:
+          transform 150ms ease-out,
+          background-color 150ms ease-out;
       }
 
       .pinned a:hover .tile {
@@ -311,7 +326,9 @@
         padding: 12px 14px;
         border-radius: 16px;
         background: var(--chip);
-        box-shadow: var(--rim), 0 0 0 0.5px rgb(16 18 24 / 0.08);
+        box-shadow:
+          var(--rim),
+          0 0 0 0.5px rgb(16 18 24 / 0.08);
       }
 
       .tips strong,
@@ -363,10 +380,14 @@
         height: var(--control-lg);
         border-radius: var(--radius-pill);
         background: var(--chip);
-        box-shadow: var(--rim), 0 0 0 0.5px rgb(16 18 24 / 0.08);
+        box-shadow:
+          var(--rim),
+          0 0 0 0.5px rgb(16 18 24 / 0.08);
         color: var(--muted);
         font-size: 13px;
-        transition: background-color 120ms ease-out, color 120ms ease-out;
+        transition:
+          background-color 120ms ease-out,
+          color 120ms ease-out;
       }
 
       .recent li:hover {
@@ -420,7 +441,15 @@
       <div class="search">
         <form id="search-form" class="search-field lg" action="yalqen://newtab/search" method="get" role="search">
           <span class="search-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+            >
               <circle cx="8.8" cy="8.8" r="5.8" />
               <path d="m13.2 13.2 4 4" />
             </svg>
@@ -440,7 +469,17 @@
           />
           <span class="search-actions">
             <button class="icon-btn lg accent submit" type="submit" aria-label="Git">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" />
               </svg>
             </button>
@@ -448,9 +487,7 @@
         </form>
         <ul id="suggestions" class="suggestions" role="listbox" aria-label="Öneriler" hidden></ul>
       </div>
-      __YALQEN_PINNED_SLOT__
-      __YALQEN_TIPS_SLOT__
-      __YALQEN_RECENT_SLOT__
+      __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__ __YALQEN_RECENT_SLOT__
     </main>
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>

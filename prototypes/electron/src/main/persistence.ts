@@ -65,11 +65,11 @@ export class SessionStore {
 
   load(): SavedSession | null {
     try {
-      const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as
-        | SavedSession
-        | ({ version: 1 } & SavedWindow);
+      const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedSession | ({ version: 1 } & SavedWindow);
       if (data.version === 1) {
-        return isSavedWindow(data) ? { version: 2, windows: [{ activeTabId: data.activeTabId ?? data.tabs[0]?.id ?? null, tabs: data.tabs }] } : null;
+        return isSavedWindow(data)
+          ? { version: 2, windows: [{ activeTabId: data.activeTabId ?? data.tabs[0]?.id ?? null, tabs: data.tabs }] }
+          : null;
       }
       return data.version === 2 && Array.isArray(data.windows)
         ? { version: 2, windows: data.windows.filter(isSavedWindow) }

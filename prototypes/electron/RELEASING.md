@@ -18,26 +18,26 @@ With a paid Apple Developer Program membership the app can be signed with a Deve
 
 Signing certificate:
 
-| Secret | Value |
-| --- | --- |
+| Secret                       | Value                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------- |
 | `MAC_CERTIFICATE_P12_BASE64` | "Developer ID Application" certificate exported as `.p12`, base64-encoded |
-| `MAC_CERTIFICATE_PASSWORD` | Password of that `.p12` |
+| `MAC_CERTIFICATE_PASSWORD`   | Password of that `.p12`                                                   |
 
 Notarization, with either an Apple ID:
 
-| Secret | Value |
-| --- | --- |
-| `APPLE_ID` | Apple ID email of the developer account |
+| Secret                        | Value                                              |
+| ----------------------------- | -------------------------------------------------- |
+| `APPLE_ID`                    | Apple ID email of the developer account            |
 | `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password created at appleid.apple.com |
-| `APPLE_TEAM_ID` | Team ID shown in the developer account |
+| `APPLE_TEAM_ID`               | Team ID shown in the developer account             |
 
 or with an API key (created under App Store Connect > Users and Access > Integrations; only used for notarization):
 
-| Secret | Value |
-| --- | --- |
+| Secret             | Value                         |
+| ------------------ | ----------------------------- |
 | `APPLE_API_KEY_P8` | Contents of `AuthKey_XXXX.p8` |
-| `APPLE_API_KEY_ID` | Key ID |
-| `APPLE_API_ISSUER` | Issuer ID |
+| `APPLE_API_KEY_ID` | Key ID                        |
+| `APPLE_API_ISSUER` | Issuer ID                     |
 
 Developer ID signing uses hardened runtime with `build/entitlements.mac.plist` (JIT, camera, microphone, location).
 

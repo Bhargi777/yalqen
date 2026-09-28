@@ -73,8 +73,7 @@ export class ZoomStore {
           this.sites.set(key, factor);
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   saveNow(): void {

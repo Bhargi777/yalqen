@@ -8,8 +8,7 @@ export function externalUrls(args: readonly string[], cwd: string, isFile: (file
     if (/^(https?|file):/i.test(arg)) {
       try {
         urls.push(new URL(arg).toString());
-      } catch {
-      }
+      } catch {}
       continue;
     }
     const file = path.resolve(cwd, arg);

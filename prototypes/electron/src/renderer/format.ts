@@ -9,7 +9,6 @@ export function siteLabel(tab: TabSnapshot): string {
   try {
     const url = new URL(tab.url);
     if (url.protocol === 'http:' || url.protocol === 'https:') return url.host.replace(/^www\./, '');
-  } catch {
-  }
+  } catch {}
   return tab.title;
 }

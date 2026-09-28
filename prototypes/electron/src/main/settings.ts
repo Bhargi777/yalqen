@@ -1,6 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { FontSizeSetting, PageLanguage, PanelSide, SecureDnsSetting, SettingsValues, ThemeSource } from '../shared/types.js';
+import type {
+  FontSizeSetting,
+  PageLanguage,
+  PanelSide,
+  SecureDnsSetting,
+  SettingsValues,
+  ThemeSource,
+} from '../shared/types.js';
 import { JsonFile } from './json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from './memory-saver.js';
 import { DEFAULT_ZOOM_FACTORS, FONT_SIZES } from './page-preferences.js';
@@ -78,13 +85,11 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? (startupBehavior as Settings['startupBehavior'])
         : base.startupBehavior,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
-    panelSide:
-      typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
+    panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarTabs: typeof toolbarTabs === 'boolean' ? toolbarTabs : base.toolbarTabs,
-    freezeBackgroundTabs:
-      typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
+    freezeBackgroundTabs: typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
     httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,

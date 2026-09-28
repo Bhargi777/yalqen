@@ -5,8 +5,15 @@ import path from 'node:path';
 import { test } from 'node:test';
 import downloads from '../dist/main/downloads.js';
 
-const { DownloadStore, downloadStatus, downloadsMenuTemplate, downloadsSummary, formatBytes, renderDownloads, uniquePath } =
-  downloads;
+const {
+  DownloadStore,
+  downloadStatus,
+  downloadsMenuTemplate,
+  downloadsSummary,
+  formatBytes,
+  renderDownloads,
+  uniquePath,
+} = downloads;
 
 const entry = (overrides = {}) => ({
   id: 'a',
@@ -31,18 +38,36 @@ function withDir(run) {
 
 test('taken names are numbered and paths cannot leave the folder', () => {
   const taken = new Set(['/d/a.zip', '/d/a (1).zip']);
-  assert.equal(uniquePath('/d', 'a.zip', (file) => taken.has(file)), '/d/a (2).zip');
-  assert.equal(uniquePath('/d', 'b.zip', (file) => taken.has(file)), '/d/b.zip');
-  assert.equal(uniquePath('/d', '../../etc/passwd', () => false), '/d/passwd');
-  assert.equal(uniquePath('/d', '.hidden', () => false), '/d/hidden');
-  assert.equal(uniquePath('/d', '', () => false), '/d/indirme');
+  assert.equal(
+    uniquePath('/d', 'a.zip', (file) => taken.has(file)),
+    '/d/a (2).zip',
+  );
+  assert.equal(
+    uniquePath('/d', 'b.zip', (file) => taken.has(file)),
+    '/d/b.zip',
+  );
+  assert.equal(
+    uniquePath('/d', '../../etc/passwd', () => false),
+    '/d/passwd',
+  );
+  assert.equal(
+    uniquePath('/d', '.hidden', () => false),
+    '/d/hidden',
+  );
+  assert.equal(
+    uniquePath('/d', '', () => false),
+    '/d/indirme',
+  );
 });
 
 test('sizes and states read naturally', () => {
   assert.equal(formatBytes(512), '512 B');
   assert.equal(formatBytes(1536), '1,5 KB');
   assert.equal(formatBytes(5 * 1024 * 1024), '5 MB');
-  assert.equal(downloadStatus(entry({ state: 'progressing', receivedBytes: 512, totalBytes: 2048 })), '%25 · 512 B / 2 KB');
+  assert.equal(
+    downloadStatus(entry({ state: 'progressing', receivedBytes: 512, totalBytes: 2048 })),
+    '%25 · 512 B / 2 KB',
+  );
   assert.equal(downloadStatus(entry({ state: 'progressing', receivedBytes: 512, totalBytes: 0 })), '512 B');
   assert.equal(downloadStatus(entry({ state: 'paused', receivedBytes: 512 })), 'Duraklatıldı · 512 B / 2 KB');
   assert.equal(downloadStatus(entry()), 'Tamamlandı · 2 KB');
@@ -68,11 +93,20 @@ test('the list persists and running downloads come back as failed', () => {
     store.add(entry({ id: 'running', state: 'progressing', receivedBytes: 10 }));
     store.update('running', { receivedBytes: 20 });
     assert.equal(store.get('running').receivedBytes, 20);
-    assert.deepEqual(store.list().map((item) => item.id), ['running', 'done']);
+    assert.deepEqual(
+      store.list().map((item) => item.id),
+      ['running', 'done'],
+    );
     store.saveNow();
 
     const reloaded = new DownloadStore(dir);
-    assert.deepEqual(reloaded.list().map((item) => [item.id, item.state]), [['running', 'interrupted'], ['done', 'completed']]);
+    assert.deepEqual(
+      reloaded.list().map((item) => [item.id, item.state]),
+      [
+        ['running', 'interrupted'],
+        ['done', 'completed'],
+      ],
+    );
     reloaded.remove('done');
     reloaded.clearFinished();
     reloaded.saveNow();
@@ -84,22 +118,41 @@ test('the menu offers commands that fit each download', () => {
   const calls = [];
   const record = (name) => (id) => calls.push([name, id]);
   const actions = {
-    open: record('open'), show: record('show'), pause: record('pause'), resume: record('resume'), cancel: record('cancel'),
-    retry: record('retry'), remove: record('remove'), showAll: () => calls.push(['all']), openFolder: () => calls.push(['folder']),
+    open: record('open'),
+    show: record('show'),
+    pause: record('pause'),
+    resume: record('resume'),
+    cancel: record('cancel'),
+    retry: record('retry'),
+    remove: record('remove'),
+    showAll: () => calls.push(['all']),
+    openFolder: () => calls.push(['folder']),
   };
   const items = downloadsMenuTemplate(
-    [entry({ id: 'r', filename: 'a.zip', state: 'progressing', receivedBytes: 1024, totalBytes: 2048 }), entry({ id: 'c' })],
+    [
+      entry({ id: 'r', filename: 'a.zip', state: 'progressing', receivedBytes: 1024, totalBytes: 2048 }),
+      entry({ id: 'c' }),
+    ],
     actions,
   );
-  assert.deepEqual(items.map((item) => item.label ?? '-'), [
-    'a.zip — %50 · 1 KB / 2 KB',
-    'report.pdf — Tamamlandı · 2 KB',
-    '-',
-    'Tüm indirilenler',
-    'İndirilenler klasörünü aç',
-  ]);
-  assert.deepEqual(items[0].submenu.map((item) => item.label), ['Duraklat', 'İptal et']);
-  assert.deepEqual(items[1].submenu.map((item) => item.label), ['Aç', 'Klasörde göster', 'Listeden kaldır']);
+  assert.deepEqual(
+    items.map((item) => item.label ?? '-'),
+    [
+      'a.zip — %50 · 1 KB / 2 KB',
+      'report.pdf — Tamamlandı · 2 KB',
+      '-',
+      'Tüm indirilenler',
+      'İndirilenler klasörünü aç',
+    ],
+  );
+  assert.deepEqual(
+    items[0].submenu.map((item) => item.label),
+    ['Duraklat', 'İptal et'],
+  );
+  assert.deepEqual(
+    items[1].submenu.map((item) => item.label),
+    ['Aç', 'Klasörde göster', 'Listeden kaldır'],
+  );
   items[0].submenu[0].click();
   items[1].submenu[1].click();
   items[3].click();
@@ -120,10 +173,19 @@ test('downloads of private tabs are listed but never saved', () => {
     const store = new DownloadStore(dir);
     store.add(entry({ id: 'normal' }));
     store.add(entry({ id: 'secret', private: true }));
-    assert.deepEqual(store.list().map((item) => item.id), ['secret', 'normal']);
+    assert.deepEqual(
+      store.list().map((item) => item.id),
+      ['secret', 'normal'],
+    );
     store.saveNow();
-    assert.deepEqual(new DownloadStore(dir).list().map((item) => item.id), ['normal']);
+    assert.deepEqual(
+      new DownloadStore(dir).list().map((item) => item.id),
+      ['normal'],
+    );
     store.removePrivate();
-    assert.deepEqual(store.list().map((item) => item.id), ['normal']);
+    assert.deepEqual(
+      store.list().map((item) => item.id),
+      ['normal'],
+    );
   });
 });

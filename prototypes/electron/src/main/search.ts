@@ -12,12 +12,42 @@ export interface SearchEngine {
 export const DEFAULT_SEARCH_ENGINE: SearchEngineId = 'google';
 
 export const SEARCH_ENGINES: readonly SearchEngine[] = [
-  { id: 'google', label: 'Google', placeholder: "Google'da ara veya adres yaz", template: 'https://www.google.com/search?q=%s' },
-  { id: 'yandex', label: 'Yandex', placeholder: "Yandex'te ara veya adres yaz", template: 'https://yandex.com.tr/search/?text=%s' },
-  { id: 'duckduckgo', label: 'DuckDuckGo', placeholder: "DuckDuckGo'da ara veya adres yaz", template: 'https://duckduckgo.com/?q=%s' },
-  { id: 'bing', label: 'Bing', placeholder: "Bing'de ara veya adres yaz", template: 'https://www.bing.com/search?q=%s' },
-  { id: 'brave', label: 'Brave Search', placeholder: "Brave Search'te ara veya adres yaz", template: 'https://search.brave.com/search?q=%s' },
-  { id: 'ecosia', label: 'Ecosia', placeholder: "Ecosia'da ara veya adres yaz", template: 'https://www.ecosia.org/search?q=%s' },
+  {
+    id: 'google',
+    label: 'Google',
+    placeholder: "Google'da ara veya adres yaz",
+    template: 'https://www.google.com/search?q=%s',
+  },
+  {
+    id: 'yandex',
+    label: 'Yandex',
+    placeholder: "Yandex'te ara veya adres yaz",
+    template: 'https://yandex.com.tr/search/?text=%s',
+  },
+  {
+    id: 'duckduckgo',
+    label: 'DuckDuckGo',
+    placeholder: "DuckDuckGo'da ara veya adres yaz",
+    template: 'https://duckduckgo.com/?q=%s',
+  },
+  {
+    id: 'bing',
+    label: 'Bing',
+    placeholder: "Bing'de ara veya adres yaz",
+    template: 'https://www.bing.com/search?q=%s',
+  },
+  {
+    id: 'brave',
+    label: 'Brave Search',
+    placeholder: "Brave Search'te ara veya adres yaz",
+    template: 'https://search.brave.com/search?q=%s',
+  },
+  {
+    id: 'ecosia',
+    label: 'Ecosia',
+    placeholder: "Ecosia'da ara veya adres yaz",
+    template: 'https://www.ecosia.org/search?q=%s',
+  },
 ];
 
 const CUSTOM_PLACEHOLDER = 'Ara veya adres yaz';

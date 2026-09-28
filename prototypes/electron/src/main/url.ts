@@ -11,8 +11,7 @@ export function resolveInput(input: string, engine: SearchEngine): string {
     try {
       const url = new URL(text);
       if (EXPLICIT_SCHEMES.has(url.protocol)) return url.toString();
-    } catch {
-    }
+    } catch {}
   }
 
   const host = /^:\d/.test(text) ? `localhost${text}` : text;
@@ -22,8 +21,7 @@ export function resolveInput(input: string, engine: SearchEngine): string {
     try {
       const scheme = isDevelopmentHost(new URL(`http://${host}`).hostname) ? 'http' : 'https';
       return new URL(`${scheme}://${host}`).toString();
-    } catch {
-    }
+    } catch {}
   }
 
   return buildSearchUrl(engine, text);

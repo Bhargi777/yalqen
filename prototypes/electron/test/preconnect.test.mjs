@@ -19,7 +19,10 @@ test('input maps to the origin it would load', () => {
 test('typing connects once it pauses, to the last destination only', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const connected = [];
-  const preconnector = new Preconnector((origin) => connected.push(origin), () => 0);
+  const preconnector = new Preconnector(
+    (origin) => connected.push(origin),
+    () => 0,
+  );
   preconnector.typed('exa', google);
   preconnector.typed('example.co', google);
   preconnector.typed('example.com', google);
@@ -32,7 +35,10 @@ test('typing connects once it pauses, to the last destination only', (t) => {
 test('cancel drops a pending connection', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const connected = [];
-  const preconnector = new Preconnector((origin) => connected.push(origin), () => 0);
+  const preconnector = new Preconnector(
+    (origin) => connected.push(origin),
+    () => 0,
+  );
   preconnector.typed('example.com', google);
   preconnector.cancel();
   t.mock.timers.tick(1000);
@@ -42,7 +48,10 @@ test('cancel drops a pending connection', (t) => {
 test('an origin is not connected to again while its socket is recent', () => {
   let now = 0;
   const connected = [];
-  const preconnector = new Preconnector((origin) => connected.push(origin), () => now);
+  const preconnector = new Preconnector(
+    (origin) => connected.push(origin),
+    () => now,
+  );
   preconnector.opened(google);
   now = 9_999;
   preconnector.opened(google);

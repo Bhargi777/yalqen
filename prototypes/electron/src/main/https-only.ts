@@ -34,7 +34,6 @@ export function httpsUpgrade(url: string): string | null {
   return parsed.toString();
 }
 
-
 export class HttpsOnly {
   private readonly allowed = new Set<string>();
   private readonly warnings = new Map<string, { https: string; http: string }>();

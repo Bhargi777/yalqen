@@ -34,13 +34,16 @@ test('the menu opens a blocked page or allows the site', () => {
     open: (url) => calls.push(['open', url]),
     allowSite: () => calls.push(['allow']),
   });
-  assert.deepEqual(items.map((item) => item.label ?? '-'), [
-    'Açılır pencere engellendi',
-    'https://a.com/1',
-    `${long.slice(0, 59)}…`,
-    '-',
-    'a.com için açılır pencerelere her zaman izin ver',
-  ]);
+  assert.deepEqual(
+    items.map((item) => item.label ?? '-'),
+    [
+      'Açılır pencere engellendi',
+      'https://a.com/1',
+      `${long.slice(0, 59)}…`,
+      '-',
+      'a.com için açılır pencerelere her zaman izin ver',
+    ],
+  );
   items[2].click();
   items[4].click();
   assert.deepEqual(calls, [['open', long], ['allow']]);

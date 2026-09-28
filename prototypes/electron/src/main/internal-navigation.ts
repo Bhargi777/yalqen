@@ -19,7 +19,12 @@ function pageCommand(url: string): InternalNavigation | null {
   try {
     const parsed = new URL(url);
     if (!COMMAND_PAGES.has(parsed.host) || parsed.pathname === '/') return null;
-    return { type: 'page-command', page: parsed.host as CommandPage, name: parsed.pathname.slice(1), params: parsed.searchParams };
+    return {
+      type: 'page-command',
+      page: parsed.host as CommandPage,
+      name: parsed.pathname.slice(1),
+      params: parsed.searchParams,
+    };
   } catch {
     return null;
   }

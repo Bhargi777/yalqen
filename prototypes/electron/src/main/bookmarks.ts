@@ -53,18 +53,24 @@ export class BookmarkStore {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedBookmarks;
       if (data.version !== 1) return;
       this.folderList = (Array.isArray(data.folders) ? data.folders : []).filter(
-        (folder) => typeof folder?.id === 'string' && typeof folder.title === 'string' && Number.isFinite(folder.createdAt),
+        (folder) =>
+          typeof folder?.id === 'string' && typeof folder.title === 'string' && Number.isFinite(folder.createdAt),
       );
       const folderIds = new Set(this.folderList.map((folder) => folder.id));
       this.bookmarkList = (Array.isArray(data.bookmarks) ? data.bookmarks : [])
         .filter(
           (bookmark) =>
-            typeof bookmark?.id === 'string' && typeof bookmark.title === 'string' &&
-            typeof bookmark.url === 'string' && canBookmark(bookmark.url) && Number.isFinite(bookmark.createdAt),
+            typeof bookmark?.id === 'string' &&
+            typeof bookmark.title === 'string' &&
+            typeof bookmark.url === 'string' &&
+            canBookmark(bookmark.url) &&
+            Number.isFinite(bookmark.createdAt),
         )
-        .map((bookmark) => ({ ...bookmark, folderId: folderIds.has(bookmark.folderId ?? '') ? bookmark.folderId : null }));
-    } catch {
-    }
+        .map((bookmark) => ({
+          ...bookmark,
+          folderId: folderIds.has(bookmark.folderId ?? '') ? bookmark.folderId : null,
+        }));
+    } catch {}
   }
 
   folders(): BookmarkFolder[] {
@@ -92,7 +98,13 @@ export class BookmarkStore {
     if (!canBookmark(url)) return null;
     const existing = this.find(url);
     if (existing) return existing;
-    const bookmark: Bookmark = { id: randomUUID(), title: cleanTitle(title, url), url, folderId: null, createdAt: Date.now() };
+    const bookmark: Bookmark = {
+      id: randomUUID(),
+      title: cleanTitle(title, url),
+      url,
+      folderId: null,
+      createdAt: Date.now(),
+    };
     this.bookmarkList.push(bookmark);
     this.save();
     return { ...bookmark };
@@ -213,16 +225,26 @@ export function bookmarksMenuTemplate(
   ];
 }
 
-
-export function renderBookmarks(folders: readonly BookmarkFolder[], bookmarks: readonly Bookmark[], query: string): string {
+export function renderBookmarks(
+  folders: readonly BookmarkFolder[],
+  bookmarks: readonly Bookmark[],
+  query: string,
+): string {
   const search = query.trim().slice(0, 200);
   const header =
     searchFieldMarkup({ action: BOOKMARKS_URL, label: 'Yer imlerinde ara', valueHtml: escapeHtml(search) }) +
-    (search ? '' : `<form class="new-folder" action="${BOOKMARKS_URL}new-folder" method="get"><input class="field lg" name="title" placeholder="Yeni klasör adı" aria-label="Yeni klasör adı" required /><button class="btn lg primary">Klasör ekle</button></form>`);
+    (search
+      ? ''
+      : `<form class="new-folder" action="${BOOKMARKS_URL}new-folder" method="get"><input class="field lg" name="title" placeholder="Yeni klasör adı" aria-label="Yeni klasör adı" required /><button class="btn lg primary">Klasör ekle</button></form>`);
 
   const folderOptions = (current: string | null) =>
-    [`<option value=""${current === null ? ' selected' : ''}>Klasör yok</option>`,
-      ...folders.map((folder) => `<option value="${escapeHtml(folder.id)}"${folder.id === current ? ' selected' : ''}>${escapeHtml(folder.title)}</option>`)].join('');
+    [
+      `<option value=""${current === null ? ' selected' : ''}>Klasör yok</option>`,
+      ...folders.map(
+        (folder) =>
+          `<option value="${escapeHtml(folder.id)}"${folder.id === current ? ' selected' : ''}>${escapeHtml(folder.title)}</option>`,
+      ),
+    ].join('');
 
   const row = (bookmark: Bookmark) => {
     const id = escapeHtml(bookmark.id);

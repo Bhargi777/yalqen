@@ -19,7 +19,12 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
   let prompts: Promise<unknown> = Promise.resolve();
   // Prompts are shown one at a time; a queued request is decided again once its turn comes,
   // since an earlier answer may already cover it.
-  const ask = (contents: WebContents, isPrivate: boolean, origin: string, kinds: SitePermission[]): Promise<boolean> => {
+  const ask = (
+    contents: WebContents,
+    isPrivate: boolean,
+    origin: string,
+    kinds: SitePermission[],
+  ): Promise<boolean> => {
     const answer = prompts.then(async () => {
       const store = storeFor(isPrivate);
       const decided = store.decide(origin, kinds);

@@ -47,9 +47,10 @@ export function formatBytes(bytes: number): string {
 }
 
 export function downloadStatus(entry: DownloadEntry): string {
-  const size = entry.totalBytes > 0
-    ? `${formatBytes(entry.receivedBytes)} / ${formatBytes(entry.totalBytes)}`
-    : formatBytes(entry.receivedBytes);
+  const size =
+    entry.totalBytes > 0
+      ? `${formatBytes(entry.receivedBytes)} / ${formatBytes(entry.totalBytes)}`
+      : formatBytes(entry.receivedBytes);
   switch (entry.state) {
     case 'progressing':
       return entry.totalBytes > 0 ? `%${Math.floor((entry.receivedBytes / entry.totalBytes) * 100)} · ${size}` : size;
@@ -79,11 +80,16 @@ export function downloadsSummary(entries: readonly DownloadEntry[]): DownloadsSu
 function isEntry(value: unknown): value is DownloadEntry {
   const entry = value as DownloadEntry;
   return (
-    typeof entry === 'object' && entry !== null &&
-    typeof entry.id === 'string' && typeof entry.url === 'string' &&
-    typeof entry.filename === 'string' && typeof entry.savePath === 'string' &&
-    STATES.has(entry.state) && Number.isFinite(entry.receivedBytes) &&
-    Number.isFinite(entry.totalBytes) && Number.isFinite(entry.startedAt)
+    typeof entry === 'object' &&
+    entry !== null &&
+    typeof entry.id === 'string' &&
+    typeof entry.url === 'string' &&
+    typeof entry.filename === 'string' &&
+    typeof entry.savePath === 'string' &&
+    STATES.has(entry.state) &&
+    Number.isFinite(entry.receivedBytes) &&
+    Number.isFinite(entry.totalBytes) &&
+    Number.isFinite(entry.startedAt)
   );
 }
 
@@ -103,8 +109,7 @@ export class DownloadStore {
           .slice(0, MAX_ENTRIES)
           .map((entry) => (isActive(entry) ? { ...entry, state: 'interrupted' } : entry));
       }
-    } catch {
-    }
+    } catch {}
   }
 
   list(): DownloadEntry[] {
@@ -179,18 +184,34 @@ export interface DownloadActions {
 export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions & string, string][] {
   switch (entry.state) {
     case 'progressing':
-      return [['pause', 'Duraklat'], ['cancel', 'İptal et']];
+      return [
+        ['pause', 'Duraklat'],
+        ['cancel', 'İptal et'],
+      ];
     case 'paused':
-      return [['resume', 'Devam et'], ['cancel', 'İptal et']];
+      return [
+        ['resume', 'Devam et'],
+        ['cancel', 'İptal et'],
+      ];
     case 'completed':
-      return [['open', 'Aç'], ['show', 'Klasörde göster'], ['remove', 'Listeden kaldır']];
+      return [
+        ['open', 'Aç'],
+        ['show', 'Klasörde göster'],
+        ['remove', 'Listeden kaldır'],
+      ];
     case 'cancelled':
     case 'interrupted':
-      return [['retry', 'Yeniden dene'], ['remove', 'Listeden kaldır']];
+      return [
+        ['retry', 'Yeniden dene'],
+        ['remove', 'Listeden kaldır'],
+      ];
   }
 }
 
-export function downloadsMenuTemplate(entries: readonly DownloadEntry[], actions: DownloadActions): MenuItemConstructorOptions[] {
+export function downloadsMenuTemplate(
+  entries: readonly DownloadEntry[],
+  actions: DownloadActions,
+): MenuItemConstructorOptions[] {
   const recent = entries.slice(0, MENU_ENTRIES);
   return [
     ...(recent.length === 0
@@ -208,13 +229,15 @@ export function downloadsMenuTemplate(entries: readonly DownloadEntry[], actions
   ];
 }
 
-
 export function renderDownloads(entries: readonly DownloadEntry[]): string {
   if (entries.length === 0) return '<p class="empty">Henüz indirilen bir dosya yok.</p>';
   const rows = entries
     .map((entry) => {
       const commands = downloadCommands(entry)
-        .map(([action, label]) => `<a class="btn tonal" href="${DOWNLOADS_URL}${action}?id=${encodeURIComponent(entry.id)}">${label}</a>`)
+        .map(
+          ([action, label]) =>
+            `<a class="btn tonal" href="${DOWNLOADS_URL}${action}?id=${encodeURIComponent(entry.id)}">${label}</a>`,
+        )
         .join('');
       return (
         `<li class="${entry.state}"><div class="file"><strong>${escapeHtml(entry.filename)}</strong>` +

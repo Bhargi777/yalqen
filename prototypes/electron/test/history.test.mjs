@@ -24,13 +24,22 @@ test('visits survive restart, can be searched, removed, and cleared', () => {
     store.saveNow();
 
     const restored = new HistoryStore(directory);
-    assert.deepEqual(restored.list().map(({ id }) => id), [second, first]);
-    assert.deepEqual(restored.list().map(({ faviconUrl }) => faviconUrl), ['https://example.com/favicon.ico', undefined]);
+    assert.deepEqual(
+      restored.list().map(({ id }) => id),
+      [second, first],
+    );
+    assert.deepEqual(
+      restored.list().map(({ faviconUrl }) => faviconUrl),
+      ['https://example.com/favicon.ico', undefined],
+    );
     assert.equal(restored.list('GÜNCEL').length, 1);
     assert.equal(restored.list('example.com').length, 2);
     restored.remove(first);
     restored.saveNow();
-    assert.deepEqual(new HistoryStore(directory).list().map(({ id }) => id), [second]);
+    assert.deepEqual(
+      new HistoryStore(directory).list().map(({ id }) => id),
+      [second],
+    );
     restored.clear();
     assert.deepEqual(new HistoryStore(directory).list(), []);
   } finally {
@@ -39,12 +48,17 @@ test('visits survive restart, can be searched, removed, and cleared', () => {
 });
 
 test('history page escapes page titles, URLs, and search terms', () => {
-  const html = renderHistory([{
-    id: 'item',
-    url: 'https://example.com/?q="bad"',
-    title: '<script>alert(1)</script>',
-    visitedAt: Date.now(),
-  }], '" autofocus onfocus="alert(1)');
+  const html = renderHistory(
+    [
+      {
+        id: 'item',
+        url: 'https://example.com/?q="bad"',
+        title: '<script>alert(1)</script>',
+        visitedAt: Date.now(),
+      },
+    ],
+    '" autofocus onfocus="alert(1)',
+  );
   assert.ok(html.includes('&#60;script&#62;alert(1)&#60;/script&#62;'));
   assert.ok(html.includes('q=&#34;bad&#34;'));
   assert.ok(html.includes('value="&#34; autofocus onfocus=&#34;alert(1)"'));

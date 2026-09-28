@@ -26,22 +26,36 @@ test('requests to another site are third party', () => {
 test('cookie names are read from request and response headers', () => {
   assert.deepEqual(requestCookieNames('a=1; b=two=2;  c='), ['a', 'b', 'c']);
   assert.deepEqual(responseCookieNames(['id=9; Path=/; HttpOnly', ' x = 1 ', '=nameless']), ['id', 'x']);
-  assert.deepEqual(headerValues({ 'Set-Cookie': ['a=1'], 'set-cookie': 'b=2', Other: 'x' }, 'set-cookie'), ['a=1', 'b=2']);
+  assert.deepEqual(headerValues({ 'Set-Cookie': ['a=1'], 'set-cookie': 'b=2', Other: 'x' }, 'set-cookie'), [
+    'a=1',
+    'b=2',
+  ]);
   assert.deepEqual(headerValues(undefined, 'set-cookie'), []);
 });
 
 test('request listeners are attached only while blocking is on', () => {
   const calls = [];
   const webRequest = Object.fromEntries(
-    ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [name, (listener) => calls.push([name, listener !== null])]),
+    ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
+      name,
+      (listener) => calls.push([name, listener !== null]),
+    ]),
   );
   const session = { webRequest, cookies: { remove: async () => {} } };
   cookies.setThirdPartyCookieBlocking(session, false);
   assert.deepEqual(calls, []);
   cookies.setThirdPartyCookieBlocking(session, true);
   cookies.setThirdPartyCookieBlocking(session, true);
-  assert.deepEqual(calls, [['onBeforeSendHeaders', true], ['onCompleted', true], ['onErrorOccurred', true]]);
+  assert.deepEqual(calls, [
+    ['onBeforeSendHeaders', true],
+    ['onCompleted', true],
+    ['onErrorOccurred', true],
+  ]);
   calls.length = 0;
   cookies.setThirdPartyCookieBlocking(session, false);
-  assert.deepEqual(calls, [['onBeforeSendHeaders', false], ['onCompleted', false], ['onErrorOccurred', false]]);
+  assert.deepEqual(calls, [
+    ['onBeforeSendHeaders', false],
+    ['onCompleted', false],
+    ['onErrorOccurred', false],
+  ]);
 });

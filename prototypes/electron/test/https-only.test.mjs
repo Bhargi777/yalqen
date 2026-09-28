@@ -7,7 +7,18 @@ const { HttpsOnly, hostResolverOptions, httpsUpgrade } = httpsOnly;
 test('web addresses are upgraded, local ones are not', () => {
   assert.equal(httpsUpgrade('http://example.com/a?b#c'), 'https://example.com/a?b#c');
   assert.equal(httpsUpgrade('http://example.com:80/'), 'https://example.com/');
-  for (const url of ['https://a.com/', 'http://localhost:3000/', 'http://127.0.0.1/', 'http://[::1]/', 'http://intranet/', 'http://printer.local/', 'http://site.test:8080/', 'http://api.localhost/', 'yalqen://newtab/', 'nope']) {
+  for (const url of [
+    'https://a.com/',
+    'http://localhost:3000/',
+    'http://127.0.0.1/',
+    'http://[::1]/',
+    'http://intranet/',
+    'http://printer.local/',
+    'http://site.test:8080/',
+    'http://api.localhost/',
+    'yalqen://newtab/',
+    'nope',
+  ]) {
     assert.equal(httpsUpgrade(url), null, url);
   }
 });

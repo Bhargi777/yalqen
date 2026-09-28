@@ -52,9 +52,26 @@
   <SearchField bind:value bind:ref={input} oninput={search} placeholder="Sayfada bul" aria-label="Sayfada bul">
     {#snippet trailing()}
       <span class="status" class:empty={result?.matches === 0} aria-live="polite">{status}</span>
-      <IconButton icon="up" label="Önceki" title="Önceki (⇧↩)" disabled={!result?.matches} onclick={() => step(false)} />
-      <IconButton icon="down" label="Sonraki" title="Sonraki (↩)" disabled={!result?.matches} onclick={() => step(true)} />
-      <IconButton icon="close" label="Kapat" title="Kapat (Esc)" onclick={() => window.yalqenFind.send({ type: 'close' })} />
+      <IconButton
+        icon="up"
+        label="Önceki"
+        title="Önceki (⇧↩)"
+        disabled={!result?.matches}
+        onclick={() => step(false)}
+      />
+      <IconButton
+        icon="down"
+        label="Sonraki"
+        title="Sonraki (↩)"
+        disabled={!result?.matches}
+        onclick={() => step(true)}
+      />
+      <IconButton
+        icon="close"
+        label="Kapat"
+        title="Kapat (Esc)"
+        onclick={() => window.yalqenFind.send({ type: 'close' })}
+      />
     {/snippet}
   </SearchField>
 </div>

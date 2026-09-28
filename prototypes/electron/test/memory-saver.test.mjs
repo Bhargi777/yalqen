@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import memorySaver from '../dist/main/memory-saver.js';
 
-const { DEFAULT_DISCARD_AFTER_MINUTES, PRESSURE_MIN_IDLE_MS, isDiscardAfterMinutes, parsePressureLevel, pressureVictim, shouldDiscard } = memorySaver;
+const {
+  DEFAULT_DISCARD_AFTER_MINUTES,
+  PRESSURE_MIN_IDLE_MS,
+  isDiscardAfterMinutes,
+  parsePressureLevel,
+  pressureVictim,
+  shouldDiscard,
+} = memorySaver;
 
 const MINUTE = 60_000;
 const idle = {
@@ -49,7 +56,13 @@ test('under memory pressure the longest idle background tab goes first', () => {
     { ...idle, id: 'just-left', inactiveSince: now - 1000 },
   ];
   assert.equal(pressureVictim(tabs, now).id, 'old');
-  assert.equal(pressureVictim(tabs.filter((tab) => tab.id !== 'old'), now).id, 'recent');
+  assert.equal(
+    pressureVictim(
+      tabs.filter((tab) => tab.id !== 'old'),
+      now,
+    ).id,
+    'recent',
+  );
   assert.equal(pressureVictim([{ ...idle, active: true }], now), null);
 });
 

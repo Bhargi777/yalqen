@@ -59,29 +59,42 @@ function hasHorizontalScroller(event: WheelEvent): boolean {
     if (!['auto', 'scroll', 'overlay'].includes(style.overflowX)) continue;
     if (target.scrollWidth > target.clientWidth + 1) return true;
   }
-  return document.scrollingElement !== null &&
-    document.scrollingElement.scrollWidth > document.scrollingElement.clientWidth + 1;
+  return (
+    document.scrollingElement !== null &&
+    document.scrollingElement.scrollWidth > document.scrollingElement.clientWidth + 1
+  );
 }
 
-window.addEventListener('wheel', (event) => {
-  if (!event.isTrusted) return;
-  if (event.deltaMode !== WheelEvent.DOM_DELTA_PIXEL || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-  if (Math.abs(event.deltaX) < Math.abs(event.deltaY) * 1.25 || hasHorizontalScroller(event)) {
+window.addEventListener(
+  'wheel',
+  (event) => {
+    if (!event.isTrusted) return;
+    if (
+      event.deltaMode !== WheelEvent.DOM_DELTA_PIXEL ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.shiftKey
+    )
+      return;
+    if (Math.abs(event.deltaX) < Math.abs(event.deltaY) * 1.25 || hasHorizontalScroller(event)) {
+      distance = 0;
+      return;
+    }
+
+    const now = performance.now();
+    if (now - navigatedAt < COOLDOWN_MS) return;
+    if (now - lastAt > GAP_MS || Math.sign(event.deltaX) !== Math.sign(distance)) distance = 0;
+    lastAt = now;
+    distance += event.deltaX;
+    if (Math.abs(distance) < THRESHOLD) return;
+
+    ipcRenderer.send(PageChannel.swipe, distance < 0 ? 'back' : 'forward');
+    navigatedAt = now;
     distance = 0;
-    return;
-  }
-
-  const now = performance.now();
-  if (now - navigatedAt < COOLDOWN_MS) return;
-  if (now - lastAt > GAP_MS || Math.sign(event.deltaX) !== Math.sign(distance)) distance = 0;
-  lastAt = now;
-  distance += event.deltaX;
-  if (Math.abs(distance) < THRESHOLD) return;
-
-  ipcRenderer.send(PageChannel.swipe, distance < 0 ? 'back' : 'forward');
-  navigatedAt = now;
-  distance = 0;
-}, { capture: true, passive: true });
+  },
+  { capture: true, passive: true },
+);
 
 if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
   const api: SettingsApi = {
