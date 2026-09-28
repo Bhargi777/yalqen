@@ -46,7 +46,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-proto
 
 const appIcon = app.isPackaged
   ? path.join(process.resourcesPath, 'brand/icon-512.png')
-  : path.resolve(app.getAppPath(), '../../design/brand/png/dock/icon-512.png');
+  : path.resolve(app.getAppPath(), '../../design/brand/png/fitted/icon-512.png');
 
 registerInternalScheme();
 app.setName('Yalqen');

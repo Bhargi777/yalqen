@@ -59,7 +59,7 @@
     ],
     "extraResources": [
       {
-        "from": "../../design/brand/png/dock/icon-512.png",
+        "from": "../../design/brand/png/fitted/icon-512.png",
         "to": "brand/icon-512.png"
       }
     ],
@@ -77,7 +77,7 @@
         "dmg",
         "zip"
       ],
-      "icon": "yalqen-dock.icns",
+      "icon": "yalqen-fitted.icns",
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",

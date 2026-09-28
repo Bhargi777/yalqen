@@ -21,8 +21,7 @@ function brandedMacApp() {
   let current = null;
   try {
     current = JSON.parse(fs.readFileSync(stamp, 'utf8'));
-  } catch {
-  }
+  } catch {}
   if (JSON.stringify(current) !== JSON.stringify(identity)) {
     fs.rmSync(destination, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -35,14 +34,14 @@ function brandedMacApp() {
     CFBundleName: productName,
     CFBundleDisplayName: productName,
     CFBundleIdentifier: 'com.yalqen.browser.prototype',
-    CFBundleIconFile: 'yalqen-dock.icns',
+    CFBundleIconFile: 'yalqen-fitted.icns',
   })) {
     execFileSync('plutil', ['-replace', key, '-string', value, plist]);
   }
 
   fs.copyFileSync(
-    path.join(repo, 'design', 'brand', 'yalqen-dock.icns'),
-    path.join(destination, 'Contents', 'Resources', 'yalqen-dock.icns'),
+    path.join(repo, 'design', 'brand', 'yalqen-fitted.icns'),
+    path.join(destination, 'Contents', 'Resources', 'yalqen-fitted.icns'),
   );
 
   execFileSync('codesign', ['--force', '--deep', '--sign', '-', destination]);
