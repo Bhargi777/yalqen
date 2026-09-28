@@ -3,6 +3,11 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,6 +19,7 @@ jobs:
       run:
         working-directory: apps/browser
     env:
+      TAG: ${{ inputs.tag || github.ref_name }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -21,6 +27,8 @@ jobs:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
@@ -53,12 +61,18 @@ jobs:
             signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
           fi
           npm run build
-          npx electron-builder --mac --publish never -c.extraMetadata.version="${GITHUB_REF_NAME#v}" "${signing[@]}"
+          npx electron-builder --mac --publish never -c.extraMetadata.version="${TAG#v}" "${signing[@]}"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/*.dmg release/*.zip \
-            --title "Yalqen ${GITHUB_REF_NAME#v}" \
-            --notes-file build/release-notes.md \
-            --generate-notes
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/*.dmg release/*.zip --clobber
+            { gh release view "$TAG" --json body --jq .body; echo; cat build/release-notes.md; } > "$RUNNER_TEMP/notes.md"
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" release/*.dmg release/*.zip \
+              --title "Yalqen ${TAG#v}" \
+              --notes-file build/release-notes.md \
+              --generate-notes
+          fi

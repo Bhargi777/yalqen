@@ -45,7 +45,7 @@ npm start
 | `npm run check` | Lint, typecheck and run tests |
 | `npm run package:mac` | Build a local DMG/ZIP into `release/` |
 
-See [RELEASING.md](apps/browser/RELEASING.md) for the release process.
+See [RELEASING.md](apps/browser/RELEASING.md) for the release process and [CHANGELOG.md](apps/browser/CHANGELOG.md) for release history.
 
 ## Built with
 

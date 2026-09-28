@@ -2,11 +2,13 @@
 
 Yalqen is distributed as a DMG/ZIP on GitHub Releases, not through the Mac App Store.
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`, which checks, builds and packages the macOS app and publishes a GitHub release with the DMG, the ZIP and the install notes from `build/release-notes.md`. The tag sets the version (`v1.2.0` builds `1.2.0`).
+Releases are automated with [release-please](https://github.com/googleapis/release-please):
 
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
+1. Every push to `main` updates an open "chore(main): release x.y.z" pull request. It bumps the version in `package.json` and adds the Conventional Commits since the last release to `CHANGELOG.md` (`feat` bumps the minor version, `fix` and `perf` the patch version, and a `!` or `BREAKING CHANGE` footer the major version once past 1.0).
+2. Merging that pull request tags `vx.y.z` and creates the GitHub release with the changelog.
+3. `.github/workflows/release.yml` then checks, builds and packages the macOS app, uploads the DMG and ZIP to the release and appends the install notes from `build/release-notes.md`.
+
+The release pull request is opened by GitHub Actions, so CI does not run on it; merge it with the admin bypass. Pushing a `v*` tag by hand still runs the release workflow on its own.
 
 ## Without an Apple developer account (default)
 
