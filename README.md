@@ -12,7 +12,7 @@
 
   <p>
     <a href="https://github.com/YSamed/yalqen/releases/latest">
-      <img src="https://img.shields.io/badge/Download%20for%20macOS-0A84FF?style=for-the-badge&logo=apple&logoColor=white" alt="Download Yalqen for macOS" height="44">
+      <img src="design/readme/download-button.png" alt="Download Yalqen for macOS" width="290">
     </a>
   </p>
 </div>
@@ -63,7 +63,7 @@ Download the latest `Yalqen.dmg` from GitHub Releases:
 
 <p>
   <a href="https://github.com/YSamed/yalqen/releases/latest">
-    <img src="https://img.shields.io/badge/Download%20for%20macOS-0A84FF?style=for-the-badge&logo=apple&logoColor=white" alt="Download Yalqen for macOS" height="44">
+    <img src="design/readme/download-button.png" alt="Download Yalqen for macOS" width="290">
   </a>
 </p>
 
