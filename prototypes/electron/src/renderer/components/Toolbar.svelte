@@ -45,19 +45,12 @@
     {#if isNewTab(tab.url)}
       <Icon name="search" size={14} />
     {:else if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
-      <img
-        src={tab.faviconUrl}
-        alt=""
-        width="16"
-        height="16"
-        onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
-      />
+      <img src={tab.faviconUrl} alt="" width="16" height="16" onerror={() => (brokenIcons[tab.faviconUrl!] = true)} />
     {:else}
       <Icon name="globe" size={14} />
     {/if}
   </span>
 {/snippet}
-
 
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
   <div class="side leading" aria-hidden="true"></div>
@@ -65,7 +58,12 @@
   <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
     <Capsule as="nav" ariaLabel="Gezinme">
       <IconButton icon="back" label="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })} />
-      <IconButton icon="forward" label="İleri" disabled={!activeTab?.canGoForward} onclick={() => send({ type: 'go-forward' })} />
+      <IconButton
+        icon="forward"
+        label="İleri"
+        disabled={!activeTab?.canGoForward}
+        onclick={() => send({ type: 'go-forward' })}
+      />
       {#if activeTab?.loading}
         <IconButton icon="close" label="Durdur" title="Durdur (Esc)" onclick={() => send({ type: 'stop' })} />
       {:else}
@@ -73,99 +71,142 @@
       {/if}
     </Capsule>
     <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
-    {#each tabs as tab (tab.id)}
-      {@const active = tab.id === activeTabId}
-      <li class="chip" class:active>
-        {#if active && tab.security !== 'local'}
-          <Button
-            size="sm"
-            icon={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'}
-            class={['site', tab.security]}
-            title="Site bilgisi"
-            aria-label={tab.security === 'secure' ? 'Bağlantı güvenli, site bilgisi' : 'Güvenli değil, site bilgisi'}
-            onclick={() => send({ type: 'open-site-info' })}
-          >
-            {#if tab.security === 'insecure' || tab.security === 'dangerous'}Güvenli değil{/if}
-          </Button>
-        {/if}
-        {#if active}
-          {#if tab.isPrivate}
-            <span class="private-badge" title="Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir">
-              <Icon name="private" size={14} />
-            </span>
-          {/if}
-          <button class="address" class:after-site={tab.security !== 'local' || tab.isPrivate} title="Ara veya adres yaz (⌘L)" aria-current="page" onclick={() => send({ type: 'open-address' })}>
-            {@render favicon(tab)}
-            <span class="label">{siteLabel(tab)}</span>
-          </button>
-          {#if tab.url.startsWith('http') || tab.url.startsWith('file:')}
-            <IconButton
-              size="sm"
-              icon="star"
-              tone={tab.bookmarked ? 'accent' : 'muted'}
-              class="star"
-              label={tab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
-              title={tab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
-              aria-pressed={tab.bookmarked}
-              onclick={() => send({ type: 'toggle-bookmark' })}
-            />
-          {/if}
-          {#if tab.blockedPopups > 0}
-            <IconButton
-              size="sm"
-              icon="popup-blocked"
-              variant="tonal"
-              tone="warn"
-              label="{tab.blockedPopups} açılır pencere engellendi"
-              title="Açılır pencere engellendi"
-              onclick={() => send({ type: 'open-blocked-popups' })}
-            />
-          {/if}
-          {#if tab.consoleErrors > 0}
-            {@const errors = tab.consoleErrors > 99 ? '99+' : String(tab.consoleErrors)}
+      {#each tabs as tab (tab.id)}
+        {@const active = tab.id === activeTabId}
+        <li class="chip" class:active>
+          {#if active && tab.security !== 'local'}
             <Button
               size="sm"
-              variant="tonal"
-              icon="warning"
-              class="console-errors"
-              aria-label="Konsolda {errors} hata, geliştirici araçlarını aç"
-              title="Konsolda {errors} hata (⌥⌘I)"
-              onclick={() => send({ type: 'open-devtools' })}
+              icon={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'}
+              class={['site', tab.security]}
+              title="Site bilgisi"
+              aria-label={tab.security === 'secure' ? 'Bağlantı güvenli, site bilgisi' : 'Güvenli değil, site bilgisi'}
+              onclick={() => send({ type: 'open-site-info' })}
             >
-              {errors}
+              {#if tab.security === 'insecure' || tab.security === 'dangerous'}Güvenli değil{/if}
             </Button>
           {/if}
-          {#if Math.round(zoom * 100) !== Math.round(defaultZoom * 100)}
-            <Button size="sm" variant="tonal" class="zoom" title="Varsayılan yakınlaştırmaya dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
-              %{Math.round(zoom * 100)}
-            </Button>
+          {#if active}
+            {#if tab.isPrivate}
+              <span class="private-badge" title="Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir">
+                <Icon name="private" size={14} />
+              </span>
+            {/if}
+            <button
+              class="address"
+              class:after-site={tab.security !== 'local' || tab.isPrivate}
+              title="Ara veya adres yaz (⌘L)"
+              aria-current="page"
+              onclick={() => send({ type: 'open-address' })}
+            >
+              {@render favicon(tab)}
+              <span class="label">{siteLabel(tab)}</span>
+            </button>
+            {#if tab.url.startsWith('http') || tab.url.startsWith('file:')}
+              <IconButton
+                size="sm"
+                icon="star"
+                tone={tab.bookmarked ? 'accent' : 'muted'}
+                class="star"
+                label={tab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
+                title={tab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
+                aria-pressed={tab.bookmarked}
+                onclick={() => send({ type: 'toggle-bookmark' })}
+              />
+            {/if}
+            {#if tab.blockedPopups > 0}
+              <IconButton
+                size="sm"
+                icon="popup-blocked"
+                variant="tonal"
+                tone="warn"
+                label="{tab.blockedPopups} açılır pencere engellendi"
+                title="Açılır pencere engellendi"
+                onclick={() => send({ type: 'open-blocked-popups' })}
+              />
+            {/if}
+            {#if tab.consoleErrors > 0}
+              {@const errors = tab.consoleErrors > 99 ? '99+' : String(tab.consoleErrors)}
+              <Button
+                size="sm"
+                variant="tonal"
+                icon="warning"
+                class="console-errors"
+                aria-label="Konsolda {errors} hata, geliştirici araçlarını aç"
+                title="Konsolda {errors} hata (⌥⌘I)"
+                onclick={() => send({ type: 'open-devtools' })}
+              >
+                {errors}
+              </Button>
+            {/if}
+            {#if tab.cacheDisabled}
+              <Button
+                size="sm"
+                variant="tonal"
+                class="dev-state"
+                title="Bu sekmede önbellek kapalı. Açmak için tıklayın."
+                onclick={() => send({ type: 'dev-command', id: 'toggle-cache' })}
+              >
+                Önbellek kapalı
+              </Button>
+            {/if}
+            {#if tab.autoReloadSeconds}
+              <Button
+                size="sm"
+                variant="tonal"
+                icon="reload"
+                class="dev-state"
+                aria-label="Otomatik yenileme her {tab.autoReloadSeconds} saniyede, durdur"
+                title="Otomatik yenileme açık. Durdurmak için tıklayın."
+                onclick={() => send({ type: 'dev-command', id: 'auto-reload-off' })}
+              >
+                {tab.autoReloadSeconds < 60 ? `${tab.autoReloadSeconds} sn` : `${tab.autoReloadSeconds / 60} dk`}
+              </Button>
+            {/if}
+            {#if Math.round(zoom * 100) !== Math.round(defaultZoom * 100)}
+              <Button
+                size="sm"
+                variant="tonal"
+                class="zoom"
+                title="Varsayılan yakınlaştırmaya dön (⌘0)"
+                onclick={() => send({ type: 'reset-zoom' })}
+              >
+                %{Math.round(zoom * 100)}
+              </Button>
+            {/if}
+          {:else}
+            <button
+              class="select"
+              class:private={tab.isPrivate}
+              title={tab.isPrivate ? `${tab.title} (gizli)` : tab.title}
+              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+            >
+              {@render favicon(tab)}
+              <span class="label">{siteLabel(tab)}</span>
+            </button>
           {/if}
-        {:else}
-          <button
-            class="select"
-            class:private={tab.isPrivate}
-            title={tab.isPrivate ? `${tab.title} (gizli)` : tab.title}
-            onclick={() => send({ type: 'activate-tab', id: tab.id })}
-            onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-          >
-            {@render favicon(tab)}
-            <span class="label">{siteLabel(tab)}</span>
-          </button>
-        {/if}
-        {#if tab.audible || tab.muted}
+          {#if tab.audible || tab.muted}
+            <IconButton
+              size="sm"
+              icon={tab.muted ? 'muted' : 'sound'}
+              tone="muted"
+              label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+              aria-pressed={tab.muted}
+              onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+            />
+          {/if}
           <IconButton
             size="sm"
-            icon={tab.muted ? 'muted' : 'sound'}
+            icon="close"
             tone="muted"
-            label={tab.muted ? 'Sesi aç' : 'Sessize al'}
-            aria-pressed={tab.muted}
-            onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+            class="close"
+            label="Kapat"
+            onclick={() => send({ type: 'close-tab', id: tab.id })}
           />
-        {/if}
-        <IconButton size="sm" icon="close" tone="muted" class="close" label="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })} />
-        {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
-      </li>
-    {/each}
+          {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
+        </li>
+      {/each}
     </ol>
     <div class="new-tab-slot">
       <NewTabButton />
@@ -177,7 +218,12 @@
       <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
       <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
       <IconButton icon="profile" label="Profil" onclick={() => send({ type: 'open-profile-menu' })} />
-      <IconButton icon="settings" label="Ayarlar" title="Ayarlar (⌘,)" onclick={() => send({ type: 'open-settings' })} />
+      <IconButton
+        icon="settings"
+        label="Ayarlar"
+        title="Ayarlar (⌘,)"
+        onclick={() => send({ type: 'open-settings' })}
+      />
       <IconButton
         icon="download"
         tone={downloads.active > 0 ? 'accent' : 'default'}
@@ -187,7 +233,13 @@
       >
         {#if downloads.active > 0}
           <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">
-            <circle cx="14" cy="14" r="12.5" pathLength="100" stroke-dasharray="{downloads.progress === null ? 25 : Math.max(2, downloads.progress * 100)} 100" />
+            <circle
+              cx="14"
+              cy="14"
+              r="12.5"
+              pathLength="100"
+              stroke-dasharray="{downloads.progress === null ? 25 : Math.max(2, downloads.progress * 100)} 100"
+            />
           </svg>
         {/if}
       </IconButton>
@@ -369,6 +421,11 @@
   }
 
   .chip :global(.zoom) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .chip :global(.dev-state) {
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
 

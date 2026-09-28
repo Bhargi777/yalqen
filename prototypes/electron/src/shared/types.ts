@@ -29,13 +29,15 @@ export interface TabSnapshot {
   bookmarked: boolean;
   blockedPopups: number;
   consoleErrors: number;
+  cacheDisabled: boolean;
+  autoReloadSeconds: number | null;
   audible: boolean;
   muted: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
 }
 
-export type DeviceId = 'iphone-15' | 'iphone-se' | 'pixel-8' | 'ipad-mini';
+export type DeviceId = 'iphone-15' | 'iphone-se' | 'pixel-8' | 'ipad-mini' | 'responsive';
 
 export interface DeviceFrame {
   label: string;
@@ -43,6 +45,8 @@ export interface DeviceFrame {
   height: number;
   scale: number;
   cornerRadius: number;
+  resizable: boolean;
+  deviceScaleFactor: number;
   x: number;
   y: number;
   viewWidth: number;
@@ -98,6 +102,9 @@ export type UiAction =
   | { type: 'go-forward' }
   | { type: 'reload' }
   | { type: 'open-devtools' }
+  | { type: 'dev-command'; id: DevCommandId }
+  | { type: 'resize-device'; width: number; height: number }
+  | { type: 'set-device-scale-factor'; value: number }
   | { type: 'stop' }
   | { type: 'reset-zoom' }
   | { type: 'open-site-info' }
@@ -149,12 +156,24 @@ export interface CommandBarOpen {
   value?: string;
 }
 
+export const AUTO_RELOAD_SECONDS = [5, 10, 30, 60] as const;
+export type AutoReloadSeconds = (typeof AUTO_RELOAD_SECONDS)[number];
+
 export type DevCommandId =
   | 'hard-reload'
+  | 'toggle-cache'
+  | `auto-reload-${AutoReloadSeconds}`
+  | 'auto-reload-off'
   | 'devtools'
   | 'view-source'
   | 'device'
+  | 'responsive'
   | 'rotate-device'
+  | 'screenshot'
+  | 'full-page-screenshot'
+  | 'copy-address'
+  | 'copy-markdown'
+  | 'copy-curl'
   | 'clear-cache'
   | 'clear-site-data';
 
@@ -197,9 +216,7 @@ export interface FindResult {
   matches: number;
 }
 
-export type FindBarAction =
-  | { type: 'find'; text: string; forward: boolean; next: boolean }
-  | { type: 'close' };
+export type FindBarAction = { type: 'find'; text: string; forward: boolean; next: boolean } | { type: 'close' };
 
 export const FindBarChannel = {
   open: 'yalqen-find:open',

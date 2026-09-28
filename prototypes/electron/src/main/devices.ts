@@ -10,6 +10,7 @@ export interface Device {
   cornerRadius: number;
   userAgent: string;
   platform: string;
+  mobile: boolean;
 }
 
 const IOS_UA =
@@ -20,11 +21,65 @@ const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
 
 export const DEVICES: readonly Device[] = [
-  { id: 'iphone-15', label: 'iPhone 15', width: 393, height: 852, deviceScaleFactor: 3, cornerRadius: 47, userAgent: IOS_UA, platform: 'iPhone' },
-  { id: 'iphone-se', label: 'iPhone SE', width: 375, height: 667, deviceScaleFactor: 2, cornerRadius: 0, userAgent: IOS_UA, platform: 'iPhone' },
-  { id: 'pixel-8', label: 'Pixel 8', width: 412, height: 915, deviceScaleFactor: 2.625, cornerRadius: 32, userAgent: ANDROID_UA, platform: 'Linux armv8l' },
-  { id: 'ipad-mini', label: 'iPad mini', width: 744, height: 1133, deviceScaleFactor: 2, cornerRadius: 18, userAgent: IPAD_UA, platform: 'iPad' },
+  {
+    id: 'iphone-15',
+    label: 'iPhone 15',
+    width: 393,
+    height: 852,
+    deviceScaleFactor: 3,
+    cornerRadius: 47,
+    userAgent: IOS_UA,
+    platform: 'iPhone',
+    mobile: true,
+  },
+  {
+    id: 'iphone-se',
+    label: 'iPhone SE',
+    width: 375,
+    height: 667,
+    deviceScaleFactor: 2,
+    cornerRadius: 0,
+    userAgent: IOS_UA,
+    platform: 'iPhone',
+    mobile: true,
+  },
+  {
+    id: 'pixel-8',
+    label: 'Pixel 8',
+    width: 412,
+    height: 915,
+    deviceScaleFactor: 2.625,
+    cornerRadius: 32,
+    userAgent: ANDROID_UA,
+    platform: 'Linux armv8l',
+    mobile: true,
+  },
+  {
+    id: 'ipad-mini',
+    label: 'iPad mini',
+    width: 744,
+    height: 1133,
+    deviceScaleFactor: 2,
+    cornerRadius: 18,
+    userAgent: IPAD_UA,
+    platform: 'iPad',
+    mobile: true,
+  },
+  {
+    id: 'responsive',
+    label: 'Duyarlı',
+    width: 1024,
+    height: 768,
+    deviceScaleFactor: 1,
+    cornerRadius: 0,
+    userAgent: '',
+    platform: '',
+    mobile: false,
+  },
 ];
+
+export const RESPONSIVE_SIZE_LIMITS = { min: 200, max: 4000 };
+export const DEVICE_SCALE_FACTORS = [1, 2, 3] as const;
 
 export const DEFAULT_DEVICE_ID: DeviceId = 'iphone-15';
 
@@ -35,13 +90,47 @@ export function findDevice(id: DeviceId): Device {
 export interface Emulation {
   deviceId: DeviceId;
   landscape: boolean;
+  size?: { width: number; height: number };
+  scaleFactor?: number;
 }
 
 export function deviceSize(emulation: Emulation): { width: number; height: number } {
-  const device = findDevice(emulation.deviceId);
-  return emulation.landscape
-    ? { width: device.height, height: device.width }
-    : { width: device.width, height: device.height };
+  const { width, height } = emulation.size ?? findDevice(emulation.deviceId);
+  return emulation.landscape ? { width: height, height: width } : { width, height };
+}
+
+function isResizable(emulation: Emulation): boolean {
+  return !findDevice(emulation.deviceId).mobile;
+}
+
+function clampSize(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.round(Math.min(RESPONSIVE_SIZE_LIMITS.max, Math.max(RESPONSIVE_SIZE_LIMITS.min, value)));
+}
+
+export function resizeEmulation(emulation: Emulation, size: { width: number; height: number }): Emulation {
+  if (!isResizable(emulation)) return emulation;
+  const current = deviceSize(emulation);
+  return {
+    ...emulation,
+    landscape: false,
+    size: { width: clampSize(size.width, current.width), height: clampSize(size.height, current.height) },
+  };
+}
+
+export function rotateEmulation(emulation: Emulation): Emulation {
+  if (!isResizable(emulation)) return { ...emulation, landscape: !emulation.landscape };
+  const { width, height } = deviceSize(emulation);
+  return { ...emulation, landscape: false, size: { width: height, height: width } };
+}
+
+export function scaleEmulation(emulation: Emulation, scaleFactor: number): Emulation {
+  if (!isResizable(emulation) || !(DEVICE_SCALE_FACTORS as readonly number[]).includes(scaleFactor)) return emulation;
+  return { ...emulation, scaleFactor };
+}
+
+function scaleFactorOf(emulation: Emulation): number {
+  return emulation.scaleFactor ?? findDevice(emulation.deviceId).deviceScaleFactor;
 }
 
 const DEVICE_MARGIN = 32;
@@ -62,6 +151,8 @@ export function fitDevice(emulation: Emulation, page: Rectangle): DeviceFrame {
     height,
     scale,
     cornerRadius: device.cornerRadius,
+    resizable: !device.mobile,
+    deviceScaleFactor: scaleFactorOf(emulation),
     x: Math.round((page.width - viewWidth) / 2),
     y: DEVICE_LABEL_HEIGHT + Math.round((page.height - DEVICE_LABEL_HEIGHT - viewHeight) / 2),
     viewWidth,
@@ -80,8 +171,8 @@ export async function applyDeviceMetrics(contents: WebContents, emulation: Emula
   await dbg.sendCommand('Emulation.setDeviceMetricsOverride', {
     width,
     height,
-    deviceScaleFactor: device.deviceScaleFactor,
-    mobile: true,
+    deviceScaleFactor: scaleFactorOf(emulation),
+    mobile: device.mobile,
     scale,
     screenOrientation: emulation.landscape
       ? { type: 'landscapePrimary', angle: 90 }
@@ -93,8 +184,8 @@ export async function applyEmulation(contents: WebContents, emulation: Emulation
   await applyDeviceMetrics(contents, emulation, scale);
   const device = findDevice(emulation.deviceId);
   const dbg = contents.debugger;
-  await dbg.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
-  await dbg.sendCommand('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
+  await dbg.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: device.mobile, maxTouchPoints: 5 });
+  await dbg.sendCommand('Emulation.setEmitTouchEventsForMouse', { enabled: device.mobile, configuration: 'mobile' });
   await dbg.sendCommand('Emulation.setUserAgentOverride', {
     userAgent: device.userAgent,
     platform: device.platform,

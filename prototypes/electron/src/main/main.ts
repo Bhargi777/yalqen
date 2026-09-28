@@ -112,7 +112,10 @@ function startBrowser(): void {
     const saved = windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow());
     return {
       version: 2,
-      windows: settings.get().startupBehavior === 'restore' ? saved : saved.map(pinnedOnly).filter((window) => window.tabs.length > 0),
+      windows:
+        settings.get().startupBehavior === 'restore'
+          ? saved
+          : saved.map(pinnedOnly).filter((window) => window.tabs.length > 0),
     };
   };
 
@@ -131,7 +134,10 @@ function startBrowser(): void {
   };
   applyCookieBlocking();
   installPermissionHandlers({
-    sessions: [[daily, false], [privateBrowsing, true]],
+    sessions: [
+      [daily, false],
+      [privateBrowsing, true],
+    ],
     storeFor: permissionsFor,
     parentOf: (contents) => windowOf(contents)?.window,
   });
@@ -193,7 +199,8 @@ function startBrowser(): void {
     if (next.pageLanguage !== previous.pageLanguage) applyLanguages();
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
     nativeTheme.themeSource = next.theme;
-    if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs) eachWindow((window) => window.tabs.applyFreezeSetting());
+    if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs)
+      eachWindow((window) => window.tabs.applyFreezeSetting());
     adBlocker.setEnabled(next.adBlocking);
     applyCookieBlocking();
     pushState();
@@ -282,10 +289,15 @@ function startBrowser(): void {
     bookmarks: path.join(rendererDir, 'bookmarks.html'),
     settings: path.join(rendererDir, 'settings.html'),
   });
-  for (const [browsing, isPrivate] of [[daily, false], [privateBrowsing, true]] as const) {
+  for (const [browsing, isPrivate] of [
+    [daily, false],
+    [privateBrowsing, true],
+  ] as const) {
     serveInternalPages(browsing, internalPages, {
       recent: () => recentPages(closedTabs),
-      pinned: () => [...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values()],
+      pinned: () => [
+        ...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values(),
+      ],
       visits: (query) => history.list(query),
       downloads: { list: () => downloads.list(), changes: downloadManager.changes },
       bookmarks: (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
@@ -294,11 +306,12 @@ function startBrowser(): void {
         if (showWelcome) settings.update({ welcomeCompleted: true });
         return showWelcome;
       },
-      suggestions: (query) => suggest(query, {
-        tabs: [],
-        bookmarks: bookmarks.bookmarks(),
-        history: isPrivate ? EMPTY_HISTORY_INDEX : history.index(),
-      }),
+      suggestions: (query) =>
+        suggest(query, {
+          tabs: [],
+          bookmarks: bookmarks.bookmarks(),
+          history: isPrivate ? EMPTY_HISTORY_INDEX : history.index(),
+        }),
     });
   }
 
@@ -350,6 +363,7 @@ function startBrowser(): void {
       print: () => current?.print(),
       savePdf: () => void current?.savePageAsPdf(),
       viewSource: () => current?.tabs.viewSource(),
+      devCommand: (id) => current?.runDevCommand(id),
     }),
   );
 
@@ -439,7 +453,9 @@ function startBrowser(): void {
   const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter((window) => window.tabs.length > 0);
   const [first, ...rest] = pendingUrls.splice(0);
   if (restored.length === 0) openWindow(first ? { url: first } : {});
-  restored.forEach((window, index) => openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }));
+  restored.forEach((window, index) =>
+    openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }),
+  );
   openExternal = (urls) => {
     const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
     for (const url of urls) window.tabs.open(url);

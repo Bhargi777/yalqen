@@ -19,7 +19,10 @@ const context = (overrides = {}) => ({
 
 function actions() {
   const calls = [];
-  const record = (name) => (...args) => calls.push([name, ...args]);
+  const record =
+    (name) =>
+    (...args) =>
+      calls.push([name, ...args]);
   return {
     calls,
     canGoBack: true,
@@ -37,6 +40,7 @@ function actions() {
     inspect: record('inspect'),
     print: record('print'),
     viewSource: record('viewSource'),
+    copyAddress: record('copyAddress'),
     replaceMisspelling: record('replace'),
     addToDictionary: record('addWord'),
   };
@@ -45,30 +49,56 @@ function actions() {
 const labels = (items) => items.map((item) => (item.type === 'separator' ? '-' : item.label));
 const item = (items, label) => items.find((entry) => entry.label === label);
 
-test('a plain page offers navigation, printing, its source and inspect', () => {
+test('a plain page offers navigation, printing, its source, its address and inspect', () => {
   const a = actions();
   const items = contextMenuTemplate(context(), a);
-  assert.deepEqual(labels(items), ['Geri', 'İleri', 'Yenile', '-', 'Yazdır…', 'Sayfa kaynağını görüntüle', '-', 'İncele']);
+  assert.deepEqual(labels(items), [
+    'Geri',
+    'İleri',
+    'Yenile',
+    '-',
+    'Yazdır…',
+    'Sayfa kaynağını görüntüle',
+    'Sayfa adresini kopyala',
+    '-',
+    'İncele',
+  ]);
   assert.equal(item(items, 'Geri').enabled, true);
   assert.equal(item(items, 'İleri').enabled, false);
   item(items, 'Yazdır…').click();
   item(items, 'Sayfa kaynağını görüntüle').click();
   item(items, 'İncele').click();
-  assert.deepEqual(a.calls, [['print'], ['viewSource'], ['inspect']]);
+  for (const entry of item(items, 'Sayfa adresini kopyala').submenu) entry.click();
+  assert.deepEqual(a.calls, [
+    ['print'],
+    ['viewSource'],
+    ['inspect'],
+    ['copyAddress', 'url'],
+    ['copyAddress', 'markdown'],
+    ['copyAddress', 'curl'],
+  ]);
   const internal = contextMenuTemplate(context(), { ...a, canViewSource: false });
   assert.equal(item(internal, 'Sayfa kaynağını görüntüle'), undefined);
+  assert.equal(item(internal, 'Sayfa adresini kopyala'), undefined);
 });
 
 test('misspelled words get suggestions and can be added to the dictionary', () => {
   const a = actions();
   const items = contextMenuTemplate(
-    context({ isEditable: true, misspelledWord: 'merhba', dictionarySuggestions: ['merhaba', 'a', 'b', 'c', 'd', 'e'] }),
+    context({
+      isEditable: true,
+      misspelledWord: 'merhba',
+      dictionarySuggestions: ['merhaba', 'a', 'b', 'c', 'd', 'e'],
+    }),
     a,
   );
   assert.deepEqual(labels(items).slice(0, 7), ['merhaba', 'a', 'b', 'c', 'd', '“merhba” sözlüğe ekle', '-']);
   item(items, 'merhaba').click();
   item(items, '“merhba” sözlüğe ekle').click();
-  assert.deepEqual(a.calls, [['replace', 'merhaba'], ['addWord', 'merhba']]);
+  assert.deepEqual(a.calls, [
+    ['replace', 'merhaba'],
+    ['addWord', 'merhba'],
+  ]);
   const none = contextMenuTemplate(context({ isEditable: true, misspelledWord: 'qwxz' }), a);
   assert.equal(none[0].label, 'Yazım önerisi yok');
   assert.equal(none[0].enabled, false);
@@ -138,7 +168,17 @@ test('selected text can be copied and searched', () => {
 
 test('editable fields get edit commands with their flags', () => {
   const items = contextMenuTemplate(context({ isEditable: true }), actions());
-  assert.deepEqual(labels(items), ['Geri al', 'Yinele', '-', 'Kes', 'Kopyala', 'Yapıştır', 'Tümünü seç', '-', 'İncele']);
+  assert.deepEqual(labels(items), [
+    'Geri al',
+    'Yinele',
+    '-',
+    'Kes',
+    'Kopyala',
+    'Yapıştır',
+    'Tümünü seç',
+    '-',
+    'İncele',
+  ]);
   assert.equal(item(items, 'Geri al').enabled, false);
   assert.equal(item(items, 'Yapıştır').enabled, true);
 });

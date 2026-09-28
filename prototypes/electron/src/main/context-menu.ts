@@ -1,4 +1,5 @@
 import type { ContextMenuParams, MenuItemConstructorOptions } from 'electron';
+import type { AddressFormat } from './page-export.js';
 
 const SNIPPET_LENGTH = 30;
 
@@ -32,6 +33,7 @@ export interface ContextMenuActions {
   inspect(): void;
   print(): void;
   viewSource(): void;
+  copyAddress(format: AddressFormat): void;
   replaceMisspelling(word: string): void;
   addToDictionary(word: string): void;
 }
@@ -113,7 +115,19 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
     ]);
     groups.push([
       { label: 'Yazdır…', click: actions.print },
-      ...(actions.canViewSource ? [{ label: 'Sayfa kaynağını görüntüle', click: actions.viewSource }] : []),
+      ...(actions.canViewSource
+        ? [
+            { label: 'Sayfa kaynağını görüntüle', click: actions.viewSource },
+            {
+              label: 'Sayfa adresini kopyala',
+              submenu: [
+                { label: 'Adres', click: () => actions.copyAddress('url') },
+                { label: 'Markdown bağlantısı', click: () => actions.copyAddress('markdown') },
+                { label: 'curl komutu', click: () => actions.copyAddress('curl') },
+              ],
+            },
+          ]
+        : []),
     ]);
   }
   groups.push([{ label: 'İncele', click: actions.inspect }]);

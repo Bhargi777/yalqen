@@ -1,6 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, clipboard, dialog, nativeTheme, type Rectangle, type Session } from 'electron';
+import {
+  BaseWindow,
+  Menu,
+  WebContentsView,
+  app,
+  clipboard,
+  dialog,
+  nativeTheme,
+  type Rectangle,
+  type Session,
+} from 'electron';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -15,13 +25,13 @@ import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
-import { isDevCommandInput, matchDevCommands } from './dev-commands.js';
+import { autoReloadSeconds, isDevCommandId, isDevCommandInput, matchDevCommands } from './dev-commands.js';
 import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from './downloads.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from './history.js';
 import type { HttpsOnly } from './https-only.js';
-import { canViewSource, pdfFileName } from './page-export.js';
+import { canViewSource, formatAddress, pageFileName, type AddressFormat } from './page-export.js';
 import { pageFrame } from './page-layout.js';
 import { fontPreferences } from './page-preferences.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
@@ -415,9 +425,38 @@ export class YalqenWindow {
   runDevCommand(id: DevCommandId): void {
     const tabs = this.tabs;
     const browsing = tabs.activeIsPrivate ? this.app.privateBrowsing : this.app.daily;
+    const seconds = autoReloadSeconds(id);
+    if (seconds) {
+      tabs.setAutoReload(seconds);
+      return;
+    }
     switch (id) {
       case 'hard-reload':
         tabs.reloadIgnoringCache();
+        break;
+      case 'toggle-cache':
+        tabs.toggleCacheDisabled();
+        break;
+      case 'auto-reload-off':
+        tabs.setAutoReload(null);
+        break;
+      case 'responsive':
+        tabs.toggleResponsive();
+        break;
+      case 'screenshot':
+        void this.saveScreenshot(false);
+        break;
+      case 'full-page-screenshot':
+        void this.saveScreenshot(true);
+        break;
+      case 'copy-address':
+        this.copyAddress('url');
+        break;
+      case 'copy-markdown':
+        this.copyAddress('markdown');
+        break;
+      case 'copy-curl':
+        this.copyAddress('curl');
         break;
       case 'devtools':
         tabs.toggleDevTools();
@@ -473,7 +512,7 @@ export class YalqenWindow {
     if (!contents) return;
     const { canceled, filePath } = await dialog.showSaveDialog(this.window, {
       title: 'PDF olarak kaydet',
-      defaultPath: path.join(app.getPath('downloads'), pdfFileName(contents.getTitle(), contents.getURL())),
+      defaultPath: path.join(app.getPath('downloads'), pageFileName(contents.getTitle(), contents.getURL(), 'pdf')),
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
     if (canceled || !filePath || contents.isDestroyed()) return;
@@ -487,6 +526,31 @@ export class YalqenWindow {
         detail: String(error),
       });
     }
+  }
+
+  async saveScreenshot(fullPage: boolean): Promise<void> {
+    try {
+      const capture = await this.tabs.captureActive(fullPage);
+      if (!capture) return;
+      const { canceled, filePath } = await dialog.showSaveDialog(this.window, {
+        title: fullPage ? 'Tam sayfa ekran görüntüsünü kaydet' : 'Ekran görüntüsünü kaydet',
+        defaultPath: path.join(app.getPath('downloads'), pageFileName(capture.title, capture.url, 'png')),
+        filters: [{ name: 'PNG', extensions: ['png'] }],
+      });
+      if (canceled || !filePath) return;
+      await fs.promises.writeFile(filePath, capture.png);
+    } catch (error) {
+      console.warn('[screenshot] could not save the screenshot:', error);
+      void dialog.showMessageBox(this.window, {
+        type: 'error',
+        message: 'Ekran görüntüsü kaydedilemedi.',
+        detail: String(error),
+      });
+    }
+  }
+
+  private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
+    if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
   }
 
   moveActiveTabToNewWindow(): void {
@@ -538,6 +602,15 @@ export class YalqenWindow {
         break;
       case 'open-devtools':
         tabs.openDevTools();
+        break;
+      case 'dev-command':
+        if (isDevCommandId(action.id)) this.runDevCommand(action.id);
+        break;
+      case 'resize-device':
+        tabs.resizeDevice({ width: Number(action.width), height: Number(action.height) });
+        break;
+      case 'set-device-scale-factor':
+        tabs.setDeviceScaleFactor(Number(action.value));
         break;
       case 'stop':
         tabs.stop();
@@ -651,6 +724,7 @@ export class YalqenWindow {
       viewSource: () => {
         if (canViewSource(contents.getURL())) tabs.open(`view-source:${contents.getURL()}`, { isPrivate });
       },
+      copyAddress: (format) => this.copyAddress(format, { url: contents.getURL(), title: contents.getTitle() }),
       replaceMisspelling: (word) => contents.replaceMisspelling(word),
       addToDictionary: (word) => contents.session.addWordToSpellCheckerDictionary(word),
     });

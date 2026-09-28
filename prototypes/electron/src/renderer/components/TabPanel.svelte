@@ -46,6 +46,8 @@
       tab.pinned ? 'sabitlendi' : null,
       tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
       tab.consoleErrors > 0 ? `${tab.consoleErrors > 99 ? '99+' : tab.consoleErrors} konsol hatası` : null,
+      tab.cacheDisabled ? 'önbellek kapalı' : null,
+      tab.autoReloadSeconds ? 'otomatik yenileniyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
@@ -104,12 +106,18 @@
         onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
       />
     {:else}
-      <Icon name="globe" size={size} />
+      <Icon name="globe" {size} />
     {/if}
   </span>
 {/snippet}
 
-<aside class="panel" class:collapsed class:right={side === 'right'} aria-label="Sekmeler" style={`--panel-row-inset: ${rowInset}px`}>
+<aside
+  class="panel"
+  class:collapsed
+  class:right={side === 'right'}
+  aria-label="Sekmeler"
+  style={`--panel-row-inset: ${rowInset}px`}
+>
   {#if !collapsed}
     <div
       class="resize"
@@ -222,7 +230,9 @@
               >
                 {@render favicon(tab, 16)}
                 <span class="title">{tab.title}</span>
-                {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
+                {#if tab.isPrivate}<span class="private-mark" title="Gizli sekme"
+                    ><Icon name="private" size={13} /></span
+                  >{/if}
               </button>
 
               {#if tab.audible || tab.muted}
@@ -238,12 +248,32 @@
               {/if}
               <span class="actions">
                 {#if !tab.isPrivate && /^https?:/.test(tab.url)}
-                  <IconButton size="sm" tone="muted" icon="pin" class="extra" label="Sabitle" onclick={() => send({ type: 'toggle-pin', id: tab.id })} />
+                  <IconButton
+                    size="sm"
+                    tone="muted"
+                    icon="pin"
+                    class="extra"
+                    label="Sabitle"
+                    onclick={() => send({ type: 'toggle-pin', id: tab.id })}
+                  />
                 {/if}
                 {#if tab.live && tab.id !== activeTabId}
-                  <IconButton size="sm" tone="muted" icon="moon" class="extra" label="Bellekten çıkar" onclick={() => send({ type: 'discard-tab', id: tab.id })} />
+                  <IconButton
+                    size="sm"
+                    tone="muted"
+                    icon="moon"
+                    class="extra"
+                    label="Bellekten çıkar"
+                    onclick={() => send({ type: 'discard-tab', id: tab.id })}
+                  />
                 {/if}
-                <IconButton size="sm" tone="muted" icon="close" label="Kapat" onclick={() => send({ type: 'close-tab', id: tab.id })} />
+                <IconButton
+                  size="sm"
+                  tone="muted"
+                  icon="close"
+                  label="Kapat"
+                  onclick={() => send({ type: 'close-tab', id: tab.id })}
+                />
               </span>
             </Capsule>
           {/if}
@@ -263,7 +293,13 @@
     <IconButton
       size="lg"
       tone="muted"
-      icon={side === 'left' ? (collapsed ? 'panel-expand' : 'panel-close') : (collapsed ? 'panel-expand-right' : 'panel-close-right')}
+      icon={side === 'left'
+        ? collapsed
+          ? 'panel-expand'
+          : 'panel-close'
+        : collapsed
+          ? 'panel-expand-right'
+          : 'panel-close-right'}
       label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
       title={collapsed ? 'Yan paneli genişlet (⌘S)' : 'Yan paneli daralt (⌘S)'}
       aria-expanded={!collapsed}
@@ -341,7 +377,9 @@
     border-radius: 14px;
     background: var(--well);
     box-shadow: var(--well-rim);
-    transition: background var(--transition), box-shadow var(--transition);
+    transition:
+      background var(--transition),
+      box-shadow var(--transition);
   }
 
   :global([data-material='glass']) .panel:not(.collapsed) .tile {

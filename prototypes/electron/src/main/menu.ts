@@ -1,5 +1,5 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron';
-import type { DeviceId } from '../shared/types.js';
+import { AUTO_RELOAD_SECONDS, type DevCommandId, type DeviceId } from '../shared/types.js';
 
 export interface DeviceMenuItem {
   id: DeviceId;
@@ -39,6 +39,7 @@ export interface MenuActions {
   print(): void;
   savePdf(): void;
   viewSource(): void;
+  devCommand(id: DevCommandId): void;
 }
 
 export function buildMenu(actions: MenuActions): Menu {
@@ -89,6 +90,8 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Adres çubuğu', accelerator: 'CmdOrCtrl+L', click: actions.focusAddress },
         { type: 'separator' },
         { label: 'PDF olarak kaydet…', accelerator: 'CmdOrCtrl+Shift+S', click: actions.savePdf },
+        { label: 'Ekran görüntüsü al…', click: () => actions.devCommand('screenshot') },
+        { label: 'Tam sayfa ekran görüntüsü al…', click: () => actions.devCommand('full-page-screenshot') },
         { label: 'Yazdır…', accelerator: 'CmdOrCtrl+P', click: actions.print },
         ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],
@@ -138,6 +141,18 @@ export function buildMenu(actions: MenuActions): Menu {
       submenu: [
         { label: 'Yenile', accelerator: 'CmdOrCtrl+R', click: actions.reload },
         { label: 'Önbelleği yok sayarak yenile', accelerator: 'CmdOrCtrl+Shift+R', click: actions.hardReload },
+        { label: 'Bu sekmede önbelleği kapat/aç', click: () => actions.devCommand('toggle-cache') },
+        {
+          label: 'Otomatik yenile',
+          submenu: [
+            ...AUTO_RELOAD_SECONDS.map((seconds) => ({
+              label: seconds < 60 ? `Her ${seconds} saniyede` : `Her ${seconds / 60} dakikada`,
+              click: () => actions.devCommand(`auto-reload-${seconds}`),
+            })),
+            { type: 'separator' as const },
+            { label: 'Durdur', click: () => actions.devCommand('auto-reload-off') },
+          ],
+        },
         { type: 'separator' },
         { label: 'Varsayılan boyut', accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
         { label: 'Yakınlaştır', accelerator: 'CmdOrCtrl+Plus', click: () => actions.zoom(1) },

@@ -25,12 +25,22 @@ import {
   type TabSnapshot,
 } from '../shared/types.js';
 import { PROCEED_URL } from './certificates.js';
-import { applyDeviceMetrics, applyEmulation, clearEmulation, fitDevice, type Emulation } from './devices.js';
+import {
+  applyDeviceMetrics,
+  applyEmulation,
+  clearEmulation,
+  fitDevice,
+  resizeEmulation,
+  rotateEmulation,
+  scaleEmulation,
+  type Emulation,
+} from './devices.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from './error-page.js';
 import { isSameVisit } from './history.js';
 import { PROCEED_HTTP_URL } from './https-only.js';
 import { internalNavigation, isAllowedFrom, type InternalNavigation } from './internal-navigation.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
+import { captureFullPage, setCacheDisabled } from './page-debugger.js';
 import { canViewSource } from './page-export.js';
 import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
@@ -60,6 +70,8 @@ interface Tab {
   edited: boolean;
   blockedPopups: string[];
   consoleErrors: number;
+  cacheDisabled: boolean;
+  autoReload: { seconds: number; dueAt: number } | null;
   loading: boolean;
   frozen: boolean;
   history: SavedHistory | null;
@@ -128,6 +140,7 @@ export class TabManager {
   private pageBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private pageRadius = 0;
   private newTabCenterOffset = 0;
+  private autoReloadTimer: NodeJS.Timeout | null = null;
 
   constructor(private readonly options: TabManagerOptions) {}
 
@@ -174,8 +187,10 @@ export class TabManager {
 
   setPageLayout(bounds: Rectangle, newTabCenterOffset: number): void {
     const boundsChanged =
-      bounds.x !== this.pageBounds.x || bounds.y !== this.pageBounds.y ||
-      bounds.width !== this.pageBounds.width || bounds.height !== this.pageBounds.height;
+      bounds.x !== this.pageBounds.x ||
+      bounds.y !== this.pageBounds.y ||
+      bounds.width !== this.pageBounds.width ||
+      bounds.height !== this.pageBounds.height;
     if (!boundsChanged && newTabCenterOffset === this.newTabCenterOffset) return;
     this.pageBounds = bounds;
     this.newTabCenterOffset = newTabCenterOffset;
@@ -208,6 +223,13 @@ export class TabManager {
     this.setEmulation(tab, tab.emulation ? null : { deviceId, landscape: false });
   }
 
+  toggleResponsive(): void {
+    const tab = this.active();
+    if (!tab) return;
+    const responsive = tab.emulation?.deviceId === 'responsive';
+    this.setEmulation(tab, responsive ? null : { deviceId: 'responsive', landscape: false });
+  }
+
   selectDevice(deviceId: DeviceId): void {
     const tab = this.active();
     if (!tab) return;
@@ -217,7 +239,24 @@ export class TabManager {
   rotateDevice(): void {
     const tab = this.active();
     if (!tab?.emulation) return;
-    this.setEmulation(tab, { ...tab.emulation, landscape: !tab.emulation.landscape });
+    this.setEmulation(tab, rotateEmulation(tab.emulation));
+  }
+
+  resizeDevice(size: { width: number; height: number }): void {
+    const tab = this.active();
+    if (tab?.emulation) this.updateDeviceMetrics(tab, resizeEmulation(tab.emulation, size));
+  }
+
+  setDeviceScaleFactor(scaleFactor: number): void {
+    const tab = this.active();
+    if (tab?.emulation) this.updateDeviceMetrics(tab, scaleEmulation(tab.emulation, scaleFactor));
+  }
+
+  private updateDeviceMetrics(tab: Tab, emulation: Emulation): void {
+    if (emulation === tab.emulation) return;
+    tab.emulation = emulation;
+    if (tab.view) void this.layoutView(tab, tab.view, true);
+    this.changed();
   }
 
   setPageRadius(radius: number): void {
@@ -288,6 +327,7 @@ export class TabManager {
       if (this.options.closed.length > MAX_CLOSED_TABS) this.options.closed.shift();
     }
     this.destroyView(tab);
+    this.syncAutoReloadTimer();
     if (tab.isPrivate && !this.tabs.some((item) => item.isPrivate)) this.options.onPrivateEnded();
 
     if (this.activeId === id) {
@@ -503,6 +543,76 @@ export class TabManager {
     this.active()?.view?.webContents.reloadIgnoringCache();
   }
 
+  toggleCacheDisabled(): void {
+    const tab = this.active();
+    const contents = tab?.view?.webContents;
+    if (!tab || !contents || contents.isDestroyed()) return;
+    const disabled = !tab.cacheDisabled;
+    tab.cacheDisabled = disabled;
+    this.changed();
+    setCacheDisabled(contents, disabled)
+      .then(() => this.releaseDebugger(tab, contents))
+      .catch((error: unknown) => {
+        console.warn('[cache] could not change the cache setting:', error);
+        if (tab.cacheDisabled !== disabled || !disabled) return;
+        tab.cacheDisabled = false;
+        this.changed();
+      });
+  }
+
+  setAutoReload(seconds: number | null): void {
+    const tab = this.active();
+    if (!tab) return;
+    tab.autoReload = seconds ? { seconds, dueAt: Date.now() + seconds * 1000 } : null;
+    this.unfreeze(tab);
+    this.syncAutoReloadTimer();
+    this.changed();
+  }
+
+  async captureActive(fullPage: boolean): Promise<{ png: Buffer; title: string; url: string } | null> {
+    const tab = this.active();
+    const contents = tab?.view?.webContents;
+    if (!tab || !contents || contents.isDestroyed()) return null;
+    const { title, url } = tab;
+    try {
+      const png = fullPage ? await captureFullPage(contents) : (await contents.capturePage()).toPNG();
+      return { png, title, url };
+    } finally {
+      if (fullPage) this.releaseDebugger(tab, contents);
+    }
+  }
+
+  private needsDebugger(tab: Tab): boolean {
+    return tab.emulation !== null || tab.cacheDisabled;
+  }
+
+  private releaseDebugger(tab: Tab, contents: WebContents): void {
+    if (!this.needsDebugger(tab) && !contents.isDestroyed() && contents.debugger.isAttached()) {
+      contents.debugger.detach();
+    }
+  }
+
+  private syncAutoReloadTimer(): void {
+    const needed = this.tabs.some((tab) => tab.autoReload);
+    if (needed && !this.autoReloadTimer) {
+      this.autoReloadTimer = setInterval(() => this.runAutoReload(), 1000);
+    } else if (!needed && this.autoReloadTimer) {
+      clearInterval(this.autoReloadTimer);
+      this.autoReloadTimer = null;
+    }
+  }
+
+  private runAutoReload(): void {
+    const now = Date.now();
+    for (const tab of this.tabs) {
+      const contents = tab.view?.webContents;
+      if (!tab.autoReload || now < tab.autoReload.dueAt || !contents || contents.isDestroyed()) continue;
+      tab.autoReload.dueAt = now + tab.autoReload.seconds * 1000;
+      // Typed but unsent form input would be lost, so the page waits until it is submitted.
+      if (!tab.loading && !tab.edited) contents.reload();
+    }
+  }
+
   stop(): void {
     this.active()?.view?.webContents.stop();
   }
@@ -616,6 +726,7 @@ export class TabManager {
     tab.detachListeners = null;
     if (tab.view) this.options.window.contentView.removeChildView(tab.view);
     this.options.onHtmlFullScreenChange(tab.id, false);
+    this.syncAutoReloadTimer();
     if (this.activeId === id) {
       this.activeId = null;
       this.activate(this.tabs[Math.min(index, this.tabs.length - 1)].id);
@@ -629,6 +740,7 @@ export class TabManager {
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
     if (tab.view) this.attachListeners(tab, tab.view);
+    this.syncAutoReloadTimer();
     this.activate(tab.id);
   }
 
@@ -641,7 +753,11 @@ export class TabManager {
   }
 
   destroyAll(): void {
-    for (const tab of this.tabs) this.destroyView(tab);
+    for (const tab of this.tabs) {
+      tab.autoReload = null;
+      this.destroyView(tab);
+    }
+    this.syncAutoReloadTimer();
   }
 
   private createRecord(saved: Partial<SavedTab> & { url: string }, isPrivate = false): Tab {
@@ -662,6 +778,8 @@ export class TabManager {
       edited: false,
       blockedPopups: [],
       consoleErrors: 0,
+      cacheDisabled: false,
+      autoReload: null,
       loading: false,
       frozen: false,
       history: saved.history ?? null,
@@ -703,13 +821,11 @@ export class TabManager {
     tab.history = null;
     const contents = view.webContents;
     if (history && history.entries.length > 0) {
-      contents.navigationHistory
-        .restore({ entries: history.entries, index: history.index })
-        .catch(() => {
-          if (tab.view === view && !contents.isDestroyed() && contents.navigationHistory.length() === 0) {
-            void contents.loadURL(tab.url);
-          }
-        });
+      contents.navigationHistory.restore({ entries: history.entries, index: history.index }).catch(() => {
+        if (tab.view === view && !contents.isDestroyed() && contents.navigationHistory.length() === 0) {
+          void contents.loadURL(tab.url);
+        }
+      });
     } else {
       void contents.loadURL(tab.url);
     }
@@ -797,7 +913,8 @@ export class TabManager {
 
     listen('ipc-message-sync', (event, channel) => {
       if (channel !== PageChannel.newTabCenter) return;
-      event.returnValue = event.senderFrame === contents.mainFrame ? this.newTabCenter(tab) : { offset: 0, width: null };
+      event.returnValue =
+        event.senderFrame === contents.mainFrame ? this.newTabCenter(tab) : { offset: 0, width: null };
     });
 
     listen('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
@@ -911,8 +1028,9 @@ export class TabManager {
       this.changed(true);
     };
     const onDebuggerDetach = () => {
-      if (tab.view !== view || !tab.emulation || contents.isDestroyed()) return;
+      if (tab.view !== view || !this.needsDebugger(tab) || contents.isDestroyed()) return;
       tab.emulation = null;
+      tab.cacheDisabled = false;
       this.layoutView(tab, view);
       this.changed();
     };
@@ -990,7 +1108,7 @@ export class TabManager {
   private maybeFreeze(tab: Tab): void {
     const contents = tab.view?.webContents;
     if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
-    if (!this.options.freezeBackground() || tab.id === this.activeId || tab.pinnedUrl) return;
+    if (!this.options.freezeBackground() || tab.id === this.activeId || tab.pinnedUrl || tab.autoReload) return;
     if (contents.isCurrentlyAudible() || contents.isDevToolsOpened()) return;
     tab.frozen = true;
     this.setLifecycleState(tab, 'frozen');
@@ -1023,7 +1141,7 @@ export class TabManager {
       .sendCommand('Page.setWebLifecycleState', { state })
       .then(() => {
         const settled = tab.frozen === (state === 'frozen');
-        if (settled && !tab.emulation && !contents.isDestroyed() && contents.debugger.isAttached()) {
+        if (settled && !this.needsDebugger(tab) && !contents.isDestroyed() && contents.debugger.isAttached()) {
           contents.debugger.detach();
         }
       })
@@ -1046,6 +1164,7 @@ export class TabManager {
     tab.view = null;
     tab.loading = false;
     tab.frozen = false;
+    tab.cacheDisabled = false;
     this.options.window.contentView.removeChildView(view);
     if (!view.webContents.isDestroyed()) view.webContents.close();
   }
@@ -1078,6 +1197,8 @@ export class TabManager {
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       blockedPopups: tab.blockedPopups.length,
       consoleErrors: tab.consoleErrors,
+      cacheDisabled: tab.cacheDisabled,
+      autoReloadSeconds: tab.autoReload?.seconds ?? null,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,

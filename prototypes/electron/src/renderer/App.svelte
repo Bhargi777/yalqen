@@ -2,6 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import type { BrowserState } from '../shared/types';
   import { isNewTab } from './format';
+  import DeviceControls from './components/DeviceControls.svelte';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
@@ -43,8 +44,7 @@
     if (saved) {
       width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved.width) || DEFAULT_WIDTH));
     }
-  } catch {
-  }
+  } catch {}
 
   const windowControls = navigator.userAgent.includes('Macintosh');
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
@@ -99,17 +99,17 @@
       chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
-      newTabCenterOffset: browser.material === 'glass' && !browser.pageFullScreen
-        ? (side === 'right' ? 1 : -1) * Math.max(0, pagePanelWidth - COLLAPSED_WIDTH) / 2
-        : 0,
+      newTabCenterOffset:
+        browser.material === 'glass' && !browser.pageFullScreen
+          ? ((side === 'right' ? 1 : -1) * Math.max(0, pagePanelWidth - COLLAPSED_WIDTH)) / 2
+          : 0,
     });
   });
 
   $effect(() => {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
-    } catch {
-    }
+    } catch {}
   });
 
   onMount(() => {
@@ -140,7 +140,11 @@
   class="shell"
   class:right={side === 'right'}
   class:fullscreen={browser.pageFullScreen}
-  style:grid-template-columns={browser.pageFullScreen ? 'minmax(0, 1fr)' : side === 'left' ? `${shownWidth}px minmax(0, 1fr)` : `minmax(0, 1fr) ${shownWidth}px`}
+  style:grid-template-columns={browser.pageFullScreen
+    ? 'minmax(0, 1fr)'
+    : side === 'left'
+      ? `${shownWidth}px minmax(0, 1fr)`
+      : `minmax(0, 1fr) ${shownWidth}px`}
   style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !browser.pageFullScreen}
@@ -164,10 +168,16 @@
         zoom={browser.zoom}
         defaultZoom={browser.defaultZoom}
         downloads={browser.downloads}
-        leadingInset={windowControls ? side === 'left' ? Math.max(0, WINDOW_CONTROLS_END - shownWidth) : WINDOW_CONTROLS_END : 0}
+        leadingInset={windowControls
+          ? side === 'left'
+            ? Math.max(0, WINDOW_CONTROLS_END - shownWidth)
+            : WINDOW_CONTROLS_END
+          : 0}
         trailingInset={PAGE_INSET}
         trailingWidth={MIN_WIDTH - 2 * PANEL_ROW_INSET}
-        trailingOverhang={rightPanel ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET) : 0}
+        trailingOverhang={rightPanel
+          ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)
+          : 0}
       />
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
@@ -176,16 +186,28 @@
   <section
     class="page"
     class:blank
-    style:margin={browser.pageFullScreen ? '0' : side === 'left' ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0` : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
+    style:margin={browser.pageFullScreen
+      ? '0'
+      : side === 'left'
+        ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0`
+        : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
     style:border-radius={browser.pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
-
     <div class="viewport" aria-hidden="true">
       {#if browser.device}
         {@const device = browser.device}
-        <div class="device-label" style:left="{device.x - DEVICE_BEZEL}px" style:top="{device.y - DEVICE_BEZEL - 20}px" style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px">
-          {device.label} · {device.width}×{device.height}{device.scale < 1 ? ` · %${Math.round(device.scale * 100)}` : ''}
-        </div>
+        {#if !device.resizable}
+          <div
+            class="device-label"
+            style:left="{device.x - DEVICE_BEZEL}px"
+            style:top="{device.y - DEVICE_BEZEL - 20}px"
+            style:width="{device.viewWidth + 2 * DEVICE_BEZEL}px"
+          >
+            {device.label} · {device.width}×{device.height}{device.scale < 1
+              ? ` · %${Math.round(device.scale * 100)}`
+              : ''}
+          </div>
+        {/if}
         <div
           class="device"
           style:left="{device.x - DEVICE_BEZEL}px"
@@ -196,6 +218,9 @@
         ></div>
       {/if}
     </div>
+    {#if browser.device?.resizable}
+      <DeviceControls device={browser.device} bezel={DEVICE_BEZEL} />
+    {/if}
   </section>
 </div>
 
@@ -260,7 +285,9 @@
   .device {
     position: absolute;
     background: #1d1d1b;
-    box-shadow: 0 8px 32px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.2);
+    box-shadow:
+      0 8px 32px rgb(0 0 0 / 0.18),
+      0 0 0 1px rgb(0 0 0 / 0.2);
   }
 
   .device-label {

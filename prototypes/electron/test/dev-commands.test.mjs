@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import devCommands from '../dist/main/dev-commands.js';
 
-const { DEV_COMMANDS, isDevCommandId, isDevCommandInput, matchDevCommands } = devCommands;
+const { DEV_COMMANDS, autoReloadSeconds, isDevCommandId, isDevCommandInput, matchDevCommands } = devCommands;
 
 test('only input starting with > is a command', () => {
   assert.equal(isDevCommandInput('>cache'), true);
@@ -12,13 +12,33 @@ test('only input starting with > is a command', () => {
 });
 
 test('a bare prefix lists every command', () => {
-  assert.deepEqual(matchDevCommands('>').map((item) => item.commandId), DEV_COMMANDS.map((command) => command.id));
+  assert.deepEqual(
+    matchDevCommands('>').map((item) => item.commandId),
+    DEV_COMMANDS.map((command) => command.id),
+  );
 });
 
 test('commands match Turkish titles and English keywords', () => {
-  assert.deepEqual(matchDevCommands('>önbelle').map((item) => item.commandId), ['hard-reload', 'clear-cache']);
-  assert.deepEqual(matchDevCommands('>cookies').map((item) => item.commandId), ['clear-site-data']);
-  assert.deepEqual(matchDevCommands('> CİHAZ döndür').map((item) => item.commandId), ['rotate-device']);
+  assert.deepEqual(
+    matchDevCommands('>önbelle').map((item) => item.commandId),
+    ['hard-reload', 'toggle-cache', 'clear-cache'],
+  );
+  assert.deepEqual(
+    matchDevCommands('>markdown').map((item) => item.commandId),
+    ['copy-markdown'],
+  );
+  assert.deepEqual(
+    matchDevCommands('>yenile 30').map((item) => item.commandId),
+    ['auto-reload-30'],
+  );
+  assert.deepEqual(
+    matchDevCommands('>cookies').map((item) => item.commandId),
+    ['clear-site-data'],
+  );
+  assert.deepEqual(
+    matchDevCommands('> CİHAZ döndür').map((item) => item.commandId),
+    ['rotate-device'],
+  );
   assert.deepEqual(matchDevCommands('>nothing-like-this'), []);
 });
 
@@ -38,4 +58,11 @@ test('command ids are validated', () => {
   assert.equal(isDevCommandId('devtools'), true);
   assert.equal(isDevCommandId('rm -rf'), false);
   assert.equal(isDevCommandId(undefined), false);
+});
+
+test('auto reload commands carry their interval', () => {
+  assert.equal(autoReloadSeconds('auto-reload-10'), 10);
+  assert.equal(autoReloadSeconds('auto-reload-off'), null);
+  assert.equal(autoReloadSeconds('devtools'), null);
+  assert.equal(matchDevCommands('>otomatik yenile 1 dk')[0].title, 'Otomatik yenile: 1 dk');
 });
