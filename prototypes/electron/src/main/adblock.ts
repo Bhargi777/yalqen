@@ -10,6 +10,16 @@ const MIN_IDLE_SECONDS = 10;
 const COSMETIC_FILTERS_CHANNEL = '@ghostery/adblocker/inject-cosmetic-filters';
 const MUTATION_OBSERVER_CHANNEL = '@ghostery/adblocker/is-mutation-observer-enabled';
 
+// Scriptlets declare shared helpers (e.g. `proxyApplyFn`) as globals. Injected one by one, a later
+// scriptlet redeclares them and wraps the earlier Function.prototype.toString proxy, which then
+// recurses forever (seen on chatgpt.com). A function scope per scriptlet keeps their state apart.
+class ScopedScriptletBlocker extends ElectronBlocker {
+  override getCosmeticsFilters(...args: Parameters<ElectronBlocker['getCosmeticsFilters']>) {
+    const filters = super.getCosmeticsFilters(...args);
+    return { ...filters, scripts: filters.scripts.map((script) => `(function () {\n${script}\n})();`) };
+  }
+}
+
 export class AdBlocker {
   private blocker: ElectronBlocker | null = null;
   private loading: Promise<void> | null = null;
@@ -112,7 +122,7 @@ export class AdBlocker {
 export async function loadEngine(cacheFile: string): Promise<{ blocker: ElectronBlocker; stale: boolean }> {
   try {
     const { mtimeMs } = await fs.stat(cacheFile);
-    const blocker = ElectronBlocker.deserialize(await fs.readFile(cacheFile));
+    const blocker = ScopedScriptletBlocker.deserialize(await fs.readFile(cacheFile));
     return { blocker, stale: Date.now() - mtimeMs > CACHE_MAX_AGE_MS };
   } catch {
     return { blocker: await fetchEngine(cacheFile), stale: false };
@@ -120,7 +130,7 @@ export async function loadEngine(cacheFile: string): Promise<{ blocker: Electron
 }
 
 async function fetchEngine(cacheFile: string): Promise<ElectronBlocker> {
-  const blocker = await ElectronBlocker.fromLists(fetch, FILTER_LISTS);
+  const blocker = await ScopedScriptletBlocker.fromLists(fetch, FILTER_LISTS);
   const temp = `${cacheFile}.tmp`;
   await fs.mkdir(path.dirname(cacheFile), { recursive: true });
   await fs.writeFile(temp, blocker.serialize());
