@@ -3,23 +3,19 @@
 
   <h1>Yalqen</h1>
 
-  <p><strong>A fast, privacy-minded web browser for macOS.</strong></p>
+  <p><strong>A fast, privacy-minded web browser for macOS.</strong><br>Open source. Early prototype.</p>
 
   <p>
-    Yalqen is a lightweight browser that blocks ads and trackers out of the box, keeps your data on your Mac,
-    and stays out of the way. It's open source, has no telemetry, and is still an early prototype.
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-button.png" alt="Download for macOS" width="260"></a>
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest">
-      <img src="design/readme/download-button.png" alt="Download Yalqen for macOS" width="290">
-    </a>
+    <a href="https://yalqen.com/"><img src="design/readme/website.png" alt="Website" width="163"></a>
+    <a href="apps/browser/CHANGELOG.md"><img src="design/readme/changelog.png" alt="Changelog" width="183"></a>
+    <a href="CONTRIBUTING.md"><img src="design/readme/contribute.png" alt="Contribute" width="181"></a>
+    <a href="https://github.com/YSamed/yalqen/issues"><img src="design/readme/report-bug.png" alt="Report a bug" width="198"></a>
   </p>
 </div>
-
-## Light as Paper. Clear as Glass.
-
-A quiet interface with a command bar, pinned tabs and a translucent window that picks up your desktop wallpaper.
 
 <p align="center">
   <a href="https://yalqen.com/">
@@ -31,40 +27,35 @@ A quiet interface with a command bar, pinned tabs and a translucent window that 
   </a>
 </p>
 
-## What Yalqen Does
+## Features
 
-| Feature | How it works | Why it's useful |
-| --- | --- | --- |
-| Ad and tracker blocking | Network and cosmetic filtering built in, with filter lists cached locally and refreshed in the background. | Pages load faster and follow you around less, with no extension to install. |
-| Third-party cookie blocking | Turn it on in Settings to drop cross-site cookies. | Advertisers can't stitch your browsing together across sites. |
-| HTTPS-only mode | Optionally upgrade every connection to HTTPS, with a warning before falling back to HTTP. | You don't end up on an unencrypted page by accident. |
-| Secure DNS | Resolve names over DNS-over-HTTPS through Cloudflare, Google or Quad9. | Your network can't read or tamper with the sites you look up. |
-| Command bar | One field for URLs, search, open tabs, bookmarks, history and browser commands. | Everything is a few keystrokes away. |
-| Pinned tabs | Keep the sites you always have open fixed at the start of the tab strip. | Mail, chat and docs stay put while the rest comes and goes. |
-| Memory saver | Inactive tabs are discarded after a configurable delay, sooner under memory pressure. Pinned, playing and edited tabs are kept. | Dozens of open tabs without the fan spinning up. |
-| Search engine choice | Google, Bing, Brave Search, Ecosia or Yandex. | Pick the engine you trust. |
-| Developer tools | Device and network emulation, a storage inspector, and request rules to block, mock, redirect or rewrite headers. | Debug and test sites without leaving the browser. |
+<p align="center">
+  <img src="design/readme/feature-ad-blocking.png" alt="Ad & tracker blocking" width="240">
+  <img src="design/readme/feature-cookies.png" alt="Third-party cookie blocking" width="281">
+  <img src="design/readme/feature-https-only.png" alt="HTTPS-only mode" width="215">
+  <img src="design/readme/feature-secure-dns.png" alt="Secure DNS" width="174">
+  <img src="design/readme/feature-command-bar.png" alt="Command bar" width="188">
+  <img src="design/readme/feature-pinned-tabs.png" alt="Pinned tabs" width="173">
+  <img src="design/readme/feature-memory-saver.png" alt="Memory saver" width="189">
+  <img src="design/readme/feature-search-engines.png" alt="5 search engines" width="209">
+  <img src="design/readme/feature-developer-tools.png" alt="Developer tools" width="200">
+</p>
 
 ## Privacy
 
-Yalqen has no accounts, no sync and no telemetry. History, bookmarks, settings and site data live on your Mac at:
+<p align="center">
+  <img src="design/readme/privacy-no-telemetry.png" alt="No telemetry" width="182">
+  <img src="design/readme/privacy-no-accounts.png" alt="No accounts" width="178">
+  <img src="design/readme/privacy-local-data.png" alt="Data stays on your Mac" width="253">
+</p>
 
-```text
-~/Library/Application Support/yalqen-electron-prototype/
-```
-
-Clear a single site's cookies and storage from the site info menu, or wipe browsing data for the last hour, day, week, month or all time from Settings.
+Everything lives in `~/Library/Application Support/yalqen-electron-prototype/`.
 
 ## Install
 
-### Download
-
-Download the latest `Yalqen.dmg` from GitHub Releases:
-
-<p>
-  <a href="https://github.com/YSamed/yalqen/releases/latest">
-    <img src="design/readme/download-button.png" alt="Download Yalqen for macOS" width="290">
-  </a>
+<p align="center">
+  <img src="design/readme/req-macos.png" alt="macOS 13+" width="168">
+  <img src="design/readme/req-apple-silicon.png" alt="Apple Silicon" width="181">
 </p>
 
 Open the DMG and drag Yalqen into Applications. Builds are not notarized yet; if macOS reports the app as damaged, run:
@@ -72,11 +63,6 @@ Open the DMG and drag Yalqen into Applications. Builds are not notarized yet; if
 ```bash
 xattr -dr com.apple.quarantine /Applications/Yalqen.app
 ```
-
-## Requirements
-
-- macOS 13+
-- Apple Silicon
 
 ## Build From Source
 
@@ -87,16 +73,10 @@ npm ci
 npm start
 ```
 
-## Contributing
-
-Issues and pull requests are welcome. If you are planning a larger change, open an issue first so the scope is clear. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
-
 ## License
 
-Yalqen is licensed under the [MIT License](LICENSE). Filter lists keep their own licenses, see [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md). The Yalqen name and logo are not covered by the MIT License.
-
 <p align="center">
-  <a href="https://yalqen.com/">yalqen.com</a> ·
-  <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
-  <a href="https://github.com/YSamed/yalqen/issues">Report a bug</a>
+  <a href="LICENSE"><img src="design/readme/license-mit.png" alt="MIT License" width="172"></a>
 </p>
+
+Filter lists keep their own licenses, see [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md). The Yalqen name and logo are not covered by the MIT License.
