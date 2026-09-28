@@ -1,0 +1,2 @@
+npm --prefix prototypes/electron run typecheck
+npm --prefix prototypes/electron test

@@ -46,6 +46,13 @@ npm start
 
 See [RELEASING.md](prototypes/electron/RELEASING.md) for the release process.
 
+## Built with
+
+[![Electron](https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Svelte](https://img.shields.io/badge/Svelte-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://svelte.dev/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+
 ## Repository layout
 
 | Path | Contents |
@@ -57,6 +64,18 @@ See [RELEASING.md](prototypes/electron/RELEASING.md) for the release process.
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and report security issues as described in [SECURITY.md](SECURITY.md). This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Contributors
+
+<a href="https://github.com/YSamed/yalqen/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=YSamed/yalqen" alt="Contributors" />
+</a>
+
+## Star history
+
+<a href="https://star-history.com/#YSamed/yalqen&Date">
+  <img src="https://api.star-history.com/svg?repos=YSamed/yalqen&type=Date" alt="Star history chart" />
+</a>
 
 ## License
 

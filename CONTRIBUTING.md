@@ -13,18 +13,21 @@ Thanks for your interest in improving Yalqen.
 Requires macOS and Node.js 24.
 
 ```bash
+npm install
 cd prototypes/electron
 npm ci
 npm start
 ```
+
+Running `npm install` at the repository root sets up Git hooks: commit messages are checked with commitlint, staged files are linted and formatted with ESLint and Prettier, and typecheck and tests run before each push.
 
 ## Making changes
 
 1. Fork the repository and create a branch from `main`.
 2. Keep each pull request focused on a single change.
 3. Add or update tests in `prototypes/electron/test` for behavior changes.
-4. Run `npm run check` (lint, typecheck, tests) and make sure it passes.
-5. Open a pull request and fill in the template.
+4. Run `npm run check` (lint, typecheck, tests) and `npm run format` in `prototypes/electron`.
+5. Open a pull request and fill in the template. Type-specific templates are available for [bug fixes](.github/PULL_REQUEST_TEMPLATE/bugfix.md), [features](.github/PULL_REQUEST_TEMPLATE/feature.md) and [refactors](.github/PULL_REQUEST_TEMPLATE/refactor.md); append `?template=feature.md` to the pull request URL to use one.
 
 ## Commit messages
 
@@ -38,7 +41,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Code style
 
-- ESLint and TypeScript settings in the repository are the source of truth.
+- ESLint, Prettier and TypeScript settings in the repository are the source of truth.
 - Prefer clear names and small functions over explanatory comments; comment only when the reason is not obvious from the code.
 
 ## License
