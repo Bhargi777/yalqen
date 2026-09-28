@@ -635,7 +635,7 @@ export class YalqenWindow {
   }
 
   private showWindowControls(): void {
-    this.window.setWindowButtonVisibility(true);
+    this.window.setWindowButtonVisibility(this.app.settings.get().toolbarVisible || this.window.isFullScreen());
     if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   }
 

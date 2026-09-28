@@ -84,7 +84,7 @@
     };
     panelAnimation = requestAnimationFrame(step);
   });
-  const topInset = $derived(browser.toolbarVisible || windowControls ? CHROME_HEIGHT : 0);
+  const topInset = $derived(browser.toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = browser.material;
