@@ -3,6 +3,7 @@
   "productName": "Yalqen",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Phase 0 Electron + TypeScript + Svelte prototype",
   "main": "dist/main/main.js",
   "scripts": {
