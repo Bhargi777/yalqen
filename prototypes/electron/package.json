@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
-  "description": "Phase 0 Electron + TypeScript + Svelte prototype",
+  "description": "A fast, privacy-minded web browser for macOS",
   "main": "dist/main/main.js",
   "scripts": {
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
