@@ -34,7 +34,7 @@ xattr -dr com.apple.quarantine /Applications/Yalqen.app
 Requires Node.js 24 and macOS.
 
 ```bash
-cd prototypes/electron
+cd apps/browser
 npm ci
 npm start
 ```
@@ -45,7 +45,7 @@ npm start
 | `npm run check` | Lint, typecheck and run tests |
 | `npm run package:mac` | Build a local DMG/ZIP into `release/` |
 
-See [RELEASING.md](prototypes/electron/RELEASING.md) for the release process.
+See [RELEASING.md](apps/browser/RELEASING.md) for the release process.
 
 ## Built with
 
@@ -58,7 +58,7 @@ See [RELEASING.md](prototypes/electron/RELEASING.md) for the release process.
 
 | Path | Contents |
 | --- | --- |
-| `prototypes/electron` | The browser app (main process, preload, Svelte renderer, tests) |
+| `apps/browser` | The browser app (main process, preload, Svelte renderer, tests) |
 | `design/brand` | App icons and brand assets |
 | `bench` | Page-load benchmark inputs |
 
@@ -80,6 +80,6 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before openin
 
 ## License
 
-Yalqen is released under the [MIT License](LICENSE). Bundled ad-blocking filter lists keep their own licenses; see [THIRD_PARTY_NOTICES.md](prototypes/electron/THIRD_PARTY_NOTICES.md).
+Yalqen is released under the [MIT License](LICENSE). Bundled ad-blocking filter lists keep their own licenses; see [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md).
 
 The Yalqen name and logo are not covered by the MIT License and may not be used to endorse or promote derived products without permission.

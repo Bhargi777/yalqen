@@ -15,7 +15,7 @@ Requires macOS and Node.js 24.
 
 ```bash
 npm install
-cd prototypes/electron
+cd apps/browser
 npm ci
 npm start
 ```
@@ -26,8 +26,8 @@ Running `npm install` at the repository root sets up Git hooks: commit messages 
 
 1. Fork the repository and create a branch from `main`.
 2. Keep each pull request focused on a single change.
-3. Add or update tests in `prototypes/electron/test` for behavior changes.
-4. Run `npm run check` (lint, typecheck, tests) and `npm run format` in `prototypes/electron`.
+3. Add or update tests in `apps/browser/test` for behavior changes.
+4. Run `npm run check` (lint, typecheck, tests) and `npm run format` in `apps/browser`.
 5. Open a pull request and fill in the template. Type-specific templates are available for [bug fixes](.github/PULL_REQUEST_TEMPLATE/bugfix.md), [features](.github/PULL_REQUEST_TEMPLATE/feature.md) and [refactors](.github/PULL_REQUEST_TEMPLATE/refactor.md); append `?template=feature.md` to the pull request URL to use one.
 
 ## Commit messages

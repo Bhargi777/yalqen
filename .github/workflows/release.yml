@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-latest
     defaults:
       run:
-        working-directory: prototypes/electron
+        working-directory: apps/browser
     env:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: prototypes/electron/package-lock.json
+          cache-dependency-path: apps/browser/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check

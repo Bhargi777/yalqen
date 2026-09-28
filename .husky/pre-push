@@ -1,2 +1,2 @@
-npm --prefix prototypes/electron run typecheck
-npm --prefix prototypes/electron test
+npm --prefix apps/browser run typecheck
+npm --prefix apps/browser test

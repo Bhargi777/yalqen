@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /prototypes/electron
+    directory: /apps/browser
     schedule:
       interval: weekly
     groups:

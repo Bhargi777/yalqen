@@ -1,1 +1,1 @@
-npx lint-staged --cwd prototypes/electron
+npx lint-staged --cwd apps/browser
