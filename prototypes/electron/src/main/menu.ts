@@ -23,6 +23,7 @@ export interface MenuActions {
   find(): void;
   findNext(forward: boolean): void;
   reload(): void;
+  hardReload(): void;
   zoom(direction: 1 | -1 | 0): void;
   togglePanel(): void;
   toggleSidebar(): void;
@@ -136,6 +137,7 @@ export function buildMenu(actions: MenuActions): Menu {
       label: 'Görünüm',
       submenu: [
         { label: 'Yenile', accelerator: 'CmdOrCtrl+R', click: actions.reload },
+        { label: 'Önbelleği yok sayarak yenile', accelerator: 'CmdOrCtrl+Shift+R', click: actions.hardReload },
         { type: 'separator' },
         { label: 'Varsayılan boyut', accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
         { label: 'Yakınlaştır', accelerator: 'CmdOrCtrl+Plus', click: () => actions.zoom(1) },

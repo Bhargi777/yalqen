@@ -4,8 +4,10 @@ import {
   type AddressSuggestion,
   type CommandBarAction,
   type CommandBarOpen,
+  type DevCommandId,
   type TabId,
 } from '../shared/types.js';
+import { isDevCommandId } from './dev-commands.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 export interface CommandBarOptions {
@@ -19,6 +21,7 @@ export interface CommandBarHost {
   onDismiss: () => void;
   onInput: (input: string) => void;
   onSwitchTab: (id: TabId) => void;
+  onRunCommand: (id: DevCommandId) => void;
 }
 
 export class CommandBar {
@@ -114,6 +117,8 @@ export class CommandBar {
     this.close();
     if (action.type === 'switch-tab' && typeof action.id === 'string') {
       host.onSwitchTab(action.id);
+    } else if (action.type === 'run-command' && isDevCommandId(action.id)) {
+      host.onRunCommand(action.id);
     } else if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
       host.onSubmit(action.input, this.mode);
     } else {

@@ -1,3 +1,4 @@
+import { isDevelopmentHost } from '../shared/hosts.js';
 import { buildSearchUrl, type SearchEngine } from './search.js';
 
 const EXPLICIT_SCHEMES = new Set(['http:', 'https:', 'file:', 'about:', 'data:', 'view-source:', 'yalqen:']);
@@ -14,12 +15,13 @@ export function resolveInput(input: string, engine: SearchEngine): string {
     }
   }
 
+  const host = /^:\d/.test(text) ? `localhost${text}` : text;
   const looksLikeHost =
-    !/\s/.test(text) && (/^localhost(:\d+)?(\/|$)/i.test(text) || /^[^/]+\.[^/]+/.test(text));
+    !/\s/.test(host) && (/^(localhost|\[[\da-f:]+\])(:\d+)?(\/|$)/i.test(host) || /^[^/]+\.[^/]+/.test(host));
   if (looksLikeHost) {
-    const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(text);
     try {
-      return new URL(`${isLocal ? 'http' : 'https'}://${text}`).toString();
+      const scheme = isDevelopmentHost(new URL(`http://${host}`).hostname) ? 'http' : 'https';
+      return new URL(`${scheme}://${host}`).toString();
     } catch {
     }
   }

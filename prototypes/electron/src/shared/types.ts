@@ -28,6 +28,7 @@ export interface TabSnapshot {
   isPrivate: boolean;
   bookmarked: boolean;
   blockedPopups: number;
+  consoleErrors: number;
   audible: boolean;
   muted: boolean;
   canGoBack: boolean;
@@ -96,6 +97,7 @@ export type UiAction =
   | { type: 'go-back' }
   | { type: 'go-forward' }
   | { type: 'reload' }
+  | { type: 'open-devtools' }
   | { type: 'stop' }
   | { type: 'reset-zoom' }
   | { type: 'open-site-info' }
@@ -147,11 +149,22 @@ export interface CommandBarOpen {
   value?: string;
 }
 
+export type DevCommandId =
+  | 'hard-reload'
+  | 'devtools'
+  | 'view-source'
+  | 'device'
+  | 'rotate-device'
+  | 'clear-cache'
+  | 'clear-site-data';
+
 export interface AddressSuggestion {
-  kind: 'tab' | 'bookmark' | 'history';
+  kind: 'tab' | 'bookmark' | 'history' | 'command';
   title: string;
   url: string;
   tabId?: TabId;
+  commandId?: DevCommandId;
+  hint?: string;
   faviconUrl?: string;
 }
 
@@ -163,6 +176,7 @@ export interface CommandBarSuggestions {
 export type CommandBarAction =
   | { type: 'submit'; input: string }
   | { type: 'switch-tab'; id: TabId }
+  | { type: 'run-command'; id: DevCommandId }
   | { type: 'dismiss' }
   | { type: 'input'; input: string };
 

@@ -6,6 +6,7 @@ import {
   IpcChannel,
   type BrowserState,
   type ChromeLayout,
+  type DevCommandId,
   type DeviceId,
   type UiAction,
   type WindowMaterial,
@@ -14,6 +15,7 @@ import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
+import { isDevCommandInput, matchDevCommands } from './dev-commands.js';
 import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from './downloads.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -143,6 +145,11 @@ export class YalqenWindow {
       window: this.window,
       onSubmit: (input, mode) => {
         this.preconnector.cancel();
+        if (isDevCommandInput(input)) {
+          const command = matchDevCommands(input)[0]?.commandId;
+          if (command) this.runDevCommand(command);
+          return;
+        }
         const url = resolveInput(input, app.searchEngine());
         if (mode === 'new-tab') this.tabs.open(url);
         else this.tabs.navigate(url);
@@ -152,6 +159,11 @@ export class YalqenWindow {
         if (!this.tabs.focusActive()) this.ui.webContents.focus();
       },
       onInput: (input) => {
+        if (isDevCommandInput(input)) {
+          this.preconnector.cancel();
+          this.commandBar.showSuggestions(this.window, input, matchDevCommands(input));
+          return;
+        }
         this.preconnector.typed(input, app.searchEngine());
         this.commandBar.showSuggestions(
           this.window,
@@ -164,6 +176,7 @@ export class YalqenWindow {
         );
       },
       onSwitchTab: (id) => this.tabs.activate(id),
+      onRunCommand: (id) => this.runDevCommand(id),
     };
 
     this.findHost = {
@@ -399,6 +412,36 @@ export class YalqenWindow {
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
 
+  runDevCommand(id: DevCommandId): void {
+    const tabs = this.tabs;
+    const browsing = tabs.activeIsPrivate ? this.app.privateBrowsing : this.app.daily;
+    switch (id) {
+      case 'hard-reload':
+        tabs.reloadIgnoringCache();
+        break;
+      case 'devtools':
+        tabs.toggleDevTools();
+        break;
+      case 'view-source':
+        tabs.viewSource();
+        break;
+      case 'device':
+        tabs.toggleEmulation(this.app.deviceId());
+        break;
+      case 'rotate-device':
+        tabs.rotateDevice();
+        break;
+      case 'clear-cache':
+        void browsing.clearCache().then(() => tabs.reloadIgnoringCache());
+        break;
+      case 'clear-site-data': {
+        const origin = permissionOrigin(tabs.activeUrl);
+        if (origin) void browsing.clearStorageData({ origin }).then(() => tabs.reloadIgnoringCache());
+        break;
+      }
+    }
+  }
+
   private focusNewTabSearch(): boolean {
     const contents = this.tabs.activeContents();
     if (!contents || contents.isDestroyed()) return false;
@@ -492,6 +535,9 @@ export class YalqenWindow {
         break;
       case 'reload':
         tabs.reload();
+        break;
+      case 'open-devtools':
+        tabs.openDevTools();
         break;
       case 'stop':
         tabs.stop();

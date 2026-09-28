@@ -39,6 +39,8 @@ import { withoutHash } from './url.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
+// Past this the badge reads "99+", so further errors need not re-render the chrome.
+const MAX_CONSOLE_ERRORS = 99;
 const NEW_TAB_TITLE = 'Yeni sekme';
 
 interface Tab {
@@ -57,6 +59,7 @@ interface Tab {
   inactiveSince: number;
   edited: boolean;
   blockedPopups: string[];
+  consoleErrors: number;
   loading: boolean;
   frozen: boolean;
   history: SavedHistory | null;
@@ -496,6 +499,10 @@ export class TabManager {
     this.active()?.view?.webContents.reload();
   }
 
+  reloadIgnoringCache(): void {
+    this.active()?.view?.webContents.reloadIgnoringCache();
+  }
+
   stop(): void {
     this.active()?.view?.webContents.stop();
   }
@@ -542,6 +549,11 @@ export class TabManager {
 
   toggleDevTools(): void {
     this.active()?.view?.webContents.toggleDevTools();
+  }
+
+  openDevTools(): void {
+    const contents = this.activeContents();
+    if (contents && !contents.isDevToolsOpened()) contents.openDevTools();
   }
 
   selectByIndex(index: number): void {
@@ -649,6 +661,7 @@ export class TabManager {
       inactiveSince: Date.now(),
       edited: false,
       blockedPopups: [],
+      consoleErrors: 0,
       loading: false,
       frozen: false,
       history: saved.history ?? null,
@@ -861,8 +874,15 @@ export class TabManager {
     });
     listen('devtools-closed', () => this.maybeFreeze(tab));
     listen('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
-      if (!isMainFrame || isSameDocument || tab.blockedPopups.length === 0) return;
+      if (!isMainFrame || isSameDocument) return;
+      if (tab.blockedPopups.length === 0 && tab.consoleErrors === 0) return;
       tab.blockedPopups = [];
+      tab.consoleErrors = 0;
+      this.changed();
+    });
+    listen('console-message', ({ level }) => {
+      if (level !== 'error' || tab.consoleErrors > MAX_CONSOLE_ERRORS) return;
+      tab.consoleErrors++;
       this.changed();
     });
     listen('will-redirect', (event) => {
@@ -1057,6 +1077,7 @@ export class TabManager {
       bookmarked: this.options.isBookmarked(tab.url),
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       blockedPopups: tab.blockedPopups.length,
+      consoleErrors: tab.consoleErrors,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,

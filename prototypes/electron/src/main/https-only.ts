@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
-import { hostOf } from '../shared/hosts.js';
+import { hostOf, isDevelopmentHost } from '../shared/hosts.js';
 import { INTERNAL_SCHEME, type SecureDnsSetting } from '../shared/types.js';
 
 export const PROCEED_HTTP_URL = `${INTERNAL_SCHEME}://proceed-http/`;
@@ -28,9 +28,7 @@ export function httpsUpgrade(url: string): string | null {
   }
   if (parsed.protocol !== 'http:') return null;
   const host = parsed.hostname.replace(/^\[|\]$/g, '');
-  if (isIP(host) || !host.includes('.') || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) {
-    return null;
-  }
+  if (isIP(host) || !host.includes('.') || isDevelopmentHost(host)) return null;
   parsed.protocol = 'https:';
   if (parsed.port === '80') parsed.port = '';
   return parsed.toString();

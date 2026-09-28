@@ -5,7 +5,7 @@
   import Icon from './components/Icon.svelte';
   import SearchField from './components/ui/SearchField.svelte';
 
-  const KIND_ICON = { tab: 'sidebar', bookmark: 'star', history: 'history' } as const;
+  const KIND_ICON = { tab: 'sidebar', bookmark: 'star', history: 'history', command: 'gauge' } as const;
 
   let input: HTMLInputElement | undefined = $state();
   let value = $state('');
@@ -21,7 +21,14 @@
   }
 
   function pick(suggestion: AddressSuggestion): void {
-    finish(suggestion.tabId ? { type: 'switch-tab', id: suggestion.tabId } : { type: 'submit', input: suggestion.url });
+    if (suggestion.commandId) finish({ type: 'run-command', id: suggestion.commandId });
+    else if (suggestion.tabId) finish({ type: 'switch-tab', id: suggestion.tabId });
+    else finish({ type: 'submit', input: suggestion.url });
+  }
+
+  function detail(suggestion: AddressSuggestion): string {
+    if (suggestion.kind === 'command') return suggestion.hint ?? '';
+    return suggestion.kind === 'tab' ? 'Sekmeye geç' : displayHost(suggestion.url);
   }
 
   function submit(event: SubmitEvent): void {
@@ -121,7 +128,7 @@
           >
             <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>
             <span class="title">{suggestion.title || displayHost(suggestion.url)}</span>
-            <span class="url">{suggestion.kind === 'tab' ? 'Sekmeye geç' : displayHost(suggestion.url)}</span>
+            <span class="url">{detail(suggestion)}</span>
           </li>
         {/each}
       </ul>

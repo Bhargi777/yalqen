@@ -20,6 +20,17 @@ test('bare hosts get a scheme', () => {
   assert.equal(resolveInput('127.0.0.1:8080/x', google), 'http://127.0.0.1:8080/x');
 });
 
+test('development addresses open over http', () => {
+  assert.equal(resolveInput(':3000', google), 'http://localhost:3000/');
+  assert.equal(resolveInput(':5173/admin?x=1', google), 'http://localhost:5173/admin?x=1');
+  assert.equal(resolveInput('[::1]:8080', google), 'http://[::1]:8080/');
+  assert.equal(resolveInput('0.0.0.0:4000', google), 'http://0.0.0.0:4000/');
+  assert.equal(resolveInput('myapp.test', google), 'http://myapp.test/');
+  assert.equal(resolveInput('api.localhost:8080/v1', google), 'http://api.localhost:8080/v1');
+  assert.equal(resolveInput('localhost:443', google), 'http://localhost:443/');
+  assert.equal(resolveInput(':99999', google), 'https://www.google.com/search?q=%3A99999');
+});
+
 test('other text is searched with the selected engine', () => {
   const cases = {
     google: 'https://www.google.com/search?q=hava%20durumu',

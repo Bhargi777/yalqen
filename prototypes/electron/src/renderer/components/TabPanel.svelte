@@ -45,6 +45,7 @@
       tab.frozen ? 'dondurulmuş' : null,
       tab.pinned ? 'sabitlendi' : null,
       tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
+      tab.consoleErrors > 0 ? `${tab.consoleErrors > 99 ? '99+' : tab.consoleErrors} konsol hatası` : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }

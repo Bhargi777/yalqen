@@ -121,6 +121,20 @@
               onclick={() => send({ type: 'open-blocked-popups' })}
             />
           {/if}
+          {#if tab.consoleErrors > 0}
+            {@const errors = tab.consoleErrors > 99 ? '99+' : String(tab.consoleErrors)}
+            <Button
+              size="sm"
+              variant="tonal"
+              icon="warning"
+              class="console-errors"
+              aria-label="Konsolda {errors} hata, geliştirici araçlarını aç"
+              title="Konsolda {errors} hata (⌥⌘I)"
+              onclick={() => send({ type: 'open-devtools' })}
+            >
+              {errors}
+            </Button>
+          {/if}
           {#if Math.round(zoom * 100) !== Math.round(defaultZoom * 100)}
             <Button size="sm" variant="tonal" class="zoom" title="Varsayılan yakınlaştırmaya dön (⌘0)" onclick={() => send({ type: 'reset-zoom' })}>
               %{Math.round(zoom * 100)}
@@ -355,6 +369,11 @@
   }
 
   .chip :global(.zoom) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .chip :global(.console-errors) {
+    color: var(--warn);
     font-variant-numeric: tabular-nums;
   }
 

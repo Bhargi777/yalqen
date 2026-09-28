@@ -324,6 +324,7 @@ function startBrowser(): void {
       find: () => current?.openFind(),
       findNext: (forward) => current?.openFind(forward),
       reload: () => current?.tabs.reload(),
+      hardReload: () => current?.tabs.reloadIgnoringCache(),
       zoom: (direction) => current?.tabs.zoom(direction),
       togglePanel: () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed }),
       toggleSidebar: () => updateSettings({ sidebarVisible: !settings.get().sidebarVisible }),

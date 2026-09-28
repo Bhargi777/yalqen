@@ -32,7 +32,7 @@ export interface SuggestionSources {
 export const EMPTY_HISTORY_INDEX: HistoryIndex = { pages: [], favicons: new Map() };
 
 export const MAX_SUGGESTIONS = 6;
-const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { tab: 0, bookmark: 1, history: 2 };
+const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { command: 0, tab: 1, bookmark: 2, history: 3 };
 
 
 function bareUrl(url: string): string {
