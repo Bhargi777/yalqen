@@ -1,14 +1,15 @@
 # Yalqen
 
 <a href="https://yalqen.com/">
-  <img src="design/screenshots/website.png" alt="Yalqen website: Light as paper. Clear as glass." width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/screenshots/website-dark.png" />
+    <source media="(prefers-color-scheme: light)" srcset="design/screenshots/website-light.png" />
+    <img src="design/screenshots/website-light.png" alt="Yalqen website: Light as paper. Clear as glass." width="100%" />
+  </picture>
 </a>
 
 [![Website](https://img.shields.io/badge/website-yalqen.com-0A84FF)](https://yalqen.com/)
 [![CI](https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg)](https://github.com/YSamed/yalqen/actions/workflows/codeql.yml)
-[![Release](https://img.shields.io/github/v/release/YSamed/yalqen?include_prereleases)](https://github.com/YSamed/yalqen/releases)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge)](https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen)
 [![License: MIT](https://img.shields.io/github/license/YSamed/yalqen)](LICENSE)
 
 A fast, privacy-minded web browser for macOS, built with Electron, TypeScript and Svelte.
@@ -22,6 +23,7 @@ A fast, privacy-minded web browser for macOS, built with Electron, TypeScript an
 - Command bar for search, tabs and history
 - Pinned tabs that persist across restarts
 - Memory saver for inactive tabs
+- Developer tools: device and network emulation, storage inspector, request rules and an ephemeral developer window
 - Native macOS glass window effect where supported
 
 ## Install
@@ -44,44 +46,13 @@ npm ci
 npm start
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `npm start` | Build and launch the app |
-| `npm run check` | Lint, typecheck and run tests |
-| `npm run package:mac` | Build a local DMG/ZIP into `release/` |
+Run `npm run check` for lint, typecheck and tests, and `npm run package:mac` to build a local DMG/ZIP.
 
 See [RELEASING.md](apps/browser/RELEASING.md) for the release process and [CHANGELOG.md](apps/browser/CHANGELOG.md) for release history.
-
-## Built with
-
-[![Electron](https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Svelte](https://img.shields.io/badge/Svelte-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://svelte.dev/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
-
-## Repository layout
-
-| Path | Contents |
-| --- | --- |
-| `apps/browser` | The browser app (main process, preload, Svelte renderer, tests) |
-| `design/brand` | App icons and brand assets |
-| `bench` | Page-load benchmark inputs |
 
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and report security issues as described in [SECURITY.md](SECURITY.md). This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Contributors
-
-<a href="https://github.com/YSamed/yalqen/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=YSamed/yalqen" alt="Contributors" />
-</a>
-
-## Star history
-
-<a href="https://star-history.com/#YSamed/yalqen&Date">
-  <img src="https://api.star-history.com/svg?repos=YSamed/yalqen&type=Date" alt="Star history chart" />
-</a>
 
 ## License
 
