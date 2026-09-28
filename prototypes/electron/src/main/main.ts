@@ -22,7 +22,7 @@ import { DownloadStore } from './downloads.js';
 import { loadInternalPages, registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
-import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
+import { acceptLanguages, chromeUserAgent, spellCheckerLanguages } from './page-preferences.js';
 import { setThirdPartyCookieBlocking } from './third-party-cookies.js';
 import { FindBar } from './find-bar.js';
 import { externalUrls } from './launch.js';
@@ -80,6 +80,7 @@ app.on('second-instance', (_event, argv, workingDirectory) => {
 
 function startBrowser(): void {
   const userData = app.getPath('userData');
+  app.userAgentFallback = chromeUserAgent(app.userAgentFallback);
   const daily = session.fromPartition(DAILY_PARTITION);
   const privateBrowsing = session.fromPartition(PRIVATE_PARTITION);
   const settings = new SettingsStore(userData);
