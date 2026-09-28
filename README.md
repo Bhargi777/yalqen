@@ -8,6 +8,8 @@
 
 A fast, privacy-minded web browser for macOS, built with Electron, TypeScript and Svelte.
 
+Website: [yalqen.com](https://yalqen.com/)
+
 > **Status:** early prototype. Expect rough edges and breaking changes.
 
 ## Features
