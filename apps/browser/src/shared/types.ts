@@ -44,7 +44,8 @@ export interface TabSnapshot {
   canGoForward: boolean;
 }
 
-export type DeviceId = 'iphone-15' | 'iphone-se' | 'pixel-8' | 'ipad-mini' | 'responsive';
+export type DeviceId =
+  'iphone-15' | 'iphone-15-pro-max' | 'iphone-se' | 'pixel-8' | 'galaxy-s24' | 'ipad-mini' | 'responsive';
 
 export interface DeviceFrame {
   label: string;

@@ -91,3 +91,30 @@ test('the responsive frame is emulated as a desktop page', async () => {
   assert.equal(byName['Emulation.setTouchEmulationEnabled'].enabled, false);
   assert.equal(byName['Emulation.setUserAgentOverride'].userAgent, '');
 });
+
+test('phone presets apply their own viewport and user agent', async () => {
+  const cases = {
+    'iphone-15-pro-max': { size: [430, 932], scaleFactor: 3, userAgent: /iPhone/, platform: 'iPhone' },
+    'galaxy-s24': { size: [360, 780], scaleFactor: 3, userAgent: /Android 14; SM-S921B/, platform: 'Linux armv8l' },
+  };
+  for (const [deviceId, expected] of Object.entries(cases)) {
+    const { commands, contents } = fakeContents();
+    await applyEmulation(contents, { deviceId, landscape: false }, 1);
+    const byName = Object.fromEntries(commands.map(({ name, params }) => [name, params]));
+    const metrics = byName['Emulation.setDeviceMetricsOverride'];
+    assert.deepEqual(
+      [metrics.width, metrics.height, metrics.deviceScaleFactor, metrics.mobile],
+      [...expected.size, expected.scaleFactor, true],
+    );
+    assert.match(byName['Emulation.setUserAgentOverride'].userAgent, expected.userAgent);
+    assert.equal(byName['Emulation.setUserAgentOverride'].platform, expected.platform);
+    assert.equal(byName['Emulation.setTouchEmulationEnabled'].enabled, true);
+  }
+});
+
+test('every device id resolves to its own preset', () => {
+  for (const device of devices.DEVICES) assert.equal(devices.findDevice(device.id), device);
+  assert.equal(new Set(devices.DEVICES.map((device) => device.id)).size, devices.DEVICES.length);
+  assert.equal(devices.findDevice('galaxy-s24').label, 'Galaxy S24');
+  assert.equal(devices.findDevice('iphone-15-pro-max').label, 'iPhone 15 Pro Max');
+});
