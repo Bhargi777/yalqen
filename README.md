@@ -57,7 +57,15 @@
 
 ## Install
 
-Requires macOS 13+ on Apple Silicon. Builds are not notarized yet; if macOS reports the app as damaged, run:
+Requires macOS 13+ on Apple Silicon.
+
+With [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask YSamed/yalqen/yalqen
+```
+
+Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). Builds are not notarized yet; if macOS reports the app as damaged, run:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Yalqen.app
