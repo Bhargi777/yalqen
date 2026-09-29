@@ -8,7 +8,7 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 2. Merging that pull request tags `vx.y.z` and creates the GitHub release with the changelog.
 3. `.github/workflows/release.yml` then checks, builds and packages the macOS app, uploads the DMG and ZIP to the release and appends the install notes from `build/release-notes.md`.
 
-The release pull request is opened by GitHub Actions, so CI does not run on it; merge it with the admin bypass. Pushing a `v*` tag by hand still runs the release workflow on its own.
+The release pull request is opened by GitHub Actions, so CI does not run on it; merge it with the admin bypass. Pushing a `v*` tag by hand still runs the release workflow on its own. If a release ends up without its DMG and ZIP, run the Release workflow from the Actions tab with that tag to build and upload them again.
 
 ## Without an Apple developer account (default)
 
