@@ -10,6 +10,8 @@ import {
 import { isDevCommandId } from './dev-commands.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
+const NEXT_FRAME_SCRIPT = 'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))';
+
 export interface CommandBarOptions {
   preload: string;
   page: string;
@@ -30,7 +32,9 @@ export class CommandBar {
   private opened = false;
   private mode: CommandBarOpen['mode'] = 'navigate';
   private ready = false;
+  private loaded: Promise<void> = Promise.resolve();
   private lastOpen: CommandBarOpen | null = null;
+  private destroyed = false;
 
   constructor(private readonly options: CommandBarOptions) {
     ipcMain.on(CommandBarChannel.action, this.onAction);
@@ -78,12 +82,24 @@ export class CommandBar {
     this.view.setBounds({ x: 0, y: 0, width, height });
   }
 
+  prewarm(): void {
+    if (!this.destroyed) this.ensureView();
+  }
+
+  async painted(): Promise<void> {
+    const contents = this.view?.webContents;
+    if (!contents || contents.isDestroyed()) return;
+    await this.loaded;
+    await contents.executeJavaScript(NEXT_FRAME_SCRIPT);
+  }
+
   keepOnTop(window: BaseWindow): void {
     if (!this.view || !this.isOpenIn(window)) return;
     raiseToTop(window, this.view);
   }
 
   destroy(): void {
+    this.destroyed = true;
     ipcMain.off(CommandBarChannel.action, this.onAction);
     this.close();
     this.host = null;
@@ -100,7 +116,7 @@ export class CommandBar {
     const view = createOverlayView(this.options.preload);
     const contents = view.webContents;
     this.view = view;
-    void contents.loadFile(this.options.page).then(() => {
+    this.loaded = contents.loadFile(this.options.page).then(() => {
       this.ready = true;
       if (this.opened && this.lastOpen) contents.send(CommandBarChannel.open, this.lastOpen);
     });
