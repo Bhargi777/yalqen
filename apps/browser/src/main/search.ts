@@ -48,6 +48,12 @@ export const SEARCH_ENGINES: readonly SearchEngine[] = [
     placeholder: "Ecosia'da ara veya adres yaz",
     template: 'https://www.ecosia.org/search?q=%s',
   },
+  {
+    id: 'startpage',
+    label: 'Startpage',
+    placeholder: "Startpage'de ara veya adres yaz",
+    template: 'https://www.startpage.com/do/search?q=%s',
+  },
 ];
 
 const CUSTOM_PLACEHOLDER = 'Ara veya adres yaz';
