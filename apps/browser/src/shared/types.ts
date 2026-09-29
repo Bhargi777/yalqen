@@ -74,6 +74,7 @@ export interface BrowserState {
   zoom: number;
   defaultZoom: number;
   downloads: DownloadsSummary;
+  extensions: boolean;
 }
 
 export interface DownloadsSummary {
@@ -88,6 +89,13 @@ export interface ChromeLayout {
   pageInset: number;
   pageRadius: number;
   newTabCenterOffset: number;
+}
+
+export interface AnchorRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export type UiAction =
@@ -118,6 +126,7 @@ export type UiAction =
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
   | { type: 'open-downloads' }
+  | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-history' }
   | { type: 'open-settings' };
 
@@ -327,6 +336,27 @@ export const RequestRulesChannel = {
   save: 'yalqen-rules:save',
 } as const;
 
+export interface ExtensionInfo {
+  path: string;
+  id: string | null;
+  name: string;
+  version: string;
+  description: string;
+  enabled: boolean;
+  error: string | null;
+  icon: string | null;
+  hasOptions: boolean;
+}
+
+export const ExtensionsChannel = {
+  list: 'yalqen-extensions:list',
+  install: 'yalqen-extensions:install',
+  remove: 'yalqen-extensions:remove',
+  setEnabled: 'yalqen-extensions:set-enabled',
+  openOptions: 'yalqen-extensions:open-options',
+  changed: 'yalqen-extensions:changed',
+} as const;
+
 export interface SettingsApi {
   get(): Promise<SettingsView>;
   update(patch: Partial<SettingsValues>): Promise<SettingsView>;
@@ -335,4 +365,10 @@ export interface SettingsApi {
   makeDefault(): Promise<SettingsView>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
+  extensions(): Promise<ExtensionInfo[]>;
+  installExtension(): Promise<string | null>;
+  removeExtension(path: string): Promise<void>;
+  setExtensionEnabled(path: string, enabled: boolean): Promise<void>;
+  openExtensionOptions(path: string): Promise<void>;
+  onExtensionsChange(listener: (extensions: ExtensionInfo[]) => void): () => void;
 }

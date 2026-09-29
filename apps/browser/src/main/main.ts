@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, app, ipcMain, nativeTheme, session } from 'electron';
+import { BaseWindow, Menu, app, dialog, ipcMain, nativeTheme, session } from 'electron';
 import {
   BOOKMARKS_URL,
+  ExtensionsChannel,
   HISTORY_URL,
   NEW_TAB_URL,
   IpcChannel,
@@ -20,6 +21,8 @@ import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { DownloadManager } from './download-manager.js';
 import { DownloadStore } from './downloads.js';
+import { ExtensionPopup } from './extension-popup.js';
+import { ExtensionManager } from './extensions.js';
 import { loadInternalPages, registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
@@ -35,7 +38,7 @@ import { RequestRuleStore } from './request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
-import { broadcastSettings, isSettingsFrame } from './settings-page.js';
+import { broadcastExtensions, broadcastSettings, isSettingsFrame } from './settings-page.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
@@ -107,10 +110,16 @@ function startBrowser(): void {
   const windows: YalqenWindow[] = [];
   let current: YalqenWindow | null = null;
   let quitting = false;
+  let started = false;
   const eachWindow = (run: (window: YalqenWindow) => void) => {
     for (const window of [...windows]) run(window);
   };
   const pushState = () => eachWindow((window) => window.pushState());
+  const extensions = new ExtensionManager(userData, daily, () => {
+    pushState();
+    broadcastExtensions(extensions.list());
+  });
+  const extensionPopup = new ExtensionPopup();
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
@@ -228,6 +237,8 @@ function startBrowser(): void {
     history,
     downloads,
     bookmarks,
+    extensions,
+    extensionPopup,
     certificates,
     httpsOnly,
     closedTabs,
@@ -399,6 +410,32 @@ function startBrowser(): void {
     eachWindow((window) => window.tabs.refreshRequestRules());
     return saved;
   });
+  ipcMain.handle(ExtensionsChannel.list, (event) => (isSettingsFrame(event) ? extensions.list() : null));
+  ipcMain.handle(ExtensionsChannel.install, async (event) => {
+    if (!isSettingsFrame(event)) return null;
+    const parent = windowOf(event.sender)?.window;
+    const options: Electron.OpenDialogOptions = {
+      title: 'Uzantı klasörünü seçin',
+      buttonLabel: 'Yükle',
+      properties: ['openDirectory'],
+    };
+    const { canceled, filePaths } = parent
+      ? await dialog.showOpenDialog(parent, options)
+      : await dialog.showOpenDialog(options);
+    return canceled || !filePaths[0] ? null : extensions.install(filePaths[0]);
+  });
+  ipcMain.handle(ExtensionsChannel.remove, (event, directory: unknown) => {
+    if (isSettingsFrame(event) && typeof directory === 'string') extensions.remove(directory);
+  });
+  ipcMain.handle(ExtensionsChannel.setEnabled, async (event, directory: unknown, enabled: unknown) => {
+    if (isSettingsFrame(event) && typeof directory === 'string' && typeof enabled === 'boolean') {
+      await extensions.setEnabled(directory, enabled);
+    }
+  });
+  ipcMain.handle(ExtensionsChannel.openOptions, (event, directory: unknown) => {
+    const url = isSettingsFrame(event) && typeof directory === 'string' ? extensions.optionsUrl(directory) : null;
+    if (url) windowOf(event.sender)?.tabs.open(url, { isPrivate: false });
+  });
   ipcMain.handle(SettingsChannel.clearData, async (event, value: unknown) => {
     if (!isSettingsFrame(event)) return;
     const request = sanitizeClearRequest(value);
@@ -464,6 +501,8 @@ function startBrowser(): void {
     adBlocker.destroy();
     commandBar.destroy();
     findBar.destroy();
+    extensionPopup.close();
+    extensions.saveNow();
     history.saveNow();
     downloads.saveNow();
     bookmarks.saveNow();
@@ -472,24 +511,31 @@ function startBrowser(): void {
     requestRules.saveNow();
   });
   app.on('activate', () => {
-    if (windows.length === 0 && !quitting) openWindow({});
+    if (started && windows.length === 0 && !quitting) openWindow({});
   });
 
-  const restoring = settings.get().startupBehavior === 'restore';
-  const savedWindows = store.load()?.windows ?? [];
-  const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter((window) => window.tabs.length > 0);
-  const [first, ...rest] = pendingUrls.splice(0);
-  if (restored.length === 0) openWindow(first ? { url: first } : {});
-  restored.forEach((window, index) =>
-    openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }),
-  );
-  openExternal = (urls) => {
-    const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
-    for (const url of urls) window.tabs.open(url);
-    window.focus();
+  // Content scripts only reach pages that load after their extension, so restored tabs wait for it.
+  const openInitialWindows = () => {
+    started = true;
+    const restoring = settings.get().startupBehavior === 'restore';
+    const savedWindows = store.load()?.windows ?? [];
+    const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter(
+      (window) => window.tabs.length > 0,
+    );
+    const [first, ...rest] = pendingUrls.splice(0);
+    if (restored.length === 0) openWindow(first ? { url: first } : {});
+    restored.forEach((window, index) =>
+      openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }),
+    );
+    openExternal = (urls) => {
+      const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
+      for (const url of urls) window.tabs.open(url);
+      window.focus();
+    };
+    if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
+    else if (rest.length > 0) openExternal(rest);
   };
-  if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
-  else if (rest.length > 0) openExternal(rest);
+  void extensions.loadAll().then(openInitialWindows);
 }
 
 app.setAboutPanelOptions({

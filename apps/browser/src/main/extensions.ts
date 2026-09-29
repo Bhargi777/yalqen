@@ -1,0 +1,225 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { nativeImage, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
+import type { ExtensionInfo } from '../shared/types.js';
+import {
+  actionTitle,
+  extensionPage,
+  iconFile,
+  manifestText,
+  optionsPage,
+  parseMessages,
+  popupPage,
+  resolveInside,
+  sanitizeSavedExtensions,
+  type Manifest,
+  type Messages,
+  type SavedExtension,
+} from './extension-manifest.js';
+import { JsonFile } from './json-file.js';
+
+const MENU_ICON_SIZE = 16;
+const LIST_ICON_SIZE = 64;
+
+export interface ExtensionAction {
+  title: string;
+  icon: NativeImage | null;
+  popupUrl: string | null;
+  optionsUrl: string | null;
+}
+
+export interface ExtensionsMenuHandlers {
+  openPopup(url: string): void;
+  openOptions(url: string): void;
+  manage(): void;
+}
+
+export function extensionsMenuTemplate(
+  actions: readonly ExtensionAction[],
+  handlers: ExtensionsMenuHandlers,
+): MenuItemConstructorOptions[] {
+  const items = [...actions]
+    .sort((a, b) => a.title.localeCompare(b.title, 'tr'))
+    .map((action): MenuItemConstructorOptions => ({
+      label: action.title,
+      icon: action.icon ?? undefined,
+      enabled: action.popupUrl !== null || action.optionsUrl !== null,
+      click: () => {
+        if (action.popupUrl) handlers.openPopup(action.popupUrl);
+        else if (action.optionsUrl) handlers.openOptions(action.optionsUrl);
+      },
+    }));
+  return [
+    ...items,
+    ...(items.length > 0 ? [{ type: 'separator' as const }] : []),
+    { label: 'Uzantıları yönet…', click: handlers.manage },
+  ];
+}
+
+function readJson(file: string): unknown {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export function errorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^Loading extension at .+? failed with: /s, '');
+}
+
+export class ExtensionManager {
+  private readonly json: JsonFile;
+  private entries: SavedExtension[];
+  private readonly ids = new Map<string, string>();
+  private readonly errors = new Map<string, string>();
+
+  constructor(
+    directory: string,
+    private readonly browsing: Session,
+    private readonly onChange: () => void,
+  ) {
+    const file = path.join(directory, 'extensions.json');
+    this.json = new JsonFile(file, 'extensions');
+    this.entries = sanitizeSavedExtensions((readJson(file) as { extensions?: unknown } | null)?.extensions);
+  }
+
+  async loadAll(): Promise<void> {
+    await Promise.all(this.entries.filter((entry) => entry.enabled).map((entry) => this.load(entry.path)));
+  }
+
+  get active(): boolean {
+    return this.ids.size > 0;
+  }
+
+  actions(): ExtensionAction[] {
+    return this.entries.flatMap((entry) => {
+      const extension = this.loadedAt(entry.path);
+      if (!extension) return [];
+      const manifest = extension.manifest as Manifest;
+      return [
+        {
+          title: actionTitle(manifest, extension.name),
+          icon: this.icon(entry.path, manifest, MENU_ICON_SIZE),
+          popupUrl: extensionPage(extension.url, popupPage(manifest)),
+          optionsUrl: extensionPage(extension.url, optionsPage(manifest)),
+        },
+      ];
+    });
+  }
+
+  list(): ExtensionInfo[] {
+    return this.entries.map((entry) => {
+      const extension = this.loadedAt(entry.path);
+      const manifest = (extension?.manifest ?? readJson(path.join(entry.path, 'manifest.json')) ?? {}) as Manifest;
+      const messages = this.messages(entry.path, manifest);
+      return {
+        path: entry.path,
+        id: extension?.id ?? null,
+        name: extension?.name || manifestText(manifest, 'name', messages) || path.basename(entry.path),
+        version: extension?.version ?? manifestText(manifest, 'version', messages),
+        description: manifestText(manifest, 'description', messages),
+        enabled: entry.enabled,
+        error: this.errors.get(entry.path) ?? null,
+        icon: this.icon(entry.path, manifest, LIST_ICON_SIZE)?.toDataURL() ?? null,
+        hasOptions: extension !== null && optionsPage(manifest) !== null,
+      };
+    });
+  }
+
+  optionsUrl(directory: string): string | null {
+    const extension = this.loadedAt(directory);
+    return extension ? extensionPage(extension.url, optionsPage(extension.manifest as Manifest)) : null;
+  }
+
+  async install(chosen: string): Promise<string | null> {
+    let directory: string;
+    try {
+      directory = fs.realpathSync(chosen);
+    } catch (error) {
+      return errorMessage(error);
+    }
+    this.unload(directory);
+    const error = await this.load(directory);
+    const saved = this.entries.find((entry) => entry.path === directory);
+    if (error && !saved) {
+      this.errors.delete(directory);
+      return error;
+    }
+    if (saved) saved.enabled = true;
+    else this.entries.push({ path: directory, enabled: true });
+    this.changed();
+    return error;
+  }
+
+  remove(directory: string): void {
+    if (!this.entries.some((entry) => entry.path === directory)) return;
+    this.unload(directory);
+    this.errors.delete(directory);
+    this.entries = this.entries.filter((entry) => entry.path !== directory);
+    this.changed();
+  }
+
+  async setEnabled(directory: string, enabled: boolean): Promise<void> {
+    const entry = this.entries.find((item) => item.path === directory);
+    if (!entry || entry.enabled === enabled) return;
+    entry.enabled = enabled;
+    if (enabled) {
+      await this.load(directory);
+    } else {
+      this.unload(directory);
+      this.errors.delete(directory);
+    }
+    this.changed();
+  }
+
+  saveNow(): void {
+    this.json.flush();
+  }
+
+  private async load(directory: string): Promise<string | null> {
+    try {
+      const extension = await this.browsing.extensions.loadExtension(directory);
+      this.ids.set(directory, extension.id);
+      this.errors.delete(directory);
+      return null;
+    } catch (error) {
+      const message = errorMessage(error);
+      this.errors.set(directory, message);
+      console.warn(`[extensions] could not load ${directory}:`, message);
+      return message;
+    }
+  }
+
+  private unload(directory: string): void {
+    const id = this.ids.get(directory);
+    if (!id) return;
+    this.ids.delete(directory);
+    if (this.browsing.extensions.getExtension(id)) this.browsing.extensions.removeExtension(id);
+  }
+
+  private loadedAt(directory: string): Electron.Extension | null {
+    const id = this.ids.get(directory);
+    return id ? this.browsing.extensions.getExtension(id) : null;
+  }
+
+  private messages(directory: string, manifest: Manifest): Messages {
+    const locale = typeof manifest.default_locale === 'string' ? manifest.default_locale : null;
+    const file = locale ? resolveInside(directory, path.join('_locales', locale, 'messages.json')) : null;
+    return file ? parseMessages(readJson(file)) : {};
+  }
+
+  private icon(directory: string, manifest: Manifest, size: number): NativeImage | null {
+    const relative = iconFile(manifest, size);
+    const file = relative ? resolveInside(directory, relative) : null;
+    if (!file) return null;
+    const image = nativeImage.createFromPath(file);
+    return image.isEmpty() ? null : image.resize({ width: size, height: size, quality: 'best' });
+  }
+
+  private changed(): void {
+    this.json.schedule(() => ({ version: 1, extensions: this.entries }));
+    this.onChange();
+  }
+}

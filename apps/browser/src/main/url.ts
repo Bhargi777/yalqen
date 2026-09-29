@@ -1,7 +1,16 @@
 import { isDevelopmentHost } from '../shared/hosts.js';
 import { buildSearchUrl, type SearchEngine } from './search.js';
 
-const EXPLICIT_SCHEMES = new Set(['http:', 'https:', 'file:', 'about:', 'data:', 'view-source:', 'yalqen:']);
+const EXPLICIT_SCHEMES = new Set([
+  'http:',
+  'https:',
+  'file:',
+  'about:',
+  'data:',
+  'view-source:',
+  'yalqen:',
+  'chrome-extension:',
+]);
 
 export function resolveInput(input: string, engine: SearchEngine): string {
   const text = input.trim();

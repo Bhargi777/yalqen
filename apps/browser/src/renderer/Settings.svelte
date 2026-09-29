@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { ClearDataRange, SettingsValues, SettingsView } from '../shared/types';
+  import Extensions from './components/Extensions.svelte';
   import type { IconName } from './components/Icon.svelte';
   import RequestRules from './components/RequestRules.svelte';
   import Button from './components/ui/Button.svelte';
@@ -10,12 +11,13 @@
 
   const api = window.yalqenSettings;
 
-  type PaneId = 'general' | 'appearance' | 'privacy' | 'performance' | 'developer';
+  type PaneId = 'general' | 'appearance' | 'privacy' | 'performance' | 'extensions' | 'developer';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
     { id: 'general', label: 'Genel', icon: 'settings' },
     { id: 'appearance', label: 'Görünüm', icon: 'appearance' },
     { id: 'privacy', label: 'Gizlilik', icon: 'lock' },
     { id: 'performance', label: 'Performans', icon: 'gauge' },
+    { id: 'extensions', label: 'Uzantılar', icon: 'extensions' },
     { id: 'developer', label: 'Geliştirici', icon: 'sparkle' },
   ];
   const paneFromPath = panes.find((item) => `/${item.id}` === location.pathname)?.id;
@@ -446,6 +448,8 @@
             </div>
           </div>
         </div>
+      {:else if pane === 'extensions'}
+        <Extensions />
       {:else if pane === 'developer'}
         <RequestRules />
       {:else}

@@ -1,11 +1,13 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
+  ExtensionsChannel,
   NEW_TAB_URL,
   PageChannel,
   RequestRulesChannel,
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
   type ClearDataRequest,
+  type ExtensionInfo,
   type NewTabCenter,
   type RequestRule,
   type SettingsApi,
@@ -98,6 +100,12 @@ window.addEventListener(
   { capture: true, passive: true },
 );
 
+function subscribe<T>(name: string, listener: (value: T) => void): () => void {
+  const handler = (_event: IpcRendererEvent, value: T) => listener(value);
+  ipcRenderer.on(name, handler);
+  return () => ipcRenderer.off(name, handler);
+}
+
 if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
   const api: SettingsApi = {
     get: () => ipcRenderer.invoke(settingsChannel.get) as Promise<SettingsView>,
@@ -108,11 +116,14 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     requestRules: () => ipcRenderer.invoke(RequestRulesChannel.list) as Promise<RequestRule[]>,
     saveRequestRules: (rules: RequestRule[]) =>
       ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,
-    onChange: (listener) => {
-      const handler = (_event: IpcRendererEvent, view: SettingsView) => listener(view);
-      ipcRenderer.on(settingsChannel.changed, handler);
-      return () => ipcRenderer.off(settingsChannel.changed, handler);
-    },
+    extensions: () => ipcRenderer.invoke(ExtensionsChannel.list) as Promise<ExtensionInfo[]>,
+    installExtension: () => ipcRenderer.invoke(ExtensionsChannel.install) as Promise<string | null>,
+    removeExtension: (path: string) => ipcRenderer.invoke(ExtensionsChannel.remove, path) as Promise<void>,
+    setExtensionEnabled: (path: string, enabled: boolean) =>
+      ipcRenderer.invoke(ExtensionsChannel.setEnabled, path, enabled) as Promise<void>,
+    openExtensionOptions: (path: string) => ipcRenderer.invoke(ExtensionsChannel.openOptions, path) as Promise<void>,
+    onChange: (listener) => subscribe<SettingsView>(settingsChannel.changed, listener),
+    onExtensionsChange: (listener) => subscribe<ExtensionInfo[]>(ExtensionsChannel.changed, listener),
   };
   contextBridge.exposeInMainWorld('yalqenSettings', api);
 }

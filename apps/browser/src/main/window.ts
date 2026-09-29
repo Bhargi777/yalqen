@@ -14,6 +14,7 @@ import {
 import {
   NEW_TAB_URL,
   IpcChannel,
+  type AnchorRect,
   type BrowserState,
   type ChromeLayout,
   type DevCommandId,
@@ -34,6 +35,8 @@ import {
 } from './dev-commands.js';
 import { devMenuTemplate } from './dev-menu.js';
 import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from './downloads.js';
+import { sanitizeAnchor, type ExtensionPopup } from './extension-popup.js';
+import { extensionsMenuTemplate, type ExtensionManager } from './extensions.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from './history.js';
@@ -72,6 +75,8 @@ export interface AppContext {
   history: HistoryStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
+  extensions: ExtensionManager;
+  extensionPopup: ExtensionPopup;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
   closedTabs: SavedTab[];
@@ -332,6 +337,7 @@ export class YalqenWindow {
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
+      app.extensionPopup.close(this.window);
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close();
       app.onWindowClosed(this);
       if (hadPrivate) app.onPrivateTabsClosed();
@@ -409,6 +415,7 @@ export class YalqenWindow {
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
+      extensions: !this.isPrivate && this.app.extensions.active,
     };
   }
 
@@ -704,6 +711,9 @@ export class YalqenWindow {
       case 'open-downloads':
         this.popup(downloadsMenuTemplate(app.downloads.list(), app.downloadActions(this)));
         break;
+      case 'open-extensions-menu':
+        this.openExtensionsMenu(sanitizeAnchor(action.anchor));
+        break;
       case 'open-history':
         tabs.openHistory();
         break;
@@ -754,6 +764,27 @@ export class YalqenWindow {
       },
     );
     this.popup(template);
+  }
+
+  private openExtensionsMenu(anchor: AnchorRect): void {
+    const openTab = (url: string) => this.tabs.open(url, { isPrivate: false });
+    const template = extensionsMenuTemplate(this.app.extensions.actions(), {
+      openPopup: (url) =>
+        this.app.extensionPopup.open({
+          window: this.window,
+          session: this.app.daily,
+          url,
+          anchor,
+          onOpenUrl: openTab,
+        }),
+      openOptions: openTab,
+      manage: () => this.tabs.openSettings('extensions'),
+    });
+    Menu.buildFromTemplate(template).popup({
+      window: this.window,
+      x: Math.round(anchor.x),
+      y: Math.round(anchor.y + anchor.height + 4),
+    });
   }
 
   private sessionFor(isPrivate: boolean): Session {

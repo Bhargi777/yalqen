@@ -14,6 +14,7 @@
     zoom,
     defaultZoom,
     downloads,
+    extensions,
     leadingInset,
     trailingInset,
     trailingOverhang = 0,
@@ -25,6 +26,7 @@
     zoom: number;
     defaultZoom: number;
     downloads: DownloadsSummary;
+    extensions: boolean;
     leadingInset: number;
     trailingInset: number;
     trailingOverhang?: number;
@@ -35,6 +37,11 @@
   let strip: HTMLElement | undefined = $state();
   const send = window.yalqen.send;
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
+
+  function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
+    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
+    send({ type: 'open-extensions-menu', anchor: { x, y, width, height } });
+  }
 
   $effect(() => {
     void activeTabId;
@@ -202,6 +209,9 @@
     <Capsule minWidth={trailingWidth} spread>
       <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
       <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
+      {#if extensions}
+        <IconButton icon="extensions" label="Uzantılar" onclick={openExtensionsMenu} />
+      {/if}
       <IconButton icon="profile" label="Profil" onclick={() => send({ type: 'open-profile-menu' })} />
       <IconButton
         icon="settings"

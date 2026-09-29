@@ -1,5 +1,11 @@
 import { webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { SETTINGS_URL, SettingsChannel, type SettingsView } from '../shared/types.js';
+import {
+  ExtensionsChannel,
+  SETTINGS_URL,
+  SettingsChannel,
+  type ExtensionInfo,
+  type SettingsView,
+} from '../shared/types.js';
 
 const settings = new URL(SETTINGS_URL);
 
@@ -17,8 +23,16 @@ export function isSettingsFrame(event: IpcMainEvent | IpcMainInvokeEvent): boole
   return !!frame && frame === event.sender.mainFrame && isSettingsUrl(frame.url);
 }
 
-export function broadcastSettings(view: SettingsView): void {
+function broadcast(channel: string, value: unknown): void {
   for (const contents of webContents.getAllWebContents()) {
-    if (!contents.isDestroyed() && isSettingsUrl(contents.mainFrame.url)) contents.send(SettingsChannel.changed, view);
+    if (!contents.isDestroyed() && isSettingsUrl(contents.mainFrame.url)) contents.send(channel, value);
   }
+}
+
+export function broadcastSettings(view: SettingsView): void {
+  broadcast(SettingsChannel.changed, view);
+}
+
+export function broadcastExtensions(extensions: ExtensionInfo[]): void {
+  broadcast(ExtensionsChannel.changed, extensions);
 }

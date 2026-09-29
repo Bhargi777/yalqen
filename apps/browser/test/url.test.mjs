@@ -11,6 +11,7 @@ test('explicit URLs are kept', () => {
   assert.equal(resolveInput('https://example.com/a?b=1', google), 'https://example.com/a?b=1');
   assert.equal(resolveInput('about:blank', google), 'about:blank');
   assert.equal(resolveInput('yalqen://history/', google), 'yalqen://history/');
+  assert.equal(resolveInput('chrome-extension://abc/popup.html', google), 'chrome-extension://abc/popup.html');
 });
 
 test('bare hosts get a scheme', () => {
