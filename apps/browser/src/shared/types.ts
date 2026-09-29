@@ -14,6 +14,12 @@ export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | '
 export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
 export type PageLanguage = 'tr' | 'en';
 export type SecurityState = 'secure' | 'insecure' | 'dangerous' | 'local';
+export type TranslationStatus = 'idle' | 'translating' | 'translated' | 'failed';
+
+export interface TabTranslation {
+  status: TranslationStatus;
+  available: boolean;
+}
 
 export interface TabSnapshot {
   id: TabId;
@@ -30,6 +36,7 @@ export interface TabSnapshot {
   blockedPopups: number;
   consoleErrors: number;
   overrides: PageOverrides;
+  translation: TabTranslation;
   autoReloadSeconds: number | null;
   audible: boolean;
   muted: boolean;
@@ -128,6 +135,7 @@ export type UiAction =
   | { type: 'open-downloads' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-history' }
+  | { type: 'toggle-translation' }
   | { type: 'open-settings' };
 
 export const PageChannel = {
@@ -303,6 +311,7 @@ export interface SettingsValues {
   fontSize: FontSizeSetting;
   defaultZoom: number;
   pageLanguage: PageLanguage;
+  pageTranslation: boolean;
   welcomeCompleted: boolean;
 }
 

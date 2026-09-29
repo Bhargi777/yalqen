@@ -48,6 +48,7 @@ test('unknown or mistyped fields fall back', () => {
       fontSize: 'medium',
       defaultZoom: 1,
       pageLanguage: 'tr',
+      pageTranslation: true,
       welcomeCompleted: false,
     },
   );

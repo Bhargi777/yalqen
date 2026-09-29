@@ -36,6 +36,7 @@ export interface ContextMenuActions {
   copyAddress(format: AddressFormat): void;
   replaceMisspelling(word: string): void;
   addToDictionary(word: string): void;
+  translation?: { label: string; run(): void };
 }
 
 export function snippet(text: string): string {
@@ -114,6 +115,7 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
       { label: 'Yenile', click: actions.reload },
     ]);
     groups.push([
+      ...(actions.translation ? [{ label: actions.translation.label, click: actions.translation.run }] : []),
       { label: 'Yazdır…', click: actions.print },
       ...(actions.canViewSource
         ? [

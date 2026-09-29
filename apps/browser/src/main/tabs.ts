@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   WebContentsView,
+  net,
   type BaseWindow,
   type ContextMenuParams,
   type Rectangle,
@@ -21,10 +22,12 @@ import {
   type DeviceId,
   type FindResult,
   type NewTabCenter,
+  type PageLanguage,
   type PageOverrides,
   type RequestRule,
   type TabId,
   type TabSnapshot,
+  type TranslationStatus,
 } from '../shared/types.js';
 import { PROCEED_URL } from './certificates.js';
 import {
@@ -52,6 +55,7 @@ import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from 
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
 import { withoutHash } from './url.js';
+import { detectLanguage, restorePage, translatePage } from './translate.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -79,6 +83,9 @@ interface Tab {
   consoleErrors: number;
   overrides: PageOverrides;
   autoReload: { seconds: number; dueAt: number } | null;
+  pageLanguage: string | null;
+  translation: TranslationStatus;
+  translationRun: number;
   loading: boolean;
   frozen: boolean;
   history: SavedHistory | null;
@@ -122,6 +129,7 @@ export interface TabManagerOptions {
   confirmHttpRedirect: (url: string) => Promise<boolean>;
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
   requestRules: () => readonly RequestRule[];
+  translation: () => { enabled: boolean; language: PageLanguage };
 }
 
 export interface RecentPage {
@@ -606,6 +614,63 @@ export class TabManager {
     this.releaseDebugger(tab, contents);
   }
 
+  toggleTranslation(): void {
+    const tab = this.active();
+    const contents = tab?.view?.webContents;
+    if (!tab || !contents || contents.isDestroyed()) return;
+    if (tab.translation === 'translating') return;
+    if (tab.translation === 'translated') {
+      tab.translationRun++;
+      tab.translation = 'idle';
+      restorePage(contents).catch(() => undefined);
+      this.changed();
+      return;
+    }
+    if (!this.translationAvailable(tab)) return;
+    const run = ++tab.translationRun;
+    const url = contents.getURL();
+    const cancelled = () => tab.translationRun !== run || contents.isDestroyed() || contents.getURL() !== url;
+    tab.translation = 'translating';
+    this.changed();
+    const fetchLike: Parameters<typeof translatePage>[1] = (endpoint, init) =>
+      net.fetch(endpoint, { ...init, credentials: 'omit' });
+    translatePage(contents, fetchLike, this.options.translation().language, { cancelled })
+      .then((result) => {
+        if (cancelled()) return;
+        tab.translation = result ? 'translated' : 'failed';
+        this.changed();
+      })
+      .catch((error: unknown) => {
+        console.warn('[translate] could not translate page:', error);
+        if (cancelled()) return;
+        tab.translation = 'failed';
+        this.changed();
+      });
+  }
+
+  private translationAvailable(tab: Tab): boolean {
+    const { enabled, language } = this.options.translation();
+    if (!enabled || !tab.view || !/^https?:/i.test(tab.url) || tab.failed) return false;
+    return tab.translation !== 'idle' || (tab.pageLanguage !== null && tab.pageLanguage !== language);
+  }
+
+  private resetTranslation(tab: Tab): void {
+    tab.translationRun++;
+    tab.translation = 'idle';
+    tab.pageLanguage = null;
+  }
+
+  private detectPageLanguage(tab: Tab, contents: WebContents): void {
+    const run = tab.translationRun;
+    detectLanguage(contents)
+      .then((language) => {
+        if (tab.translationRun !== run || tab.pageLanguage === language) return;
+        tab.pageLanguage = language;
+        this.changed();
+      })
+      .catch(() => undefined);
+  }
+
   setAutoReload(seconds: number | null): void {
     const tab = this.active();
     if (!tab) return;
@@ -826,6 +891,9 @@ export class TabManager {
       consoleErrors: 0,
       overrides: NO_OVERRIDES,
       autoReload: null,
+      pageLanguage: null,
+      translation: 'idle',
+      translationRun: 0,
       loading: false,
       frozen: false,
       history: saved.history ?? null,
@@ -1044,7 +1112,9 @@ export class TabManager {
     listen('devtools-closed', () => this.maybeFreeze(tab));
     listen('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
       if (!isMainFrame || isSameDocument) return;
-      if (tab.blockedPopups.length === 0 && tab.consoleErrors === 0) return;
+      const hadTranslationState = tab.translation !== 'idle' || tab.pageLanguage !== null;
+      this.resetTranslation(tab);
+      if (tab.blockedPopups.length === 0 && tab.consoleErrors === 0 && !hadTranslationState) return;
       tab.blockedPopups = [];
       tab.consoleErrors = 0;
       this.changed();
@@ -1119,6 +1189,7 @@ export class TabManager {
     });
     listen('did-finish-load', () => {
       this.syncNewTabCenter(tab);
+      this.detectPageLanguage(tab, contents);
       if (!failure) return;
       const script = failure;
       failure = null;
@@ -1229,6 +1300,7 @@ export class TabManager {
     tab.loading = false;
     tab.frozen = false;
     tab.overrides = NO_OVERRIDES;
+    this.resetTranslation(tab);
     this.options.window.contentView.removeChildView(view);
     if (!view.webContents.isDestroyed()) view.webContents.close();
   }
@@ -1262,6 +1334,7 @@ export class TabManager {
       blockedPopups: tab.blockedPopups.length,
       consoleErrors: tab.consoleErrors,
       overrides: tab.overrides,
+      translation: { status: tab.translation, available: this.translationAvailable(tab) },
       autoReloadSeconds: tab.autoReload?.seconds ?? null,
       audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
       muted: tab.muted,

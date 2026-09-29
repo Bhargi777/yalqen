@@ -298,6 +298,10 @@ export class YalqenWindow {
       },
       onContextMenu: (contents, params) => this.showContextMenu(contents, params),
       requestRules: () => app.requestRules.list(),
+      translation: () => ({
+        enabled: app.settings.get().pageTranslation,
+        language: app.settings.get().pageLanguage,
+      }),
     });
 
     this.window.on('focus', () => app.onWindowFocus(this));
@@ -717,6 +721,9 @@ export class YalqenWindow {
       case 'open-history':
         tabs.openHistory();
         break;
+      case 'toggle-translation':
+        tabs.toggleTranslation();
+        break;
       case 'open-settings':
         tabs.openSettings();
         break;
@@ -800,7 +807,15 @@ export class YalqenWindow {
     const tabs = this.tabs;
     const history = contents.navigationHistory;
     const isPrivate = tabs.isPrivateContents(contents);
+    const translation = tabs.state().tabs.find((tab) => tab.id === tabs.activeTabId)?.translation;
     const template = contextMenuTemplate(params, {
+      translation:
+        translation?.available && translation.status !== 'translating'
+          ? {
+              label: translation.status === 'translated' ? 'Özgün sayfayı göster' : 'Sayfayı çevir',
+              run: () => tabs.toggleTranslation(),
+            }
+          : undefined,
       canGoBack: history.canGoBack(),
       canGoForward: history.canGoForward(),
       canViewSource: canViewSource(contents.getURL()),

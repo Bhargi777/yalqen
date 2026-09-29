@@ -37,6 +37,7 @@ const DEFAULTS: Settings = {
   fontSize: 'medium',
   defaultZoom: 1,
   pageLanguage: 'tr',
+  pageTranslation: true,
   welcomeCompleted: false,
 };
 
@@ -67,6 +68,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     fontSize,
     defaultZoom,
     pageLanguage,
+    pageTranslation,
     welcomeCompleted,
   } = input;
   return {
@@ -103,6 +105,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? defaultZoom
         : base.defaultZoom,
     pageLanguage: pageLanguage === 'tr' || pageLanguage === 'en' ? (pageLanguage as PageLanguage) : base.pageLanguage,
+    pageTranslation: typeof pageTranslation === 'boolean' ? pageTranslation : base.pageTranslation,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
   };
 }

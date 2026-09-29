@@ -187,3 +187,15 @@ test('long selections are shortened for the label', () => {
   assert.equal(snippet('kısa'), 'kısa');
   assert.equal(snippet('a'.repeat(40)), `${'a'.repeat(29)}…`);
 });
+
+test('a plain page offers translation only when available', () => {
+  const a = actions();
+  const labels = (items) => items.map((item) => item.label);
+  assert.ok(!labels(contextMenuTemplate(context(), a)).includes('Sayfayı çevir'));
+  const items = contextMenuTemplate(context(), {
+    ...a,
+    translation: { label: 'Sayfayı çevir', run: () => a.calls.push(['translate']) },
+  });
+  items.find((item) => item.label === 'Sayfayı çevir').click();
+  assert.deepEqual(a.calls, [['translate']]);
+});

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DownloadsSummary, TabId, TabSnapshot } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot, TranslationStatus } from '../../shared/types';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
@@ -36,6 +36,12 @@
   let brokenIcons: Record<string, true> = $state({});
   let strip: HTMLElement | undefined = $state();
   const send = window.yalqen.send;
+  const translateTitle: Record<TranslationStatus, string> = {
+    idle: 'Sayfayı çevir',
+    translating: 'Sayfa çevriliyor…',
+    translated: 'Özgün sayfayı göster',
+    failed: 'Çeviri başarısız, tekrar dene',
+  };
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
@@ -129,6 +135,29 @@
                 aria-pressed={tab.bookmarked}
                 onclick={() => send({ type: 'toggle-bookmark' })}
               />
+            {/if}
+            {#if tab.translation.available}
+              {#if tab.translation.status === 'idle' || tab.translation.status === 'failed'}
+                <IconButton
+                  size="sm"
+                  icon="translate"
+                  tone={tab.translation.status === 'failed' ? 'warn' : 'muted'}
+                  label={translateTitle[tab.translation.status]}
+                  onclick={() => send({ type: 'toggle-translation' })}
+                />
+              {:else}
+                <Button
+                  size="sm"
+                  variant="tonal"
+                  icon="translate"
+                  disabled={tab.translation.status === 'translating'}
+                  aria-pressed={tab.translation.status === 'translated'}
+                  title={translateTitle[tab.translation.status]}
+                  onclick={() => send({ type: 'toggle-translation' })}
+                >
+                  {tab.translation.status === 'translating' ? 'Çevriliyor…' : 'Çevrildi'}
+                </Button>
+              {/if}
             {/if}
             {#if tab.blockedPopups > 0}
               <IconButton

@@ -257,6 +257,21 @@
             onchange={(value) => update({ pageLanguage: value })}
           />
         </div>
+        <div class="row">
+          <span class="label">
+            <span>Sayfa çevirisi</span>
+            <span class="hint">
+              Sayfa dili farklıysa çevir düğmesi görünür. Çevirirken sayfa metni Google Çeviri'ye gönderilir; yalnızca
+              düğmeye bastığınızda.
+            </span>
+          </span>
+          <SegmentedControl
+            label="Sayfa çevirisi"
+            options={onOffOptions}
+            value={values.pageTranslation}
+            onchange={(value) => update({ pageTranslation: value })}
+          />
+        </div>
       {:else if pane === 'appearance'}
         <h2>Tema</h2>
         <div class="row">
