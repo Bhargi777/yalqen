@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: If you use Yalqen, please cite it as below.
+title: Yalqen
+abstract: Open-source, Chromium-based browser for developers on macOS. Vertical tabs, keyboard-first command bar, built-in ad blocking.
+type: software
+authors:
+  - family-names: Erol
+    given-names: Yaşar Samed
+version: 0.1.0
+date-released: 2026-09-28
+license: MIT
+url: https://yalqen.com
+repository-code: https://github.com/YSamed/yalqen
+keywords:
+  - browser
+  - developer-tools
+  - vertical-tabs
+  - chromium
+  - macos

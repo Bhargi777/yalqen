@@ -3,7 +3,13 @@
 
   <h1>Yalqen</h1>
 
-  <p>A fast, privacy-minded web browser for macOS.</p>
+  <p>Open-source, Chromium-based developer browser for macOS. Vertical tabs, keyboard-first command bar, built-in ad blocking.</p>
+
+  <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="https://img.shields.io/github/v/release/YSamed/yalqen" alt="Latest release"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/YSamed/yalqen" alt="MIT license"></a>
+    <a href="https://github.com/YSamed/yalqen/releases"><img src="https://img.shields.io/github/downloads/YSamed/yalqen/total" alt="Downloads"></a>
+  </p>
 
   <p>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-button.png" alt="Download for macOS" width="260"></a>
@@ -13,7 +19,8 @@
     <a href="https://yalqen.com/">Website</a> ·
     <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
     <a href="CONTRIBUTING.md">Contribute</a> ·
-    <a href="https://github.com/YSamed/yalqen/issues">Report a bug</a>
+    <a href="https://github.com/YSamed/yalqen/issues">Report a bug</a> ·
+    <a href="README.tr.md">Türkçe</a>
   </p>
 </div>
 
@@ -38,6 +45,15 @@
   <img src="design/readme/feature-search-engines.png" alt="5 search engines" width="209">
   <img src="design/readme/feature-developer-tools.png" alt="Developer tools" width="200">
 </p>
+
+## Features
+
+- **Vertical tabs** with pinned tabs, address bar and window controls in one panel
+- **Command bar** for keyboard-first navigation and actions
+- **Ad and tracker blocking** with a built-in filter engine, plus third-party cookie blocking
+- **HTTPS-only mode** and **secure DNS**
+- **Developer tools** and a one-key **phone view**
+- **Memory saver** and five built-in search engines
 
 ## Install
 
