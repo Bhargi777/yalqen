@@ -49,7 +49,7 @@
 ## Features
 
 - **Vertical tabs** with pinned tabs, address bar and window controls in one panel
-- **Command bar** for keyboard-first navigation and actions
+- **Command bar** for keyboard-first navigation and actions ([keyboard shortcuts](docs/keyboard-shortcuts.md))
 - **Ad and tracker blocking** with a built-in filter engine, plus third-party cookie blocking
 - **HTTPS-only mode** and **secure DNS**
 - **Developer tools** and a one-key **phone view**

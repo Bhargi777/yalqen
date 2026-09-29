@@ -20,6 +20,9 @@ const IPAD_UA =
 export const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
 
+const GALAXY_UA =
+  'Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+
 export const DEVICES: readonly Device[] = [
   {
     id: 'iphone-15',
@@ -28,6 +31,17 @@ export const DEVICES: readonly Device[] = [
     height: 852,
     deviceScaleFactor: 3,
     cornerRadius: 47,
+    userAgent: IOS_UA,
+    platform: 'iPhone',
+    mobile: true,
+  },
+  {
+    id: 'iphone-15-pro-max',
+    label: 'iPhone 15 Pro Max',
+    width: 430,
+    height: 932,
+    deviceScaleFactor: 3,
+    cornerRadius: 55,
     userAgent: IOS_UA,
     platform: 'iPhone',
     mobile: true,
@@ -51,6 +65,17 @@ export const DEVICES: readonly Device[] = [
     deviceScaleFactor: 2.625,
     cornerRadius: 32,
     userAgent: ANDROID_UA,
+    platform: 'Linux armv8l',
+    mobile: true,
+  },
+  {
+    id: 'galaxy-s24',
+    label: 'Galaxy S24',
+    width: 360,
+    height: 780,
+    deviceScaleFactor: 3,
+    cornerRadius: 32,
+    userAgent: GALAXY_UA,
     platform: 'Linux armv8l',
     mobile: true,
   },
