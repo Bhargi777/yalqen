@@ -1,5 +1,7 @@
 # Keyboard shortcuts
 
+[Türkçe](keyboard-shortcuts.tr.md)
+
 Yalqen is keyboard-first. These are the macOS shortcuts in the current build, grouped by area. Every action is also available from the menu bar or the command bar.
 
 ## Tabs

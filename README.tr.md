@@ -21,11 +21,11 @@
 ## Özellikler
 
 - **Dikey sekmeler**: sabitlenmiş sekmeler, adres çubuğu ve pencere düğmeleri tek panelde
-- **Komut çubuğu** ile klavye öncelikli gezinme ve eylemler
+- **Komut çubuğu** ile klavye öncelikli gezinme ve eylemler ([klavye kısayolları](docs/keyboard-shortcuts.tr.md))
 - Yerleşik filtre motoruyla **reklam ve izleyici engelleme**, üçüncü taraf çerez engelleme
 - **Yalnızca HTTPS modu** ve **güvenli DNS**
 - **Geliştirici araçları** ve tek tuşla **telefon görünümü**
-- **Bellek tasarrufu** ve beş yerleşik arama motoru
+- **Bellek tasarrufu** ve yedi yerleşik arama motoru
 
 ## Kurulum
 

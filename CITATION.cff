@@ -6,8 +6,8 @@ type: software
 authors:
   - family-names: Erol
     given-names: Yaşar Samed
-version: 0.1.0
-date-released: 2026-09-28
+version: 0.1.1
+date-released: 2026-09-29
 license: MIT
 url: https://yalqen.com
 repository-code: https://github.com/YSamed/yalqen
