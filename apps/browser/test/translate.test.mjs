@@ -2,8 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import translate from '../dist/main/translate.js';
 
-const { applyScript, chunkTexts, normalizeLanguage, parseCollected, parseTranslation, translatePage, translateTexts } =
-  translate;
+const {
+  applyScript,
+  applySelectionScript,
+  chunkTexts,
+  normalizeLanguage,
+  parseCollected,
+  parseTranslation,
+  translatePage,
+  translateSelection,
+  translateTexts,
+} = translate;
 
 const reply = (lines, source = 'en') => ({
   ok: true,
@@ -112,4 +121,26 @@ test('a page with nothing to translate is an error', async () => {
     executeJavaScriptInIsolatedWorld: async () => ({ token: 'tok', texts: [] }),
   };
   await assert.rejects(translatePage(target, async () => reply([]), 'tr', { cancelled: () => false }));
+});
+
+test('a translated selection is applied under its own token', async () => {
+  const scripts = [];
+  const target = {
+    isDestroyed: () => false,
+    executeJavaScriptInIsolatedWorld: async (_id, [{ code }]) => {
+      scripts.push(code);
+      return scripts.length === 1 ? { token: 'sel', texts: ['Hello', 'world'] } : true;
+    },
+  };
+  assert.equal(await translateSelection(target, async () => reply(['Merhaba', 'dünya']), 'tr'), true);
+  assert.equal(scripts[1], applySelectionScript('sel', ['Merhaba', 'dünya']));
+  assert.notEqual(scripts[1], applyScript('sel', ['Merhaba', 'dünya']));
+});
+
+test('an empty selection is an error', async () => {
+  const target = {
+    isDestroyed: () => false,
+    executeJavaScriptInIsolatedWorld: async () => ({ token: 'sel', texts: [] }),
+  };
+  await assert.rejects(translateSelection(target, async () => reply([]), 'tr'));
 });

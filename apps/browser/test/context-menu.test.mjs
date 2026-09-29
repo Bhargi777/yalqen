@@ -199,3 +199,17 @@ test('a plain page offers translation only when available', () => {
   items.find((item) => item.label === 'Sayfayı çevir').click();
   assert.deepEqual(a.calls, [['translate']]);
 });
+
+test('a selection offers translation only when available and not while editing', () => {
+  const a = actions();
+  const translatable = { ...a, translateSelection: () => a.calls.push(['translateSelection']) };
+  assert.ok(!labels(contextMenuTemplate(context({ selectionText: 'Hello' }), a)).includes('Seçili metni çevir'));
+  assert.ok(
+    !labels(contextMenuTemplate(context({ selectionText: 'Hello', isEditable: true }), translatable)).includes(
+      'Seçili metni çevir',
+    ),
+  );
+  const items = contextMenuTemplate(context({ selectionText: 'Hello' }), translatable);
+  item(items, 'Seçili metni çevir').click();
+  assert.deepEqual(a.calls, [['translateSelection']]);
+});

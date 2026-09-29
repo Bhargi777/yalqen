@@ -55,7 +55,7 @@ import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from 
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
 import { withoutHash } from './url.js';
-import { detectLanguage, restorePage, translatePage } from './translate.js';
+import { detectLanguage, restorePage, translatePage, translateSelection, type FetchLike } from './translate.js';
 import { stepZoom } from './zoom.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -149,6 +149,8 @@ export function recentPages(closed: readonly SavedTab[], limit = 5): RecentPage[
   }
   return pages;
 }
+
+const translationFetch: FetchLike = (endpoint, init) => net.fetch(endpoint, { ...init, credentials: 'omit' });
 
 export class TabManager {
   private readonly tabs: Tab[] = [];
@@ -632,9 +634,7 @@ export class TabManager {
     const cancelled = () => tab.translationRun !== run || contents.isDestroyed() || contents.getURL() !== url;
     tab.translation = 'translating';
     this.changed();
-    const fetchLike: Parameters<typeof translatePage>[1] = (endpoint, init) =>
-      net.fetch(endpoint, { ...init, credentials: 'omit' });
-    translatePage(contents, fetchLike, this.options.translation().language, { cancelled })
+    translatePage(contents, translationFetch, this.options.translation().language, { cancelled })
       .then((result) => {
         if (cancelled()) return;
         tab.translation = result ? 'translated' : 'failed';
@@ -646,6 +646,17 @@ export class TabManager {
         tab.translation = 'failed';
         this.changed();
       });
+  }
+
+  canTranslateSelection(): boolean {
+    return this.options.translation().enabled;
+  }
+
+  translateSelection(contents: WebContents): void {
+    if (!this.canTranslateSelection() || contents.isDestroyed()) return;
+    translateSelection(contents, translationFetch, this.options.translation().language).catch((error: unknown) => {
+      console.warn('[translate] could not translate selection:', error);
+    });
   }
 
   private translationAvailable(tab: Tab): boolean {

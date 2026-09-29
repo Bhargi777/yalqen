@@ -57,9 +57,46 @@ export const COLLECT_SCRIPT = `(() => {
   return { token, texts };
 })()`;
 
-export function applyScript(token: string, translations: string[]): string {
+export const COLLECT_SELECTION_SCRIPT = `(() => {
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT']);
+  const selection = window.getSelection();
+  const nodes = [];
+  let total = 0;
+  for (let index = 0; index < (selection?.rangeCount ?? 0); index++) {
+    const range = selection.getRangeAt(index);
+    const { startContainer, startOffset, endContainer, endOffset } = range;
+    const root = range.commonAncestorContainer;
+    const candidates = [];
+    if (root.nodeType === Node.TEXT_NODE) {
+      candidates.push(root);
+    } else {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => (range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+      });
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) candidates.push(node);
+    }
+    for (let node of candidates) {
+      const parent = node.parentElement;
+      if (!parent || SKIP.has(parent.tagName.toUpperCase()) || parent.isContentEditable) continue;
+      if ((node === endContainer && endOffset === 0) || (node === startContainer && startOffset === node.length)) {
+        continue;
+      }
+      if (node === endContainer && endOffset < node.length) node.splitText(endOffset);
+      if (node === startContainer && startOffset > 0) node = node.splitText(startOffset);
+      if (!/\\p{L}/u.test(node.nodeValue ?? '')) continue;
+      total += node.nodeValue.length;
+      if (total > ${MAX_PAGE_CHARS}) break;
+      nodes.push(node);
+    }
+  }
+  const token = Math.random().toString(36).slice(2);
+  window.__yalqenSelectionTranslation = { token, nodes, originals: nodes.map((node) => node.nodeValue) };
+  return { token, texts: nodes.map((node) => node.nodeValue.replace(/\\s+/g, ' ').trim()) };
+})()`;
+
+function applyStateScript(stateKey: string, token: string, translations: string[]): string {
   return `((token, translations) => {
-    const state = window.__yalqenTranslation;
+    const state = window.${stateKey};
     if (!state || state.token !== token || state.nodes.length !== translations.length) return false;
     state.nodes.forEach((node, index) => {
       if (!node.isConnected) return;
@@ -70,6 +107,18 @@ export function applyScript(token: string, translations: string[]): string {
     });
     return true;
   })(${JSON.stringify(token)}, ${JSON.stringify(translations)})`;
+}
+
+export function applyScript(token: string, translations: string[]): string {
+  return applyStateScript('__yalqenTranslation', token, translations);
+}
+
+export function applySelectionScript(token: string, translations: string[]): string {
+  return `(() => {
+    const applied = ${applyStateScript('__yalqenSelectionTranslation', token, translations)};
+    delete window.__yalqenSelectionTranslation;
+    return applied;
+  })()`;
 }
 
 export const RESTORE_SCRIPT = `(() => {
@@ -219,4 +268,22 @@ export async function translatePage(
 export async function restorePage(target: ScriptTarget): Promise<void> {
   if (target.isDestroyed()) return;
   await target.executeJavaScriptInIsolatedWorld(TRANSLATE_WORLD_ID, [{ code: RESTORE_SCRIPT }]);
+}
+
+export async function translateSelection(
+  target: ScriptTarget,
+  fetchLike: FetchLike,
+  language: PageLanguage,
+): Promise<boolean> {
+  if (target.isDestroyed()) return false;
+  const collected = parseCollected(
+    await target.executeJavaScriptInIsolatedWorld(TRANSLATE_WORLD_ID, [{ code: COLLECT_SELECTION_SCRIPT }]),
+  );
+  if (!collected || collected.texts.length === 0) throw new Error('nothing selected to translate');
+  const { texts } = await translateTexts(fetchLike, collected.texts, language);
+  if (target.isDestroyed()) return false;
+  const applied = await target.executeJavaScriptInIsolatedWorld(TRANSLATE_WORLD_ID, [
+    { code: applySelectionScript(collected.token, texts) },
+  ]);
+  return applied === true;
 }

@@ -816,6 +816,7 @@ export class YalqenWindow {
               run: () => tabs.toggleTranslation(),
             }
           : undefined,
+      translateSelection: tabs.canTranslateSelection() ? () => tabs.translateSelection(contents) : undefined,
       canGoBack: history.canGoBack(),
       canGoForward: history.canGoForward(),
       canViewSource: canViewSource(contents.getURL()),

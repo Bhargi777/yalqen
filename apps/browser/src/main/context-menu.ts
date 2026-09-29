@@ -37,6 +37,7 @@ export interface ContextMenuActions {
   replaceMisspelling(word: string): void;
   addToDictionary(word: string): void;
   translation?: { label: string; run(): void };
+  translateSelection?: () => void;
 }
 
 export function snippet(text: string): string {
@@ -106,7 +107,12 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
     groups.push([{ label: 'Kopyala', role: 'copy' }]);
   }
   if (selection) {
-    groups.push([{ label: `“${snippet(selection)}” için ara`, click: () => actions.search(selection) }]);
+    groups.push([
+      { label: `“${snippet(selection)}” için ara`, click: () => actions.search(selection) },
+      ...(actions.translateSelection && !context.isEditable
+        ? [{ label: 'Seçili metni çevir', click: actions.translateSelection }]
+        : []),
+    ]);
   }
   if (groups.length === 0) {
     groups.push([
