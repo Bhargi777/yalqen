@@ -8,7 +8,7 @@ export const BOOKMARKS_URL = 'yalqen://bookmarks/';
 export const SETTINGS_URL = 'yalqen://settings/';
 export type CommandPage = 'downloads' | 'bookmarks';
 
-export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
+export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'startpage' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
 export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
 export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
@@ -44,7 +44,8 @@ export interface TabSnapshot {
   canGoForward: boolean;
 }
 
-export type DeviceId = 'iphone-15' | 'iphone-se' | 'pixel-8' | 'ipad-mini' | 'responsive';
+export type DeviceId =
+  'iphone-15' | 'iphone-15-pro-max' | 'iphone-se' | 'pixel-8' | 'galaxy-s24' | 'ipad-mini' | 'responsive';
 
 export interface DeviceFrame {
   label: string;
