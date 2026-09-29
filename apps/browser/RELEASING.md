@@ -4,7 +4,7 @@ Yalqen is distributed as a DMG/ZIP on GitHub Releases, not through the Mac App S
 
 Releases are automated with [release-please](https://github.com/googleapis/release-please):
 
-1. Every push to `main` updates an open "chore(main): release x.y.z" pull request. It bumps the version in `package.json` and adds the Conventional Commits since the last release to `CHANGELOG.md` (`feat` bumps the minor version, `fix` and `perf` the patch version, and a `!` or `BREAKING CHANGE` footer the major version once past 1.0).
+1. Every push to `main` updates an open "chore(main): release x.y.z" pull request. It bumps the version in `package.json` and adds the Conventional Commits since the last release to `CHANGELOG.md`. Every release bumps the patch version (`0.2.0` → `0.2.1` → `0.2.2`), whatever the commit types are. To release a minor or major version instead, add a `Release-As: x.y.z` footer to a commit on `main` (for example `Release-As: 0.3.0`).
 2. Merging that pull request tags `vx.y.z` and creates the GitHub release with the changelog.
 3. `.github/workflows/release.yml` then checks, builds and packages the macOS app, uploads the DMG and ZIP to the release and appends the install notes from `build/release-notes.md`.
 
