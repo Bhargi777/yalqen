@@ -5,6 +5,7 @@
   import { REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../shared/types';
   import Extensions from './components/Extensions.svelte';
   import Icon, { type IconName } from './components/Icon.svelte';
+  import Passwords from './components/Passwords.svelte';
   import ProcessUsage from './components/ProcessUsage.svelte';
   import RequestRules from './components/RequestRules.svelte';
   import Button from './components/ui/Button.svelte';
@@ -15,11 +16,12 @@
 
   const api = window.yalqenSettings;
 
-  type PaneId = 'general' | 'appearance' | 'privacy' | 'performance' | 'extensions' | 'developer';
+  type PaneId = 'general' | 'appearance' | 'privacy' | 'passwords' | 'performance' | 'extensions' | 'developer';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
     { id: 'general', label: 'Genel', icon: 'settings' },
     { id: 'appearance', label: 'Görünüm', icon: 'appearance' },
     { id: 'privacy', label: 'Gizlilik', icon: 'lock' },
+    { id: 'passwords', label: 'Şifreler', icon: 'key' },
     { id: 'performance', label: 'Performans', icon: 'gauge' },
     { id: 'extensions', label: 'Uzantılar', icon: 'extensions' },
     { id: 'developer', label: 'Geliştirici', icon: 'sparkle' },
@@ -602,6 +604,8 @@
             </div>
           </div>
         </div>
+      {:else if pane === 'passwords'}
+        <Passwords />
       {:else if pane === 'extensions'}
         <Extensions />
       {:else if pane === 'developer'}
