@@ -474,6 +474,9 @@ function startBrowser(): void {
       : await dialog.showOpenDialog(options);
     return canceled || !filePaths[0] ? null : extensions.install(filePaths[0]);
   });
+  ipcMain.handle(ExtensionsChannel.installFromStore, (event, input: unknown) =>
+    isSettingsFrame(event) && typeof input === 'string' ? extensions.installFromStore(input) : null,
+  );
   ipcMain.handle(ExtensionsChannel.remove, (event, directory: unknown) => {
     if (isSettingsFrame(event) && typeof directory === 'string') extensions.remove(directory);
   });

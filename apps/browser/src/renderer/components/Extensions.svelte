@@ -4,21 +4,31 @@
   import Icon from './Icon.svelte';
   import Button from './ui/Button.svelte';
   import IconButton from './ui/IconButton.svelte';
+  import TextField from './ui/TextField.svelte';
 
   const api = window.yalqenSettings;
 
   let extensions = $state<ExtensionInfo[]>([]);
   let installing = $state(false);
   let installError = $state<string | null>(null);
+  let storeInput = $state('');
 
-  async function install(): Promise<void> {
+  async function run(task: () => Promise<string | null>): Promise<string | null> {
     installing = true;
     installError = null;
     try {
-      installError = await api.installExtension();
+      installError = await task();
     } finally {
       installing = false;
     }
+    return installError;
+  }
+
+  const install = () => run(() => api.installExtension());
+
+  async function installFromStore(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (!(await run(() => api.installExtensionFromStore(storeInput)))) storeInput = '';
   }
 
   onMount(() => {
@@ -29,9 +39,9 @@
 
 <h2>Uzantılar</h2>
 <p class="hint intro">
-  Paketlenmemiş Chrome uzantılarını klasöründen yükleyin. Uzantılar gizli sekmelerde ve geliştirici pencerelerinde
-  çalışmaz. Chrome'un uzantı arayüzlerinin yalnızca bir kısmı desteklenir; bazı uzantılar beklendiği gibi
-  çalışmayabilir.
+  Chrome Web Mağazası'ndan adres veya kimlikle uzantı ekleyin ya da paketlenmemiş bir uzantıyı klasöründen yükleyin.
+  Uzantılar gizli sekmelerde ve geliştirici pencerelerinde çalışmaz. Chrome'un uzantı arayüzlerinin yalnızca bir kısmı
+  desteklenir; bazı uzantılar beklendiği gibi çalışmayabilir.
 </p>
 
 {#each extensions as extension (extension.path)}
@@ -71,6 +81,20 @@
 {:else}
   <p class="hint empty">Yüklü uzantı yok.</p>
 {/each}
+
+<form class="store" onsubmit={installFromStore}>
+  <TextField
+    bind:value={storeInput}
+    placeholder="Chrome Web Mağazası adresi veya uzantı kimliği"
+    aria-label="Chrome Web Mağazası adresi veya uzantı kimliği"
+    spellcheck="false"
+    autocomplete="off"
+    disabled={installing}
+  />
+  <Button type="submit" icon="plus" disabled={installing || storeInput.trim() === ''}>
+    {installing ? 'Ekleniyor…' : 'Mağazadan ekle'}
+  </Button>
+</form>
 
 <div class="actions">
   <Button icon="plus" disabled={installing} onclick={install}>Klasörden yükle…</Button>
@@ -159,6 +183,18 @@
 
   .controls input {
     margin: 0;
+  }
+
+  .store {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0 0;
+  }
+
+  .store :global(input) {
+    flex: 1;
+    min-width: 0;
   }
 
   .actions {

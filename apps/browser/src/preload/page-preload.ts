@@ -125,6 +125,8 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
       ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,
     extensions: () => ipcRenderer.invoke(ExtensionsChannel.list) as Promise<ExtensionInfo[]>,
     installExtension: () => ipcRenderer.invoke(ExtensionsChannel.install) as Promise<string | null>,
+    installExtensionFromStore: (input: string) =>
+      ipcRenderer.invoke(ExtensionsChannel.installFromStore, input) as Promise<string | null>,
     removeExtension: (path: string) => ipcRenderer.invoke(ExtensionsChannel.remove, path) as Promise<void>,
     setExtensionEnabled: (path: string, enabled: boolean) =>
       ipcRenderer.invoke(ExtensionsChannel.setEnabled, path, enabled) as Promise<void>,

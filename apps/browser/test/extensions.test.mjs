@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
+import zlib from 'node:zlib';
+import store from '../dist/main/chrome-web-store.js';
+import zip from '../dist/main/zip.js';
 import manifests from '../dist/main/extension-manifest.js';
 import popup from '../dist/main/extension-popup.js';
 import extensions from '../dist/main/extensions.js';
@@ -17,6 +23,44 @@ const {
 } = manifests;
 const { popupBounds, sanitizeAnchor } = popup;
 const { errorMessage, extensionsMenuTemplate } = extensions;
+const { crxPayload, crxUrl, parseStoreId } = store;
+const { extractZip } = zip;
+
+const STORE_ID = 'abcdefghijklmnopabcdefghijklmnop';
+
+function buildZip(files) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const [name, content, deflate] of files) {
+    const nameBytes = Buffer.from(name);
+    const data = Buffer.from(content);
+    const packed = deflate ? zlib.deflateRawSync(data) : data;
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(deflate ? 8 : 0, 8);
+    local.writeUInt32LE(packed.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(nameBytes.length, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(deflate ? 8 : 0, 10);
+    central.writeUInt32LE(packed.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(nameBytes.length, 28);
+    central.writeUInt32LE(offset, 42);
+    locals.push(local, nameBytes, packed);
+    centrals.push(central, nameBytes);
+    offset += local.length + nameBytes.length + packed.length;
+  }
+  const directory = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, directory, end]);
+}
 
 test('saved extensions keep unique absolute folders', () => {
   assert.deepEqual(
@@ -146,4 +190,68 @@ test('load errors drop the folder prefix Electron adds', () => {
     'Manifest file is missing or unreadable',
   );
   assert.equal(errorMessage('plain'), 'plain');
+});
+
+test('store ids are read from Chrome Web Store links and bare ids', () => {
+  assert.equal(parseStoreId(STORE_ID), STORE_ID);
+  assert.equal(parseStoreId(`  ${STORE_ID}\n`), STORE_ID);
+  assert.equal(parseStoreId(`https://chromewebstore.google.com/detail/dark-reader/${STORE_ID}?hl=tr`), STORE_ID);
+  assert.equal(parseStoreId(`https://chrome.google.com/webstore/detail/${STORE_ID}`), STORE_ID);
+  assert.equal(parseStoreId(`https://evil.example/detail/x/${STORE_ID}`), null);
+  assert.equal(parseStoreId(`http://chromewebstore.google.com/detail/x/${STORE_ID}`), null);
+  assert.equal(parseStoreId('abc'), null);
+  assert.equal(parseStoreId(STORE_ID.toUpperCase()), null);
+});
+
+test('the download url asks the update service for a crx3 of that id', () => {
+  const url = new URL(crxUrl(STORE_ID, '140.0.0.0'));
+  assert.equal(url.origin + url.pathname, 'https://clients2.google.com/service/update2/crx');
+  assert.equal(url.searchParams.get('prodversion'), '140.0.0.0');
+  assert.equal(url.searchParams.get('x'), `id=${STORE_ID}&installsource=ondemand&uc`);
+});
+
+test('crx headers of every version are stripped down to the zip', () => {
+  const payload = buildZip([['manifest.json', '{}']]);
+  const v3 = Buffer.concat([Buffer.from('Cr24'), Buffer.from([3, 0, 0, 0, 5, 0, 0, 0]), Buffer.alloc(5), payload]);
+  const v2 = Buffer.concat([
+    Buffer.from('Cr24'),
+    Buffer.from([2, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0]),
+    Buffer.alloc(5),
+    payload,
+  ]);
+  assert.deepEqual(crxPayload(v3), payload);
+  assert.deepEqual(crxPayload(v2), payload);
+  assert.deepEqual(crxPayload(payload), payload);
+  assert.throws(() => crxPayload(Buffer.from('<html>not a crx at all</html>')));
+});
+
+test('zip files unpack stored and deflated entries', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-zip-'));
+  try {
+    const destination = path.join(root, 'ext');
+    extractZip(
+      buildZip([
+        ['manifest.json', '{"name":"x"}', true],
+        ['ui/', ''],
+        ['ui/popup.html', '<p>hi</p>', false],
+      ]),
+      destination,
+    );
+    assert.equal(fs.readFileSync(path.join(destination, 'manifest.json'), 'utf8'), '{"name":"x"}');
+    assert.equal(fs.readFileSync(path.join(destination, 'ui', 'popup.html'), 'utf8'), '<p>hi</p>');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('zip files cannot write outside the destination', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-zip-'));
+  try {
+    const destination = path.join(root, 'ext');
+    assert.throws(() => extractZip(buildZip([['../escape.txt', 'x']]), destination), /geçersiz dosya yolu/);
+    assert.equal(fs.existsSync(path.join(root, 'escape.txt')), false);
+    assert.throws(() => extractZip(Buffer.from('not a zip'), destination));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

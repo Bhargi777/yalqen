@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { nativeImage, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
+import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
 import type { ExtensionInfo } from '../shared/types.js';
 import {
   actionTitle,
@@ -16,10 +16,13 @@ import {
   type Messages,
   type SavedExtension,
 } from './extension-manifest.js';
+import { downloadCrx, parseStoreId } from './chrome-web-store.js';
 import { JsonFile } from './json-file.js';
+import { extractZip } from './zip.js';
 
 const MENU_ICON_SIZE = 16;
 const LIST_ICON_SIZE = 64;
+const STORE_DIRECTORY = 'store-extensions';
 
 export interface ExtensionAction {
   title: string;
@@ -71,6 +74,7 @@ export function errorMessage(error: unknown): string {
 
 export class ExtensionManager {
   private readonly json: JsonFile;
+  private readonly storeRoot: string;
   private entries: SavedExtension[];
   private readonly ids = new Map<string, string>();
   private readonly errors = new Map<string, string>();
@@ -81,6 +85,7 @@ export class ExtensionManager {
     private readonly onChange: () => void,
   ) {
     const file = path.join(directory, 'extensions.json');
+    this.storeRoot = path.join(directory, STORE_DIRECTORY);
     this.json = new JsonFile(file, 'extensions');
     this.entries = sanitizeSavedExtensions((readJson(file) as { extensions?: unknown } | null)?.extensions);
   }
@@ -153,11 +158,38 @@ export class ExtensionManager {
     return error;
   }
 
+  async installFromStore(input: string): Promise<string | null> {
+    const id = parseStoreId(input);
+    if (!id) return 'Geçerli bir Chrome Web Mağazası adresi veya uzantı kimliği girin';
+    try {
+      const zip = await downloadCrx(id, (url, init) => net.fetch(url, init), process.versions.chrome);
+      fs.mkdirSync(this.storeRoot, { recursive: true });
+      const target = path.join(fs.realpathSync(this.storeRoot), id);
+      const staging = `${target}.tmp`;
+      fs.rmSync(staging, { recursive: true, force: true });
+      try {
+        extractZip(zip, staging);
+        this.unload(target);
+        fs.rmSync(target, { recursive: true, force: true });
+        fs.renameSync(staging, target);
+      } finally {
+        fs.rmSync(staging, { recursive: true, force: true });
+      }
+      const known = this.entries.some((entry) => entry.path === target);
+      const error = await this.install(target);
+      if (error && !known) fs.rmSync(target, { recursive: true, force: true });
+      return error;
+    } catch (error) {
+      return errorMessage(error);
+    }
+  }
+
   remove(directory: string): void {
     if (!this.entries.some((entry) => entry.path === directory)) return;
     this.unload(directory);
     this.errors.delete(directory);
     this.entries = this.entries.filter((entry) => entry.path !== directory);
+    this.deleteStoreFiles(directory);
     this.changed();
   }
 
@@ -189,6 +221,16 @@ export class ExtensionManager {
       this.errors.set(directory, message);
       console.warn(`[extensions] could not load ${directory}:`, message);
       return message;
+    }
+  }
+
+  private deleteStoreFiles(directory: string): void {
+    try {
+      if (path.dirname(directory) === fs.realpathSync(this.storeRoot)) {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    } catch {
+      return;
     }
   }
 

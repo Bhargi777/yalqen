@@ -412,6 +412,7 @@ export interface ExtensionInfo {
 export const ExtensionsChannel = {
   list: 'yalqen-extensions:list',
   install: 'yalqen-extensions:install',
+  installFromStore: 'yalqen-extensions:install-from-store',
   remove: 'yalqen-extensions:remove',
   setEnabled: 'yalqen-extensions:set-enabled',
   openOptions: 'yalqen-extensions:open-options',
@@ -453,6 +454,7 @@ export interface SettingsApi {
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
   extensions(): Promise<ExtensionInfo[]>;
   installExtension(): Promise<string | null>;
+  installExtensionFromStore(input: string): Promise<string | null>;
   removeExtension(path: string): Promise<void>;
   setExtensionEnabled(path: string, enabled: boolean): Promise<void>;
   openExtensionOptions(path: string): Promise<void>;
